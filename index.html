@@ -141,7 +141,7 @@ const CL=['#0f1729','#d4a843','#3b82f6','#64748b','#ef4444','#10b981','#8b5cf6',
 function render(){
   const a=document.getElementById('app');
   const yrs=Object.keys(SEASONS).map(y=>`<option value="${y}" ${parseInt(y)===S.yr?'selected':''}>${y}</option>`).join('');
-  const tabs=[['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['simulation','Projections'],['info','Info']];
+  const tabs=[['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['simulation','Projections'],['info','Info'],['entry','Enter Team']];
   a.innerHTML=`
 <header class="hdr">
   <div class="max-w-5xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between">
@@ -166,7 +166,7 @@ function render(){
   setTimeout(drawChart,20);
 }
 
-function tabC(){switch(S.tab){case'leaderboard':return LB();case'team':return TD();case'chart':return CH();case'players':return PL();case'simulation':return SM();case'info':return NF();default:return'';}}
+function tabC(){switch(S.tab){case'leaderboard':return LB();case'team':return TD();case'chart':return CH();case'players':return PL();case'simulation':return SM();case'info':return NF();case'entry':return EN();default:return'';}}
 
 // ============================================================
 // LEADERBOARD
@@ -340,6 +340,185 @@ function NF(){
 // ============================================================
 function updSim(k,v){const f=parseFloat(v);if(k==='n')S.simCfg.n=Math.max(100,parseInt(v)||1000);else if(k==='v')S.simCfg.v=f;else if(k==='a1')S.simCfg.adv[1]=f;else if(k==='a15')S.simCfg.adv[1.5]=f;else if(k==='a2')S.simCfg.adv[2]=f;render();}
 function doSim(){S.simRun=true;render();setTimeout(()=>{S.simRes=runSim(S.entries,S.simCfg);S.simRun=false;render();},50);}
+
+// ============================================================
+// ENTRY FORM — player database + form + mailto submit
+// ============================================================
+const POOL_EMAIL='rkunka31@gmail.com'; // ← CHANGE THIS to your email address
+
+const ROSTER_F=[
+['Nathan MacKinnon','COL'],['Mikko Rantanen','COL'],['Artturi Lehkonen','COL'],['Casey Mittelstadt','COL'],['Ross Colton','COL'],['Jonathan Drouin','COL'],['Nazem Kadri','COL'],
+['Jason Robertson','DAL'],['Roope Hintz','DAL'],['Wyatt Johnston','DAL'],['Matt Duchene','DAL'],['Tyler Seguin','DAL'],['Mason Marchment','DAL'],['Logan Stankoven','DAL'],['Jamie Benn','DAL'],
+['Kirill Kaprizov','MIN'],['Matt Boldy','MIN'],['Marco Rossi','MIN'],['Joel Eriksson Ek','MIN'],['Mats Zuccarello','MIN'],
+['Troy Terry','ANA'],['Mason McTavish','ANA'],['Leo Carlsson','ANA'],['Frank Vatrano','ANA'],['Alex Killorn','ANA'],['Ryan Strome','ANA'],
+['Jack Eichel','VGK'],['Mark Stone','VGK'],['Ivan Barbashev','VGK'],['Tomas Hertl','VGK'],['Pavel Dorofeyev','VGK'],['William Karlsson','VGK'],
+['Connor McDavid','EDM'],['Leon Draisaitl','EDM'],['Zach Hyman','EDM'],['Ryan Nugent-Hopkins','EDM'],['Jeff Skinner','EDM'],['Viktor Arvidsson','EDM'],
+['Clayton Keller','UTA'],['Barrett Hayton','UTA'],['Nick Schmaltz','UTA'],['Lawson Crouse','UTA'],['Dylan Guenther','UTA'],
+['Jared McCann','SEA'],['Matty Beniers','SEA'],['Andre Burakovsky','SEA'],['Jordan Eberle','SEA'],['Shane Wright','SEA'],
+['Sebastian Aho','CAR'],['Seth Jarvis','CAR'],['Andrei Svechnikov','CAR'],['Martin Necas','CAR'],['Jack Roslovic','CAR'],['Jordan Staal','CAR'],['Jackson Blake','CAR'],
+['Tage Thompson','BUF'],['Alex Tuch','BUF'],['Dylan Cozens','BUF'],['JJ Peterka','BUF'],['Jason Zucker','BUF'],['Jack Quinn','BUF'],
+['Nikita Kucherov','TBL'],['Brayden Point','TBL'],['Brandon Hagel','TBL'],['Jake Guentzel','TBL'],['Anthony Cirelli','TBL'],['Nick Paul','TBL'],
+['Nick Suzuki','MTL'],['Cole Caufield','MTL'],['Juraj Slafkovsky','MTL'],['Patrik Laine','MTL'],['Alex Newhook','MTL'],['Kirby Dach','MTL'],
+['Lucas Raymond','DET'],['Dylan Larkin','DET'],['Alex DeBrincat','DET'],['Patrick Kane','DET'],['Andrew Copp','DET'],
+['Sidney Crosby','PIT'],['Evgeni Malkin','PIT'],['Rickard Rakell','PIT'],['Bryan Rust','PIT'],['Michael Bunting','PIT'],
+['David Pastrnak','BOS'],['Brad Marchand','BOS'],['Pavel Zacha','BOS'],['Elias Lindholm','BOS'],['Charlie Coyle','BOS'],
+['Mathew Barzal','NYI'],['Bo Horvat','NYI'],['Brock Nelson','NYI'],['Kyle Palmieri','NYI'],['Anders Lee','NYI'],
+['Kirill Marchenko','CBJ'],['Adam Fantilli','CBJ'],['Sean Monahan','CBJ'],['Dmitri Voronkov','CBJ'],
+['Macklin Celebrini','SJS'],['William Eklund','SJS'],['Mikael Granlund','SJS'],['Tyler Toffoli','SJS'],
+].sort((a,b)=>a[1].localeCompare(b[1])||a[0].localeCompare(b[0]));
+
+const ROSTER_D=[
+['Cale Makar','COL'],['Devon Toews','COL'],['Josh Manson','COL'],['Sam Girard','COL'],
+['Miro Heiskanen','DAL'],['Thomas Harley','DAL'],['Esa Lindell','DAL'],
+['Jared Spurgeon','MIN'],['Brock Faber','MIN'],['Jonas Brodin','MIN'],
+['Olen Zellweger','ANA'],['Cam Fowler','ANA'],['Radko Gudas','ANA'],
+['Noah Hanifin','VGK'],['Shea Theodore','VGK'],['Alex Pietrangelo','VGK'],
+['Evan Bouchard','EDM'],['Mattias Ekholm','EDM'],['Darnell Nurse','EDM'],
+['Mikhail Sergachev','UTA'],['Sean Durzi','UTA'],
+['Vince Dunn','SEA'],['Brandon Montour','SEA'],
+['Jaccob Slavin','CAR'],['Shayne Gostisbehere','CAR'],['Brent Burns','CAR'],
+['Rasmus Dahlin','BUF'],['Owen Power','BUF'],['Bowen Byram','BUF'],
+['Victor Hedman','TBL'],['Erik Cernak','TBL'],['Ryan McDonagh','TBL'],
+['Lane Hutson','MTL'],['Mike Matheson','MTL'],['Kaiden Guhle','MTL'],
+['Moritz Seider','DET'],['Simon Edvinsson','DET'],
+['Erik Karlsson','PIT'],['Kris Letang','PIT'],
+['Charlie McAvoy','BOS'],['Hampus Lindholm','BOS'],
+['Noah Dobson','NYI'],['Ryan Pulock','NYI'],
+['Zach Werenski','CBJ'],['Ivan Provorov','CBJ'],
+['Mario Ferraro','SJS'],['Jake Walman','SJS'],
+].sort((a,b)=>a[1].localeCompare(b[1])||a[0].localeCompare(b[0]));
+
+// Entry form state (persists in localStorage per device)
+let EF={name:'',owner:'',fwd:Array.from({length:10},()=>({p:'',pk:1})),def:Array.from({length:5},()=>({p:'',pk:1})),submitted:false};
+try{const saved=localStorage.getItem('50pucks_entry');if(saved)EF=JSON.parse(saved);}catch{}
+function saveEF(){try{localStorage.setItem('50pucks_entry',JSON.stringify(EF));}catch{}}
+
+function efPkTotal(){return EF.fwd.reduce((s,x)=>s+(parseInt(x.pk)||0),0)+EF.def.reduce((s,x)=>s+(parseInt(x.pk)||0),0);}
+function efValid(){
+  if(!EF.name.trim()||!EF.owner.trim())return{ok:false,msg:'Enter your team name and your name.'};
+  const fwdFilled=EF.fwd.filter(x=>x.p).length;const defFilled=EF.def.filter(x=>x.p).length;
+  if(fwdFilled<10)return{ok:false,msg:`Select ${10-fwdFilled} more forward${10-fwdFilled>1?'s':''}.`};
+  if(defFilled<5)return{ok:false,msg:`Select ${5-defFilled} more defensem${5-defFilled>1?'en':'an'}.`};
+  const t=efPkTotal();if(t!==50)return{ok:false,msg:`Pucks total is ${t}. Must be exactly 50.`};
+  // Check duplicates
+  const all=[...EF.fwd.map(x=>x.p),...EF.def.map(x=>x.p)].filter(Boolean);
+  const dups=all.filter((v,i)=>all.indexOf(v)!==i);
+  if(dups.length)return{ok:false,msg:`Duplicate player: ${dups[0]}`};
+  return{ok:true,msg:'Ready to submit!'};
+}
+
+function efMailto(){
+  const lines=[];
+  lines.push(`50 PUCKS ENTRY — ${S.yr}`);
+  lines.push(`Team: ${EF.name}`);
+  lines.push(`Owner: ${EF.owner}`);
+  lines.push('');
+  lines.push('FORWARDS:');
+  EF.fwd.forEach((x,i)=>{if(x.p)lines.push(`  ${i+1}. ${x.p} — ${x.pk} pucks`);});
+  lines.push('');
+  lines.push('DEFENSE:');
+  EF.def.forEach((x,i)=>{if(x.p)lines.push(`  ${i+1}. ${x.p} — ${x.pk} pucks`);});
+  lines.push('');
+  lines.push(`Total Pucks: ${efPkTotal()}/50`);
+  lines.push('');
+  lines.push('--- CSV (for upload) ---');
+  [...EF.fwd,...EF.def].forEach((x,i)=>{
+    if(!x.p)return;
+    const parts=x.p.split(' – ');
+    const name=parts[0];const team=parts[1]||'';
+    const pos=i<10?'F':'D';
+    lines.push(`${EF.name},${EF.owner},${name},${team},${pos},${x.pk}`);
+  });
+  const body=encodeURIComponent(lines.join('\n'));
+  const subj=encodeURIComponent(`50 Pucks Entry: ${EF.name}`);
+  return`mailto:${POOL_EMAIL}?subject=${subj}&body=${body}`;
+}
+
+function efUpdate(type,idx,field,val){
+  if(type==='name')EF.name=val;
+  else if(type==='owner')EF.owner=val;
+  else if(type==='fwd'){EF.fwd=EF.fwd.map((x,i)=>i===idx?{...x,[field]:val}:x);}
+  else if(type==='def'){EF.def=EF.def.map((x,i)=>i===idx?{...x,[field]:val}:x);}
+  saveEF();render();
+}
+
+function efReset(){if(confirm('Clear your entire entry? This cannot be undone.')){EF={name:'',owner:'',fwd:Array.from({length:10},()=>({p:'',pk:1})),def:Array.from({length:5},()=>({p:'',pk:1})),submitted:false};saveEF();render();}}
+
+function EN(){
+  const v=efValid();const t=efPkTotal();
+  const pOpts=(n)=>[1,2,3,4,5,6].map(v=>`<option value="${v}" ${v===parseInt(n)?'selected':''}>${v}</option>`).join('');
+  const mkOpts=(roster,sel)=>roster.map(([n,tm])=>{const val=`${n} – ${tm}`;return`<option value="${esc(val)}" ${val===sel?'selected':''}>${n} – ${tm}</option>`;}).join('');
+
+  const fwdRows=EF.fwd.map((x,i)=>`<tr class="border-b border-slate-50">
+    <td class="px-2 py-1.5 text-slate-400 text-xs text-center">${i+1}</td>
+    <td class="px-1 py-1"><select onchange="efUpdate('fwd',${i},'p',this.value)" class="w-full bg-white border border-slate-200 rounded px-1.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400"><option value="">Select forward...</option>${mkOpts(ROSTER_F,x.p)}</select></td>
+    <td class="px-1 py-1 text-center"><select onchange="efUpdate('fwd',${i},'pk',parseInt(this.value))" class="bg-white border border-slate-200 rounded px-1 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-amber-400 w-12">${pOpts(x.pk)}</select></td>
+  </tr>`).join('');
+
+  const defRows=EF.def.map((x,i)=>`<tr class="border-b border-slate-50">
+    <td class="px-2 py-1.5 text-slate-400 text-xs text-center">${i+11}</td>
+    <td class="px-1 py-1"><select onchange="efUpdate('def',${i},'p',this.value)" class="w-full bg-white border border-slate-200 rounded px-1.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400"><option value="">Select defenseman...</option>${mkOpts(ROSTER_D,x.p)}</select></td>
+    <td class="px-1 py-1 text-center"><select onchange="efUpdate('def',${i},'pk',parseInt(this.value))" class="bg-white border border-slate-200 rounded px-1 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-amber-400 w-12">${pOpts(x.pk)}</select></td>
+  </tr>`).join('');
+
+  return`<div class="space-y-4">
+    <div class="flex items-center justify-between">
+      <div><div class="text-sm font-semibold text-slate-900">Enter Your Team</div><div class="text-[10px] text-slate-400">Pick 10 forwards + 5 defense, allocate 50 pucks. Your picks are saved on this device.</div></div>
+      <button onclick="efReset()" class="text-[10px] text-slate-400 hover:text-red-500">Clear All</button>
+    </div>
+
+    <div class="card p-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div><label class="text-[10px] text-slate-500 font-medium block mb-0.5">Team Name</label><input type="text" value="${esc(EF.name)}" onchange="efUpdate('name',0,'',this.value)" placeholder="e.g. THE ROBFATHER" class="w-full bg-white border border-slate-200 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400"></div>
+        <div><label class="text-[10px] text-slate-500 font-medium block mb-0.5">Your Name</label><input type="text" value="${esc(EF.owner)}" onchange="efUpdate('owner',0,'',this.value)" placeholder="e.g. Rob Kunka" class="w-full bg-white border border-slate-200 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="flex justify-between items-center px-3 py-1.5 bg-slate-50 border-b border-slate-200">
+        <span class="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Forwards (10)</span>
+        <span class="text-[10px] text-slate-500">${EF.fwd.filter(x=>x.p).length}/10 selected</span>
+      </div>
+      <div class="overflow-x-auto"><table class="w-full"><thead><tr class="border-b border-slate-100"><th class="text-center text-[9px] text-slate-400 uppercase px-2 py-1 w-8">#</th><th class="text-left text-[9px] text-slate-400 uppercase px-1 py-1">Player</th><th class="text-center text-[9px] text-slate-400 uppercase px-1 py-1 w-14">Pucks</th></tr></thead><tbody>${fwdRows}</tbody></table></div>
+    </div>
+
+    <div class="card">
+      <div class="flex justify-between items-center px-3 py-1.5 bg-slate-50 border-b border-slate-200">
+        <span class="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Defense (5)</span>
+        <span class="text-[10px] text-slate-500">${EF.def.filter(x=>x.p).length}/5 selected</span>
+      </div>
+      <div class="overflow-x-auto"><table class="w-full"><thead><tr class="border-b border-slate-100"><th class="text-center text-[9px] text-slate-400 uppercase px-2 py-1 w-8">#</th><th class="text-left text-[9px] text-slate-400 uppercase px-1 py-1">Player</th><th class="text-center text-[9px] text-slate-400 uppercase px-1 py-1 w-14">Pucks</th></tr></thead><tbody>${defRows}</tbody></table></div>
+    </div>
+
+    <div class="card p-3">
+      <div class="flex items-center justify-between mb-2">
+        <div class="text-sm font-semibold text-slate-900">Puck Allocation</div>
+        <div class="text-lg font-bold num ${t===50?'text-emerald-600':t>50?'text-red-500':'text-amber-500'}">${t}<span class="text-slate-300 text-sm font-normal">/50</span></div>
+      </div>
+      <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+        <div class="h-full rounded-full transition-all" style="width:${Math.min(t/50*100,100)}%;background:${t===50?'#10b981':t>50?'#ef4444':'#d4a843'}"></div>
+      </div>
+      <div class="mt-2 text-xs ${v.ok?'text-emerald-600':'text-amber-600'}">${v.msg}</div>
+    </div>
+
+    <div class="flex gap-2">
+      <a href="${v.ok?efMailto():'#'}" ${v.ok?'':'onclick="return false"'} class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-sm font-semibold text-white ${v.ok?'cursor-pointer':'opacity-40 cursor-not-allowed'}" style="background:#0f1729">
+        ✉ Submit via Email
+      </a>
+    </div>
+    ${v.ok?'<p class="text-[10px] text-slate-400 text-center">Opens your email app with your entry pre-filled. Send it to complete your submission.</p>':''}
+
+    <div class="card p-3">
+      <div class="text-[10px] text-slate-500 font-medium mb-1">RULES</div>
+      <div class="text-[10px] text-slate-400 space-y-0.5">
+        <div>• 10 forwards + 5 defense from any playoff-contending team</div>
+        <div>• Allocate exactly 50 pucks total (1–6 per player)</div>
+        <div>• Score = Playoff Points × Pucks × Team Multiplier</div>
+        <div>• $${sn().fee} ${CFG.cur} entry fee via e-transfer</div>
+      </div>
+    </div>
+  </div>`;
+}
 
 // BOOT
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',loadData);}else{loadData();}
