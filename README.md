@@ -1,157 +1,83 @@
 # 🏒 50 Pucks — NHL Playoff Pool
 
-A live, interactive NHL playoff pool dashboard. Contestants pick 15 players, allocate 50 pucks as multipliers, and compete for the highest score throughout the playoffs.
+A live NHL playoff pool dashboard. Single HTML file — no build tools required.
 
-## How It Works
+## Setup
 
-**Score = Playoff Points × Team Multiplier × Pucks Allocated**
+### 1. Create a GitHub repository
+1. Go to github.com → **New Repository**
+2. Name it `50pucks` (or whatever you like)
+3. Make it **Public**
+4. Upload `index.html` to the repository
 
-- Pick **10 forwards** and **5 defensemen**
-- Allocate **50 pucks** across your roster (min 1, max 6 per player)
-- Teams have multipliers based on seeding: **Wild Card = 2.0x**, **Middle = 1.5x**, **Division Winners = 1.0x**
-- Scores update live from the NHL API
+### 2. Enable GitHub Pages
+1. In your repo, go to **Settings → Pages**
+2. Under "Source", select **Deploy from a branch**
+3. Branch: `main`, folder: `/ (root)`
+4. Click **Save**
+5. Your site will be live at `https://yourusername.github.io/50pucks/` within a minute
 
-## Features
-
-- **Live Leaderboard** — Ranked standings with score, players alive, best/worst picks
-- **Team Detail** — Player-by-player breakdown with puck allocation visualization
-- **Score Charts** — Score comparison, position breakdown, multiplier tier analysis
-- **Player Analytics** — Ownership rates, average pucks, performance across all entries
-- **Monte Carlo Projections** — Simulates remaining games with customizable parameters
-- **Pool Info** — Rules, payout structure, team multipliers, entry list
-- **Mobile-friendly** — Responsive design works on all devices
-
-## Quick Start
-
-### 1. Install dependencies
-
-```bash
-npm install
-```
-
-### 2. Configure the season
-
-Edit `src/config/season.js`:
+### 3. Configure for your pool
+Open `index.html` and edit the `CONFIG` object near the top (around line 25):
 
 ```js
-export const SEASON_CONFIG = {
+const CONFIG = {
   year: 2026,
   entryFee: 40,
   
-  // Set team multipliers before playoffs start
+  // Publish your Google Sheet as CSV and paste URL here
+  googleSheetCsvUrl: 'https://docs.google.com/spreadsheets/d/YOUR_ID/pub?output=csv',
+  
+  // Set multipliers before playoffs start
   teamMultipliers: {
-    TOR: 1.0, WPG: 1.0, WSH: 1.0, VGK: 1.0,  // Division winners
-    CAR: 1.5, FLA: 1.5, EDM: 1.5, DAL: 1.5,    // Middle seeds
-    MTL: 2.0, OTT: 2.0, MIN: 2.0, STL: 2.0,    // Wild cards
+    TOR: 1.0, WPG: 1.0, WSH: 1.0, VGK: 1.0,    // Division winners
+    CAR: 1.5, FLA: 1.5, EDM: 1.5, DAL: 1.5,      // Middle seeds
+    MTL: 2.0, OTT: 2.0, MIN: 2.0, STL: 2.0,      // Wild cards
   },
   
-  // Update as teams are eliminated
-  teamsAlive: ['TOR', 'WPG', 'WSH', 'VGK', 'CAR', 'FLA', 'EDM', 'DAL', 'MTL', 'OTT', 'MIN', 'STL', ...],
-  
-  // Your published Google Sheet URL (see below)
-  googleSheetCsvUrl: 'https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/pub?output=csv',
+  // All 16 playoff teams — remove as eliminated
+  teamsAlive: ['TOR','WPG','WSH','VGK','CAR','FLA','EDM','DAL','MTL','OTT','MIN','STL','COL','TBL','NJD','LAK'],
 };
 ```
 
-### 3. Set up the Google Sheet for entries
-
-1. Create a Google Sheet with these columns (exact headers in Row 1):
+### 4. Set up the Google Sheet for entries
+Create a Google Sheet with these exact columns in Row 1:
 
 | team_name | owner_name | player_name | player_team | position | pucks |
 |-----------|------------|-------------|-------------|----------|-------|
 | COWABUNGAR DUDE | Matt Ungar | Leon Draisaitl | EDM | F | 6 |
 | COWABUNGAR DUDE | Matt Ungar | Connor McDavid | EDM | F | 6 |
-| ... | ... | ... | ... | ... | ... |
 
-2. Each contestant gets 15 rows (10 forwards + 5 defense)
-3. Publish the sheet: **File → Share → Publish to web → CSV format**
-4. Copy the URL into `SEASON_CONFIG.googleSheetCsvUrl`
+Each contestant gets **15 rows** (10 forwards + 5 defense).
 
-### 4. Set up the Google Form for entry submission
+To publish:
+1. **File → Share → Publish to web**
+2. Select the sheet tab with entries
+3. Format: **CSV**
+4. Click Publish and copy the URL
+5. Paste into `googleSheetCsvUrl` in the config
 
-Create a Google Form with:
-- Team Name (text)
-- Owner Name (text) 
-- Forward 1 through Forward 10 (dropdowns with player names)
-- Forward 1 Pucks through Forward 10 Pucks (dropdowns: 1-6)
-- Defense 1 through Defense 5 (dropdowns with player names)
-- Defense 1 Pucks through Defense 5 Pucks (dropdowns: 1-6)
+### 5. Google Form for entry submission
+Create a Google Form and link responses to your Sheet. After entries close, reformat into the flat table structure above.
 
-Link the form responses to your Google Sheet. You may need to reformat the responses into the flat structure above.
+## During Playoffs
 
-### 5. Run locally
+1. **Scores update automatically** from the NHL API every time someone loads the page
+2. **When a team is eliminated:** Edit `teamsAlive` in the config, remove that team, and push to GitHub
+3. That's it — everything else is automatic
 
-```bash
-npm run dev
-```
+## Features
 
-Open `http://localhost:5173`
+- **Leaderboard** — Ranked standings with score, players alive, best/worst picks
+- **Team Detail** — Full player breakdown with puck allocation visualization
+- **Charts** — Score comparison, position breakdown, multiplier tier analysis
+- **Player Analytics** — Ownership rates, average pucks, performance across entries
+- **Monte Carlo Projections** — Customizable simulation of remaining games
+- **Pool Info** — Rules, payout structure, team multipliers
+- **Mobile-friendly** — Works on phones and tablets
 
-### 6. Deploy to GitHub Pages
+## How Scoring Works
 
-```bash
-# Build
-npm run build
+**Score = Playoff Points × Team Multiplier × Pucks**
 
-# Deploy (requires gh-pages package)
-npm run deploy
-```
-
-Or set up GitHub Actions for auto-deploy on push (see `.github/workflows/deploy.yml`).
-
-## Yearly Maintenance
-
-Each year before playoffs:
-
-1. **Update `src/config/season.js`:**
-   - `year`
-   - `nhlSeasonId` 
-   - `teamMultipliers` (based on final standings)
-   - `teamsAlive` (start with all 16 playoff teams)
-   - `googleSheetCsvUrl` (new sheet for the year)
-   - `entryDeadline`
-   - `payoutSplit` if changed
-
-2. **Create new Google Sheet** with contestant entries
-
-3. **During playoffs:** Update `teamsAlive` as teams are eliminated, then rebuild and deploy
-
-## Tech Stack
-
-- **React 18** + Vite
-- **Tailwind CSS** for styling
-- **Recharts** for charts
-- **Lucide React** for icons
-- **NHL Public API** (api-web.nhle.com) for live stats
-- **Google Sheets** as entry database
-- **GitHub Pages** for hosting
-
-## Project Structure
-
-```
-src/
-├── api/
-│   ├── nhlApi.js        # NHL API service
-│   └── sheets.js        # Google Sheet loader
-├── components/
-│   ├── Header.jsx       # Branding, live indicator, refresh
-│   ├── Leaderboard.jsx  # Main standings table
-│   ├── TeamDetail.jsx   # Player-by-player breakdown
-│   ├── PointsChart.jsx  # Score comparison charts
-│   ├── PopularPlayers.jsx # Ownership & performance analytics
-│   ├── Simulation.jsx   # Monte Carlo projections
-│   ├── PoolInfo.jsx     # Rules, payouts, multipliers
-│   └── LoadingScreen.jsx
-├── config/
-│   └── season.js        # ⭐ EDIT THIS EACH YEAR
-├── utils/
-│   ├── scoring.js       # Score calculation engine
-│   └── simulation.js    # Monte Carlo engine
-├── App.jsx
-├── main.jsx
-└── index.css
-```
-
-## License
-
-MIT — use it for your own playoff pool.
+Example: McDavid gets 10 pts, Oilers are 1.5x, you gave him 6 pucks → 10 × 1.5 × 6 = **90 points**

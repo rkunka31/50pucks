@@ -1,15 +1,769 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>50 Pucks — NHL Playoff Pool</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>50 Pucks — NHL Playoff Pool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        midnight: '#0a0e1a',
+        slate: { 850: '#141a2e', 750: '#1e2742' },
+        ice: { 50:'#f0f7ff',100:'#dceeff',200:'#b3d9ff',400:'#5ba3e6',500:'#3b82c4',600:'#2563a0' },
+        gold: { 400:'#f5c842',500:'#e6b800' },
+        puck: { orange:'#ff6b35',green:'#22c55e',red:'#ef4444' },
+      },
+      fontFamily: { display: ['DM Sans','system-ui','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+    }
+  }
+}
+</script>
+<style>
+body { font-family: 'DM Sans', system-ui, sans-serif; background: #0a0e1a; color: #e2e8f0; -webkit-font-smoothing: antialiased; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #141a2e; }
+::-webkit-scrollbar-thumb { background: #2e3a5a; border-radius: 3px; }
+.rank-1 { background: linear-gradient(135deg,#f5c842,#e6a000); }
+.rank-2 { background: linear-gradient(135deg,#c0c0c0,#a0a0a0); }
+.rank-3 { background: linear-gradient(135deg,#cd7f32,#a0622a); }
+@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.4} }
+.pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 1s linear infinite; }
+.tab-active { background: rgba(59,130,196,.15); color: #b3d9ff; border: 1px solid rgba(59,130,196,.25); }
+.tab-inactive { color: #64748b; border: 1px solid transparent; }
+.tab-inactive:hover { color: #94a3b8; background: rgba(255,255,255,.03); }
+.card { background: rgba(20,26,46,.6); border: 1px solid rgba(255,255,255,.05); border-radius: 1rem; }
+.trow:hover { background: rgba(30,39,66,.5); }
+[x-cloak] { display: none !important; }
+</style>
+</head>
+<body class="min-h-screen" style="min-height:100vh;margin:0;background:#0a0e1a;color:#e2e8f0;font-family:'DM Sans',system-ui,sans-serif">
+<div id="app" style="min-height:100vh"></div>
+
+<script>
+// ============================================================
+// SEASON CONFIG — EDIT THIS EACH YEAR
+// ============================================================
+const CONFIG = {
+  year: 2026,
+  title: '50 Pucks',
+  totalPucks: 50,
+  minPucks: 1,
+  maxPucks: 6,
+  forwards: 10,
+  defense: 5,
+  entryFee: 40,
+  currency: 'CAD',
+  entryDeadline: '2026-04-18T23:59:00',
+  nhlSeasonId: '20252026',
+  payoutSplit: [
+    { place: 1, label: '1st', pct: 0.60 },
+    { place: 2, label: '2nd', pct: 0.30 },
+    { place: 3, label: '3rd', pct: 0.10 },
+  ],
+  // Google Sheet published as CSV (File > Share > Publish to web > CSV)
+  googleSheetCsvUrl: '',
+  // Set before playoffs — WC=2.0, middle=1.5, div winners=1.0
+  teamMultipliers: {
+    // UPDATE EACH YEAR
+    // TOR:1.0, WPG:1.0, WSH:1.0, VGK:1.0,
+    // CAR:1.5, FLA:1.5, EDM:1.5, DAL:1.5, COL:1.5, TBL:1.5, NJD:1.5,
+    // MTL:2.0, OTT:2.0, MIN:2.0, STL:2.0,
+  },
+  teamsAlive: [
+    // 'TOR','WPG','WSH','VGK','CAR','FLA','EDM','DAL',...
+  ],
+};
+
+// ============================================================
+// NHL TEAM METADATA
+// ============================================================
+const NHL_TEAMS = {
+  ANA:{name:'Anaheim Ducks',color:'#F47A38'},ARI:{name:'Arizona Coyotes',color:'#8C2633'},
+  BOS:{name:'Boston Bruins',color:'#FFB81C'},BUF:{name:'Buffalo Sabres',color:'#002654'},
+  CGY:{name:'Calgary Flames',color:'#D2001C'},CAR:{name:'Carolina Hurricanes',color:'#CC0000'},
+  CHI:{name:'Chicago Blackhawks',color:'#CF0A2C'},COL:{name:'Colorado Avalanche',color:'#6F263D'},
+  CBJ:{name:'Columbus Blue Jackets',color:'#002654'},DAL:{name:'Dallas Stars',color:'#006847'},
+  DET:{name:'Detroit Red Wings',color:'#CE1126'},EDM:{name:'Edmonton Oilers',color:'#041E42'},
+  FLA:{name:'Florida Panthers',color:'#041E42'},LAK:{name:'Los Angeles Kings',color:'#111111'},
+  MIN:{name:'Minnesota Wild',color:'#154734'},MTL:{name:'Montreal Canadiens',color:'#AF1E2D'},
+  NSH:{name:'Nashville Predators',color:'#FFB81C'},NJD:{name:'New Jersey Devils',color:'#CE1126'},
+  NYI:{name:'New York Islanders',color:'#00539B'},NYR:{name:'New York Rangers',color:'#0038A8'},
+  OTT:{name:'Ottawa Senators',color:'#C52032'},PHI:{name:'Philadelphia Flyers',color:'#F74902'},
+  PIT:{name:'Pittsburgh Penguins',color:'#FCB514'},SJS:{name:'San Jose Sharks',color:'#006D75'},
+  SEA:{name:'Seattle Kraken',color:'#001628'},STL:{name:'St. Louis Blues',color:'#002F87'},
+  TBL:{name:'Tampa Bay Lightning',color:'#002868'},TOR:{name:'Toronto Maple Leafs',color:'#00205B'},
+  UTA:{name:'Utah Hockey Club',color:'#71AFE5'},VAN:{name:'Vancouver Canucks',color:'#00205B'},
+  VGK:{name:'Vegas Golden Knights',color:'#B4975A'},WSH:{name:'Washington Capitals',color:'#041E42'},
+  WPG:{name:'Winnipeg Jets',color:'#041E42'},
+};
+
+const ABBR_MAP = {VEG:'VGK',WAS:'WSH',TB:'TBL',NJ:'NJD',SJ:'SJS',LA:'LAK',CLB:'CBJ'};
+function normTeam(a){ if(!a)return''; const u=a.toUpperCase().trim(); return ABBR_MAP[u]||u; }
+function getMult(t){ return CONFIG.teamMultipliers[normTeam(t)]??1.0; }
+function isAlive(t){ return CONFIG.teamsAlive.includes(normTeam(t)); }
+
+// ============================================================
+// NHL API
+// ============================================================
+async function fetchPlayoffStats(){
+  try {
+    const r = await fetch('https://api-web.nhle.com/v1/skater-stats-leaders/current?categories=points,goals,assists&gameType=3&limit=-1');
+    if(r.ok){ const d=await r.json(); const result=parseLeaders(d); if(result.length>0) return result; }
+  } catch(e){ console.warn('Primary API failed:',e); }
+  try { return await fetchStatsFallback(); } catch(e){ console.warn('Fallback API failed:',e); }
+  return [];
+}
+
+function parseLeaders(d){
+  const m=new Map();
+  const proc=(list,cat)=>{ if(!list)return; for(const p of list){ const id=p.id; if(!m.has(id)) m.set(id,{id,name:`${p.firstName?.default||''} ${p.lastName?.default||''}`.trim(),team:normTeam(p.teamAbbrev?.default||''),pos:p.positionCode||'',gp:0,g:0,a:0,pts:0}); const o=m.get(id); if(cat==='points')o.pts=p.value||0; if(cat==='goals')o.g=p.value||0; if(cat==='assists')o.a=p.value||0; }};
+  proc(d.points,'points'); proc(d.goals,'goals'); proc(d.assists,'assists');
+  return [...m.values()];
+}
+
+async function fetchStatsFallback(){
+  try {
+    const url=`https://api.nhle.com/stats/rest/en/skater/summary?isAggregate=false&isGame=false&sort=[{"property":"points","direction":"DESC"}]&cayenneExp=gameTypeId=3 and seasonId<=${CONFIG.nhlSeasonId} and seasonId>=${CONFIG.nhlSeasonId}`;
+    const r=await fetch(url); if(!r.ok) return [];
+    const d=await r.json();
+    return (d.data||[]).map(p=>({id:p.playerId,name:p.skaterFullName,team:normTeam(p.teamAbbrevs),pos:p.positionCode,gp:p.gamesPlayed||0,g:p.goals||0,a:p.assists||0,pts:p.points||0}));
+  } catch{ return []; }
+}
+
+async function fetchTodaysGames(){
+  try { const t=new Date().toISOString().split('T')[0]; const r=await fetch(`https://api-web.nhle.com/v1/schedule/${t}`); if(!r.ok)return[]; const d=await r.json(); return(d.gameWeek?.[0]?.games||[]).filter(g=>g.gameType===3); } catch{ return[]; }
+}
+
+function buildLookup(stats){
+  const m=new Map();
+  for(const p of stats){ const k=p.name.toLowerCase().trim(); m.set(k,p); const n=k.normalize('NFD').replace(/[\u0300-\u036f]/g,''); if(n!==k) m.set(n,p); }
+  return m;
+}
+
+function matchPlayer(name,lookup){
+  if(!name)return null;
+  const c=name.toLowerCase().trim();
+  if(lookup.has(c))return lookup.get(c);
+  const n=c.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(lookup.has(n))return lookup.get(n);
+  const di=c.indexOf(' - ');
+  if(di>0){ const no=c.substring(0,di).trim(); if(lookup.has(no))return lookup.get(no); const nn=no.normalize('NFD').replace(/[\u0300-\u036f]/g,''); if(lookup.has(nn))return lookup.get(nn); }
+  for(const[k,v]of lookup){ if(k.includes(c)||c.includes(k))return v; }
+  return null;
+}
+
+// ============================================================
+// GOOGLE SHEET LOADER
+// ============================================================
+async function fetchEntries(){
+  if(!CONFIG.googleSheetCsvUrl) return getSampleEntries();
+  try { const r=await fetch(CONFIG.googleSheetCsvUrl); if(!r.ok) throw new Error(r.status); return parseCsv(await r.text()); }
+  catch(e){ console.error(e); return getSampleEntries(); }
+}
+
+function parseCsv(csv){
+  const lines=csv.split('\n').filter(l=>l.trim());
+  if(lines.length<2)return[];
+  const entries=new Map();
+  for(let i=1;i<lines.length;i++){
+    const cols=parseCsvLine(lines[i]);
+    if(cols.length<6)continue;
+    const[tn,on,pn,pt,pos,pk]=cols.map(c=>c.trim());
+    const pucks=parseInt(pk)||0;
+    if(!tn||!pn)continue;
+    if(!entries.has(tn))entries.set(tn,{teamName:tn,owner:on||tn,players:[]});
+    entries.get(tn).players.push({name:pn,team:normTeam(pt),position:normPos(pos),pucks});
+  }
+  return[...entries.values()];
+}
+
+function parseCsvLine(line){
+  const r=[]; let cur='',inQ=false;
+  for(let i=0;i<line.length;i++){ const ch=line[i]; if(ch==='"')inQ=!inQ; else if(ch===','&&!inQ){r.push(cur);cur='';} else cur+=ch; }
+  r.push(cur); return r;
+}
+
+function normPos(p){ if(!p)return'F'; const u=p.toUpperCase().trim(); if(['D','DEF','DEFENSE'].includes(u))return'D'; return'F'; }
+
+function getSampleEntries(){
+  return [
+    { teamName:'COWABUNGAR DUDE', owner:'Matt Ungar', players:[
+      {name:'Leon Draisaitl',team:'EDM',position:'F',pucks:6},{name:'Connor McDavid',team:'EDM',position:'F',pucks:6},
+      {name:'Nikita Kucherov',team:'TBL',position:'F',pucks:5},{name:'Nathan MacKinnon',team:'COL',position:'F',pucks:4},
+      {name:'Mikko Rantanen',team:'COL',position:'F',pucks:3},{name:'Auston Matthews',team:'TOR',position:'F',pucks:3},
+      {name:'Jack Eichel',team:'VGK',position:'F',pucks:2},{name:'Seth Jarvis',team:'CAR',position:'F',pucks:2},
+      {name:'Mitch Marner',team:'TOR',position:'F',pucks:2},{name:'Brayden Point',team:'TBL',position:'F',pucks:2},
+      {name:'Cale Makar',team:'COL',position:'D',pucks:4},{name:'Evan Bouchard',team:'EDM',position:'D',pucks:4},
+      {name:'Victor Hedman',team:'TBL',position:'D',pucks:3},{name:'Thomas Harley',team:'DAL',position:'D',pucks:2},
+      {name:'Shayne Gostisbehere',team:'CAR',position:'D',pucks:2},
+    ]},
+    { teamName:'WILKES-BARRE ALL STARS', owner:'Shaun Wilkes', players:[
+      {name:'Connor McDavid',team:'EDM',position:'F',pucks:6},{name:'Leon Draisaitl',team:'EDM',position:'F',pucks:6},
+      {name:'Nathan MacKinnon',team:'COL',position:'F',pucks:6},{name:'Sam Bennett',team:'FLA',position:'F',pucks:4},
+      {name:'Brad Marchand',team:'FLA',position:'F',pucks:3},{name:'Mitch Marner',team:'TOR',position:'F',pucks:3},
+      {name:'Auston Matthews',team:'TOR',position:'F',pucks:3},{name:'Matthew Tkachuk',team:'FLA',position:'F',pucks:2},
+      {name:'Aleksander Barkov',team:'FLA',position:'F',pucks:2},{name:'Carter Verhaeghe',team:'FLA',position:'F',pucks:2},
+      {name:'Cale Makar',team:'COL',position:'D',pucks:4},{name:'Evan Bouchard',team:'EDM',position:'D',pucks:3},
+      {name:'Victor Hedman',team:'TBL',position:'D',pucks:2},{name:'Thomas Harley',team:'DAL',position:'D',pucks:2},
+      {name:'Shayne Gostisbehere',team:'CAR',position:'D',pucks:2},
+    ]},
+    { teamName:'THE ROBFATHER', owner:'Rob Kunka', players:[
+      {name:'Mikko Rantanen',team:'COL',position:'F',pucks:5},{name:'Leon Draisaitl',team:'EDM',position:'F',pucks:5},
+      {name:'Connor McDavid',team:'EDM',position:'F',pucks:5},{name:'Nikita Kucherov',team:'TBL',position:'F',pucks:4},
+      {name:'Aleksander Barkov',team:'FLA',position:'F',pucks:3},{name:'Sam Bennett',team:'FLA',position:'F',pucks:3},
+      {name:'Seth Jarvis',team:'CAR',position:'F',pucks:2},{name:'Wyatt Johnston',team:'DAL',position:'F',pucks:2},
+      {name:'Jack Eichel',team:'VGK',position:'F',pucks:2},{name:'Kyle Connor',team:'WPG',position:'F',pucks:2},
+      {name:'Cale Makar',team:'COL',position:'D',pucks:5},{name:'Evan Bouchard',team:'EDM',position:'D',pucks:4},
+      {name:'Thomas Harley',team:'DAL',position:'D',pucks:3},{name:'Shayne Gostisbehere',team:'CAR',position:'D',pucks:3},
+      {name:'Victor Hedman',team:'TBL',position:'D',pucks:2},
+    ]},
+    { teamName:"IT'S THE CUP", owner:'Adamo Quarin', players:[
+      {name:'Connor McDavid',team:'EDM',position:'F',pucks:6},{name:'Leon Draisaitl',team:'EDM',position:'F',pucks:6},
+      {name:'Mikko Rantanen',team:'COL',position:'F',pucks:4},{name:'Sebastian Aho',team:'CAR',position:'F',pucks:4},
+      {name:'Sam Reinhart',team:'FLA',position:'F',pucks:3},{name:'Aleksander Barkov',team:'FLA',position:'F',pucks:3},
+      {name:'Auston Matthews',team:'TOR',position:'F',pucks:2},{name:'Seth Jarvis',team:'CAR',position:'F',pucks:2},
+      {name:'Kyle Connor',team:'WPG',position:'F',pucks:1},{name:'Wyatt Johnston',team:'DAL',position:'F',pucks:1},
+      {name:'Cale Makar',team:'COL',position:'D',pucks:6},{name:'Evan Bouchard',team:'EDM',position:'D',pucks:5},
+      {name:'Thomas Harley',team:'DAL',position:'D',pucks:3},{name:'Shayne Gostisbehere',team:'CAR',position:'D',pucks:2},
+      {name:'Victor Hedman',team:'TBL',position:'D',pucks:2},
+    ]},
+    { teamName:"DON'T STOP WIELIEVIN'", owner:'Mariusz Wielocha', players:[
+      {name:'Mikko Rantanen',team:'COL',position:'F',pucks:6},{name:'Leon Draisaitl',team:'EDM',position:'F',pucks:6},
+      {name:'Connor McDavid',team:'EDM',position:'F',pucks:6},{name:'Sebastian Aho',team:'CAR',position:'F',pucks:5},
+      {name:'Nathan MacKinnon',team:'COL',position:'F',pucks:4},{name:'Sam Bennett',team:'FLA',position:'F',pucks:3},
+      {name:'Wyatt Johnston',team:'DAL',position:'F',pucks:2},{name:'Mitch Marner',team:'TOR',position:'F',pucks:2},
+      {name:'Kyle Connor',team:'WPG',position:'F',pucks:1},{name:'Brayden Point',team:'TBL',position:'F',pucks:1},
+      {name:'Cale Makar',team:'COL',position:'D',pucks:5},{name:'Evan Bouchard',team:'EDM',position:'D',pucks:4},
+      {name:'Thomas Harley',team:'DAL',position:'D',pucks:2},{name:'Shayne Gostisbehere',team:'CAR',position:'D',pucks:2},
+      {name:'Victor Hedman',team:'TBL',position:'D',pucks:1},
+    ]},
+    { teamName:'6\'7"', owner:'Kevin Little', players:[
+      {name:'Connor McDavid',team:'EDM',position:'F',pucks:6},{name:'Leon Draisaitl',team:'EDM',position:'F',pucks:5},
+      {name:'Mikko Rantanen',team:'COL',position:'F',pucks:5},{name:'Sam Reinhart',team:'FLA',position:'F',pucks:5},
+      {name:'Matthew Tkachuk',team:'FLA',position:'F',pucks:5},{name:'Nathan MacKinnon',team:'COL',position:'F',pucks:4},
+      {name:'Aleksander Barkov',team:'FLA',position:'F',pucks:3},{name:'Sebastian Aho',team:'CAR',position:'F',pucks:2},
+      {name:'Jack Eichel',team:'VGK',position:'F',pucks:2},{name:'Kyle Connor',team:'WPG',position:'F',pucks:1},
+      {name:'Evan Bouchard',team:'EDM',position:'D',pucks:4},{name:'Cale Makar',team:'COL',position:'D',pucks:3},
+      {name:'Thomas Harley',team:'DAL',position:'D',pucks:2},{name:'Shayne Gostisbehere',team:'CAR',position:'D',pucks:2},
+      {name:'Victor Hedman',team:'TBL',position:'D',pucks:1},
+    ]},
+  ];
+}
+
+// ============================================================
+// SCORING ENGINE
+// ============================================================
+function calcScores(entries, lookup){
+  const scored = entries.map(entry=>{
+    let total=0, alive=0, bestPick=null, worstPick=null, bestS=-Infinity, worstS=Infinity;
+    const players = entry.players.map(p=>{
+      const s=matchPlayer(p.name,lookup);
+      const pts=s?.pts||0, g=s?.g||0, a=s?.a||0, gp=s?.gp||0;
+      const mult=getMult(p.team), al=isAlive(p.team);
+      const score=pts*mult*p.pucks;
+      if(al) alive++;
+      total+=score;
+      if(score>bestS){bestS=score;bestPick=p.name;}
+      if(score<worstS){worstS=score;worstPick=p.name;}
+      return{...p,pts,g,a,gp,mult,score:Math.round(score*100)/100,alive:al,matched:!!s};
+    });
+    const fwd=players.filter(p=>p.position==='F').sort((a,b)=>b.score-a.score);
+    const def=players.filter(p=>p.position==='D').sort((a,b)=>b.score-a.score);
+    return{...entry,players:[...fwd,...def],totalScore:Math.round(total*100)/100,alive,totalPlayers:players.length,bestPick,bestS:Math.round(bestS*100)/100,worstPick,worstS:Math.round(worstS*100)/100,pucksUsed:players.reduce((s,p)=>s+p.pucks,0)};
+  });
+  scored.sort((a,b)=>b.totalScore-a.totalScore);
+  let rank=1;
+  for(let i=0;i<scored.length;i++){ if(i>0&&scored[i].totalScore<scored[i-1].totalScore) rank=i+1; scored[i].rank=rank; }
+  return scored;
+}
+
+function getPoolStats(entries){
+  const pop=new Map();
+  for(const e of entries) for(const p of e.players){
+    if(!pop.has(p.name)) pop.set(p.name,{count:0,totalPucks:0,scores:[],position:p.position});
+    const o=pop.get(p.name); o.count++; o.totalPucks+=p.pucks; o.scores.push(p.score);
+  }
+  const players=[...pop.entries()].map(([name,d])=>({name,position:d.position,count:d.count,totalPucks:d.totalPucks,avgPucks:Math.round(d.totalPucks/d.count*10)/10,avgScore:Math.round(d.scores.reduce((a,b)=>a+b,0)/d.count*10)/10,maxScore:Math.max(...d.scores),ownership:Math.round(d.count/entries.length*100)})).sort((a,b)=>b.count-a.count||b.avgScore-a.avgScore);
+  let gBest=null,gWorst=null;
+  for(const e of entries) for(const p of e.players){ if(!gBest||p.score>gBest.score) gBest={...p,teamName:e.teamName}; if(!gWorst||p.score<gWorst.score) gWorst={...p,teamName:e.teamName}; }
+  return{totalEntries:entries.length,totalPool:entries.length*CONFIG.entryFee,players,gBest,gWorst,avgScore:entries.length?Math.round(entries.reduce((s,e)=>s+e.totalScore,0)/entries.length):0};
+}
+
+// ============================================================
+// SIMULATION
+// ============================================================
+function runSim(entries, cfg){
+  const ns=cfg.numSims||1000;
+  const results=new Map();
+  entries.forEach(e=>results.set(e.teamName,[]));
+  for(let s=0;s<ns;s++){
+    for(const e of entries){
+      let t=0;
+      for(const p of e.players){ t+=simPlayer(p,cfg)*p.mult*p.pucks; }
+      results.get(e.teamName).push(Math.round(t*100)/100);
+    }
+  }
+  const projs=entries.map(e=>{
+    const sims=results.get(e.teamName).sort((a,b)=>a-b);
+    const mean=sims.reduce((a,b)=>a+b,0)/sims.length;
+    return{teamName:e.teamName,current:e.totalScore,mean:Math.round(mean),median:Math.round(sims[Math.floor(sims.length*.5)]),p10:Math.round(sims[Math.floor(sims.length*.1)]),p90:Math.round(sims[Math.floor(sims.length*.9)]),sims};
+  });
+  const wins=new Map(); entries.forEach(e=>wins.set(e.teamName,0));
+  for(let s=0;s<ns;s++){ let best='',bs=-Infinity; for(const[tn,sm]of results){if(sm[s]>bs){bs=sm[s];best=tn;}} wins.set(best,(wins.get(best)||0)+1); }
+  projs.forEach(p=>p.winPct=Math.round(wins.get(p.teamName)/ns*1000)/10);
+  projs.sort((a,b)=>b.mean-a.mean);
+  return projs;
+}
+
+function simPlayer(p, cfg){
+  const cur=p.pts||0, gp=p.gp||0;
+  if(!p.alive) return cur;
+  const ppg=gp>0?cur/gp:0.5;
+  const advProb=cfg.advProb?.[p.mult]??0.5;
+  let rem=Math.max(0,Math.min(3,7-(gp%7)));
+  for(let r=0;r<3;r++){ if(Math.random()<advProb) rem+=4+Math.floor(Math.random()*4); else break; }
+  let fut=0;
+  for(let g=0;g<rem;g++){ const rate=Math.max(0,ppg+gauss()*ppg*(cfg.variance||0.5)); fut+=poisson(rate); }
+  return cur+fut;
+}
+
+function gauss(){ let u=0,v=0; while(!u)u=Math.random(); while(!v)v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+function poisson(l){ if(l<=0)return 0; const L=Math.exp(-l); let k=0,p=1; do{k++;p*=Math.random();}while(p>L); return k-1; }
+
+// ============================================================
+// APP STATE & RENDERING
+// ============================================================
+let state = {
+  loading: true,
+  entries: [],
+  stats: null,
+  liveGames: [],
+  lastUpdated: null,
+  tab: 'leaderboard',
+  selectedTeam: null,
+  simResults: null,
+  simRunning: false,
+  simCfg: { numSims:1000, variance:0.5, advProb:{1.0:0.60,1.5:0.50,2.0:0.35} },
+  showSimSettings: false,
+  playerSort: 'ownership',
+  playerPosFilter: 'all',
+  teamSort: 'score',
+  chartInstances: {},
+};
+
+function setState(updates){
+  Object.assign(state, updates);
+  render();
+}
+
+let _loading = false;
+async function loadData(){
+  if(_loading) return;
+  _loading = true;
+  setState({loading:true});
+  try {
+    const [stats, entries, games] = await Promise.all([
+      fetchPlayoffStats().catch(()=>[]),
+      fetchEntries().catch(()=>getSampleEntries()),
+      fetchTodaysGames().catch(()=>[]),
+    ]);
+    const lookup = buildLookup(stats);
+    const scored = calcScores(entries, lookup);
+    const poolStats = getPoolStats(scored);
+    setState({loading:false, entries:scored, stats:poolStats, liveGames:games, lastUpdated:new Date(), selectedTeam:scored[0]?.teamName||null});
+  } catch(e){ console.error(e); setState({loading:false}); }
+  _loading = false;
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render(){
+  const app = document.getElementById('app');
+  if(state.loading){
+    app.innerHTML=`<div class="min-h-screen flex items-center justify-center"><div class="text-center"><div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-gold-400 to-puck-orange flex items-center justify-center text-midnight font-bold text-2xl mx-auto mb-6 animate-pulse">50</div><p class="text-slate-500 text-sm animate-pulse">Loading playoff stats...</p></div></div>`;
+    return;
+  }
+  app.innerHTML = renderHeader() + renderNav() + `<main class="max-w-7xl mx-auto px-4 py-6">${renderTab()}</main>` + renderFooter();
+  bindEvents();
+  renderCharts();
+}
+
+function renderHeader(){
+  const hasLive=state.liveGames.length>0;
+  const time=state.lastUpdated?state.lastUpdated.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
+  return `<header class="relative overflow-hidden"><div class="absolute inset-0 bg-gradient-to-br from-slate-850 via-midnight to-slate-850"></div><div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,196,0.08),transparent_60%)]"></div><div class="relative max-w-7xl mx-auto px-4 py-8 sm:py-10"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-gradient-to-br from-gold-400 to-puck-orange flex items-center justify-center text-midnight font-bold text-lg">50</div><div><h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">${CONFIG.title}</h1><p class="text-slate-400 text-sm">${CONFIG.year} NHL Playoffs · ${state.entries.length} entries</p></div></div><div class="flex items-center gap-4">${hasLive?`<div class="flex items-center gap-2 px-3 py-1.5 bg-puck-green/10 border border-puck-green/20 rounded-full"><div class="w-2 h-2 rounded-full bg-puck-green pulse-dot"></div><span class="text-puck-green text-xs font-medium">${state.liveGames.length} game${state.liveGames.length!==1?'s':''} live</span></div>`:''}<button onclick="loadData()" class="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-slate-300 text-xs font-medium transition-colors"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-3.22-6.88"/><path d="M21 3v6h-6"/></svg><span class="hidden sm:inline">Refresh</span></button>${time?`<span class="text-slate-500 text-xs">${time}</span>`:''}</div></div></div></header>`;
+}
+
+function renderNav(){
+  const tabs=[{id:'leaderboard',label:'Leaderboard',icon:'🏆'},{id:'team',label:'Team Detail',icon:'👤'},{id:'chart',label:'Progression',icon:'📈'},{id:'players',label:'Players',icon:'🏒'},{id:'simulation',label:'Projections',icon:'🎲'},{id:'info',label:'Pool Info',icon:'📋'}];
+  return `<nav class="sticky top-0 z-40 bg-midnight/90 backdrop-blur-md border-b border-white/5"><div class="max-w-7xl mx-auto px-4"><div class="flex gap-1 overflow-x-auto py-2">${tabs.map(t=>`<button onclick="setState({tab:'${t.id}'})" class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${state.tab===t.id?'tab-active':'tab-inactive'}"><span class="text-base">${t.icon}</span><span class="hidden sm:inline">${t.label}</span></button>`).join('')}</div></div></nav>`;
+}
+
+function renderTab(){
+  switch(state.tab){
+    case 'leaderboard': return renderLeaderboard();
+    case 'team': return renderTeamDetail();
+    case 'chart': return renderChartTab();
+    case 'players': return renderPlayersTab();
+    case 'simulation': return renderSimulation();
+    case 'info': return renderInfo();
+    default: return '';
+  }
+}
+
+function renderFooter(){
+  return `<footer class="border-t border-white/5 py-6 mt-12"><div class="max-w-7xl mx-auto px-4 text-center text-slate-500 text-sm">${CONFIG.title} · ${CONFIG.year} NHL Playoffs</div></footer>`;
+}
+
+// ============================================================
+// LEADERBOARD TAB
+// ============================================================
+function renderLeaderboard(){
+  const e=state.entries, s=state.stats, pool=e.length*CONFIG.entryFee;
+  const payouts=CONFIG.payoutSplit.map(p=>({...p,amount:Math.round(pool*p.pct)}));
+
+  const statCards=`<div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    ${statCard('Prize Pool',`$${pool.toLocaleString()}`,CONFIG.currency,'gold')}
+    ${statCard('Entries',e.length,`$${CONFIG.entryFee}/entry`,'ice')}
+    ${statCard('Best Pick',s?.gBest?.score?.toLocaleString()||'—',s?.gBest?.name||'','green')}
+    ${statCard('Avg Score',s?.avgScore?.toLocaleString()||'—','per entry','ice')}
+  </div>`;
+
+  const payoutStrip=`<div class="flex gap-3 overflow-x-auto pb-1">${payouts.map(p=>`<div class="flex-shrink-0 flex items-center gap-2 px-4 py-2 card"><div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${p.place===1?'rank-1 text-midnight':p.place===2?'rank-2 text-midnight':'rank-3 text-white'}">${p.place}</div><div><div class="text-white text-sm font-semibold">$${p.amount}</div><div class="text-slate-500 text-xs">${Math.round(p.pct*100)}%</div></div></div>`).join('')}</div>`;
+
+  const rows=e.map(en=>`<tr onclick="setState({selectedTeam:'${esc(en.teamName)}',tab:'team'})" class="border-b border-white/[0.03] trow cursor-pointer">
+    <td class="px-4 py-3">${rankBadge(en.rank)}</td>
+    <td class="px-4 py-3"><div class="font-semibold text-white text-sm">${esc(en.teamName)}</div><div class="text-slate-500 text-xs">${esc(en.owner)}</div></td>
+    <td class="px-4 py-3 text-right"><div class="font-mono font-semibold text-white text-sm">${en.totalScore.toLocaleString()}</div></td>
+    <td class="px-4 py-3 text-right hidden sm:table-cell"><span class="text-sm font-medium ${en.alive>10?'text-puck-green':en.alive>5?'text-gold-400':'text-puck-red'}">${en.alive}/${en.totalPlayers}</span></td>
+    <td class="px-4 py-3 text-right hidden md:table-cell"><div class="text-xs text-puck-green">${esc(en.bestPick)}</div><div class="text-xs text-slate-500 font-mono">${en.bestS?.toLocaleString()}</div></td>
+    <td class="px-4 py-3 text-right hidden md:table-cell"><div class="text-xs text-puck-red">${esc(en.worstPick)}</div><div class="text-xs text-slate-500 font-mono">${en.worstS?.toLocaleString()}</div></td>
+    <td class="px-4 py-3 text-center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></td>
+  </tr>`).join('');
+
+  return `<div class="space-y-6">${statCards}${payoutStrip}<div class="card overflow-hidden"><div class="overflow-x-auto"><table class="w-full"><thead><tr class="border-b border-white/5"><th class="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3 w-12">#</th><th class="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3">Team</th><th class="text-right text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3">Score</th><th class="text-right text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3 hidden sm:table-cell">Alive</th><th class="text-right text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3 hidden md:table-cell">Best Pick</th><th class="text-right text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3 hidden md:table-cell">Worst Pick</th><th class="w-10 px-4 py-3"></th></tr></thead><tbody>${rows}</tbody></table></div></div></div>`;
+}
+
+function statCard(label,value,sub,color){
+  const cls={gold:'border-gold-400/20 bg-gold-400/5',ice:'border-ice-500/20 bg-ice-500/5',green:'border-puck-green/20 bg-puck-green/5'};
+  const ic={gold:'text-gold-400',ice:'text-ice-400',green:'text-puck-green'};
+  return `<div class="rounded-xl border p-4 ${cls[color]}"><div class="flex items-center gap-1.5 mb-2"><span class="${ic[color]} text-xs">●</span><span class="text-slate-400 text-xs font-medium">${label}</span></div><div class="text-white text-xl font-bold font-mono">${value}</div>${sub?`<div class="text-slate-500 text-xs mt-0.5 truncate">${sub}</div>`:''}</div>`;
+}
+
+function rankBadge(r){
+  if(r<=3) return `<div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${r===1?'rank-1 text-midnight':r===2?'rank-2 text-midnight':'rank-3 text-white'}">${r}</div>`;
+  return `<span class="text-slate-500 text-sm font-mono pl-1">${r}</span>`;
+}
+
+// ============================================================
+// TEAM DETAIL TAB
+// ============================================================
+function renderTeamDetail(){
+  const e=state.entries.find(e=>e.teamName===state.selectedTeam)||state.entries[0];
+  if(!e) return '<p class="text-slate-500">No entries loaded.</p>';
+
+  const options=state.entries.map(en=>`<option value="${esc(en.teamName)}" ${en.teamName===e.teamName?'selected':''}>#${en.rank} — ${esc(en.teamName)}</option>`).join('');
+
+  const puckBar=e.players.map((p,i)=>{
+    const w=(p.pucks/50)*100;
+    const tm=NHL_TEAMS[p.team];
+    return `<div style="width:${w}%;background:${p.alive?(tm?.color||'#3b82c4'):'#374151'};opacity:${p.alive?1:0.4}" title="${esc(p.name)}: ${p.pucks} pucks"></div>`;
+  }).join('');
+
+  const fwd=e.players.filter(p=>p.position==='F');
+  const def=e.players.filter(p=>p.position==='D');
+
+  return `<div class="space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+      <div class="relative"><select onchange="setState({selectedTeam:this.value})" class="appearance-none bg-slate-850 border border-white/10 rounded-xl px-4 py-2.5 pr-10 text-white text-sm font-medium focus:outline-none focus:border-ice-500/50 w-full sm:w-auto">${options}</select></div>
+    </div>
+    <div class="card p-5">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div><h2 class="text-xl font-bold text-white">${esc(e.teamName)}</h2><p class="text-slate-400 text-sm">${esc(e.owner)}</p></div>
+        <div class="flex gap-6">
+          <div class="text-center"><div class="text-2xl font-bold font-mono text-white">${e.totalScore.toLocaleString()}</div><div class="text-xs text-slate-500">Total Score</div></div>
+          <div class="text-center"><div class="text-2xl font-bold font-mono ${e.alive>10?'text-puck-green':e.alive>5?'text-gold-400':'text-puck-red'}">${e.alive}/${e.totalPlayers}</div><div class="text-xs text-slate-500">Alive</div></div>
+          <div class="text-center"><div class="text-2xl font-bold font-mono text-slate-300">${e.pucksUsed}/50</div><div class="text-xs text-slate-500">Pucks</div></div>
+        </div>
+      </div>
+      <div class="mt-4"><div class="flex gap-0.5 rounded-lg overflow-hidden h-3">${puckBar}</div><div class="flex justify-between mt-1"><span class="text-[10px] text-slate-600">Puck Allocation</span><span class="text-[10px] text-slate-600">50 total</span></div></div>
+    </div>
+    ${playerSection('Forwards',fwd)}
+    ${playerSection('Defense',def)}
+  </div>`;
+}
+
+function playerSection(title, players){
+  const total=players.reduce((s,p)=>s+p.score,0);
+  const rows=players.map(p=>{
+    const tm=NHL_TEAMS[p.team];
+    const dots=Array(p.pucks).fill('<div class="w-2 h-2 rounded-full bg-puck-orange"></div>').join('');
+    return `<tr class="border-b border-white/[0.03] trow">
+      <td class="px-4 py-2.5"><div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full ${p.alive?'bg-puck-green':'bg-slate-600'}"></div><span class="text-sm font-medium ${p.alive?'text-white':'text-slate-500'}">${esc(p.name)}</span>${!p.matched?'<span class="text-[9px] text-puck-orange">?</span>':''}</div></td>
+      <td class="px-4 py-2.5 text-center"><span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold" style="background:${(tm?.color||'#3b82c4')}22;color:${tm?.color||'#3b82c4'}">${p.team}</span></td>
+      <td class="px-4 py-2.5 text-center text-sm text-slate-400 font-mono">${p.gp}</td>
+      <td class="px-4 py-2.5 text-center text-sm text-slate-400 font-mono">${p.g}</td>
+      <td class="px-4 py-2.5 text-center text-sm text-slate-400 font-mono">${p.a}</td>
+      <td class="px-4 py-2.5 text-center text-sm text-white font-mono font-medium">${p.pts}</td>
+      <td class="px-4 py-2.5 text-center"><span class="text-xs font-semibold ${p.mult===2?'text-gold-400':p.mult===1.5?'text-ice-400':'text-slate-400'}">${p.mult}x</span></td>
+      <td class="px-4 py-2.5 text-center"><div class="flex items-center justify-center gap-0.5">${dots}</div></td>
+      <td class="px-4 py-2.5 text-right"><span class="text-sm font-bold font-mono text-white">${p.score.toLocaleString()}</span></td>
+    </tr>`;
+  }).join('');
+
+  return `<div class="card overflow-hidden"><div class="flex items-center justify-between px-4 py-3 border-b border-white/5"><h3 class="text-sm font-semibold text-slate-300">${title}</h3><span class="text-sm font-mono text-slate-400">${Math.round(total).toLocaleString()} pts</span></div><div class="overflow-x-auto"><table class="w-full"><thead><tr class="border-b border-white/5"><th class="text-left text-[10px] font-medium text-slate-600 uppercase px-4 py-2">Player</th><th class="text-center text-[10px] font-medium text-slate-600 uppercase px-4 py-2">Team</th><th class="text-center text-[10px] font-medium text-slate-600 uppercase px-4 py-2">GP</th><th class="text-center text-[10px] font-medium text-slate-600 uppercase px-4 py-2">G</th><th class="text-center text-[10px] font-medium text-slate-600 uppercase px-4 py-2">A</th><th class="text-center text-[10px] font-medium text-slate-600 uppercase px-4 py-2">PTS</th><th class="text-center text-[10px] font-medium text-slate-600 uppercase px-4 py-2">MULT</th><th class="text-center text-[10px] font-medium text-slate-600 uppercase px-4 py-2">🏒</th><th class="text-right text-[10px] font-medium text-slate-600 uppercase px-4 py-2">SCORE</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+
+// ============================================================
+// CHART TAB
+// ============================================================
+function renderChartTab(){
+  const e=state.entries;
+  const maxScore=e[0]?.totalScore||1;
+  const colors=['#3b82c4','#f5c842','#ff6b35','#22c55e','#ef4444','#a78bfa','#06b6d4','#f97316','#ec4899','#14b8a6','#8b5cf6','#eab308','#f43f5e','#0ea5e9','#84cc16','#e879f9'];
+
+  const bars=e.map((en,i)=>{
+    const pct=(en.totalScore/maxScore)*100;
+    return `<div class="flex items-center gap-3 group"><div class="w-28 sm:w-40 text-xs text-slate-400 truncate text-right flex-shrink-0">${esc(en.teamName)}</div><div class="flex-1 h-7 bg-white/5 rounded-lg overflow-hidden relative"><div class="h-full rounded-lg flex items-center px-2" style="width:${Math.max(pct,2)}%;background:${colors[i%colors.length]}"><span class="text-xs font-bold text-white drop-shadow-sm">${en.totalScore.toLocaleString()}</span></div></div><div class="w-8 text-xs font-mono text-right flex-shrink-0 ${en.alive>10?'text-puck-green':en.alive>5?'text-gold-400':'text-puck-red'}">${en.alive}</div></div>`;
+  }).join('');
+
+  return `<div class="space-y-6">
+    <div class="card p-5"><h3 class="text-sm font-semibold text-slate-300 mb-4">Total Score Comparison</h3><div class="space-y-2">${bars}</div><div class="flex justify-end mt-2"><span class="text-[10px] text-slate-600">Players alive →</span></div></div>
+    <div class="card p-5"><h3 class="text-sm font-semibold text-slate-300 mb-4">Score by Position</h3><canvas id="posChart" height="280"></canvas></div>
+    <div class="card p-5"><h3 class="text-sm font-semibold text-slate-300 mb-4">Score by Multiplier Tier</h3><canvas id="multChart" height="280"></canvas></div>
+  </div>`;
+}
+
+// ============================================================
+// PLAYERS TAB
+// ============================================================
+function renderPlayersTab(){
+  if(!state.stats) return '';
+  let players=state.stats.players.slice();
+  if(state.playerPosFilter!=='all') players=players.filter(p=>p.position===state.playerPosFilter);
+  if(state.playerSort==='avgScore') players.sort((a,b)=>b.avgScore-a.avgScore);
+  else if(state.playerSort==='avgPucks') players.sort((a,b)=>b.avgPucks-a.avgPucks);
+
+  const filterBtns=['all','F','D'].map(f=>`<button onclick="setState({playerPosFilter:'${f}'})" class="px-3 py-1 rounded-md text-xs font-medium transition-colors ${state.playerPosFilter===f?'tab-active':'tab-inactive'}">${f==='all'?'All':f==='F'?'Forwards':'Defense'}</button>`).join('');
+  const sortBtns=['ownership','avgScore','avgPucks'].map(s=>`<button onclick="setState({playerSort:'${s}'})" class="px-3 py-1 rounded-md text-xs font-medium transition-colors ${state.playerSort===s?'tab-active':'tab-inactive'}">${s==='ownership'?'Ownership':s==='avgScore'?'Avg Score':'Avg Pucks'}</button>`).join('');
+
+  const rows=players.map(p=>`<tr class="border-b border-white/[0.03] trow">
+    <td class="px-4 py-2.5 text-sm font-medium text-white">${esc(p.name)}</td>
+    <td class="px-4 py-2.5 text-center"><span class="text-xs font-semibold ${p.position==='D'?'text-gold-400':'text-ice-400'}">${p.position}</span></td>
+    <td class="px-4 py-2.5 text-center text-sm text-slate-400 font-mono">${p.count}/${state.entries.length}</td>
+    <td class="px-4 py-2.5 text-center"><div class="flex items-center justify-center gap-2"><div class="w-12 h-1.5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${p.ownership}%;background:${p.ownership===100?'#f5c842':'#3b82c4'}"></div></div><span class="text-xs text-slate-400 font-mono">${p.ownership}%</span></div></td>
+    <td class="px-4 py-2.5 text-center text-sm text-puck-orange font-mono">${p.avgPucks}</td>
+    <td class="px-4 py-2.5 text-right text-sm text-slate-300 font-mono">${p.avgScore}</td>
+    <td class="px-4 py-2.5 text-right text-sm font-bold text-white font-mono">${p.maxScore.toLocaleString()}</td>
+  </tr>`).join('');
+
+  return `<div class="space-y-6">
+    <div class="card p-5"><h3 class="text-sm font-semibold text-slate-300 mb-4">Player Ownership (Top 10)</h3><canvas id="ownerChart" height="300"></canvas></div>
+    <div class="flex flex-wrap gap-2"><div class="flex gap-1 bg-slate-850/60 rounded-lg p-1">${filterBtns}</div><div class="flex gap-1 bg-slate-850/60 rounded-lg p-1">${sortBtns}</div></div>
+    <div class="card overflow-hidden"><div class="overflow-x-auto"><table class="w-full"><thead><tr class="border-b border-white/5"><th class="text-left text-[10px] font-medium text-slate-600 uppercase px-4 py-3">Player</th><th class="text-center text-[10px] font-medium text-slate-600 uppercase px-4 py-3">Pos</th><th class="text-center text-[10px] font-medium text-slate-600 uppercase px-4 py-3">Owned</th><th class="text-center text-[10px] font-medium text-slate-600 uppercase px-4 py-3">Own%</th><th class="text-center text-[10px] font-medium text-slate-600 uppercase px-4 py-3">Avg 🏒</th><th class="text-right text-[10px] font-medium text-slate-600 uppercase px-4 py-3">Avg Score</th><th class="text-right text-[10px] font-medium text-slate-600 uppercase px-4 py-3">Max Score</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+  </div>`;
+}
+
+// ============================================================
+// SIMULATION TAB
+// ============================================================
+function renderSimulation(){
+  const cfg=state.simCfg;
+  const settingsPanel=state.showSimSettings?`<div class="card p-5 space-y-4"><h3 class="text-sm font-semibold text-slate-300">Simulation Parameters</h3><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    ${simInput('Simulations',cfg.numSims,'numSims','number',100,10000,100)}
+    ${simInput('Pts/Game Variance',cfg.variance,'variance','number',0,2,0.1)}
+    ${simInput('Fav Advance (1.0x)',cfg.advProb[1.0],'adv10','number',0,1,0.05)}
+    ${simInput('Mid Advance (1.5x)',cfg.advProb[1.5],'adv15','number',0,1,0.05)}
+    ${simInput('WC Advance (2.0x)',cfg.advProb[2.0],'adv20','number',0,1,0.05)}
+  </div><button onclick="resetSimCfg()" class="text-xs text-slate-500 hover:text-slate-300">Reset to defaults</button></div>`:'';
+
+  let resultsHtml='';
+  if(!state.simResults && !state.simRunning){
+    resultsHtml=`<div class="card p-12 text-center"><div class="text-4xl mb-3">🎲</div><p class="text-slate-400 text-sm">Click "Run Simulation" to project final standings.</p><p class="text-slate-600 text-xs mt-1">Uses player pts/game rates with configurable variance and team advancement probabilities.</p></div>`;
+  } else if(state.simResults){
+    const projs=state.simResults;
+    const winBars=projs.slice().sort((a,b)=>b.winPct-a.winPct).map((p,i)=>`<div class="flex items-center gap-3"><div class="w-28 sm:w-40 text-xs text-slate-400 truncate text-right flex-shrink-0">${esc(p.teamName)}</div><div class="flex-1 h-6 bg-white/5 rounded-lg overflow-hidden"><div class="h-full rounded-lg flex items-center px-2" style="width:${Math.max(p.winPct,1)}%;background:${i===0?'#f5c842':i===1?'#c0c0c0':'#3b82c4'}">${p.winPct>=8?`<span class="text-[10px] font-bold text-midnight">${p.winPct}%</span>`:''}</div></div>${p.winPct<8?`<span class="text-xs font-mono text-slate-500 w-10 text-right">${p.winPct}%</span>`:''}</div>`).join('');
+
+    const tableRows=projs.map(p=>`<tr class="border-b border-white/[0.03] trow">
+      <td class="px-4 py-2.5 text-sm font-medium text-white">${esc(p.teamName)}</td>
+      <td class="px-4 py-2.5 text-right text-sm font-mono text-slate-400">${p.current.toLocaleString()}</td>
+      <td class="px-4 py-2.5 text-right text-sm font-mono font-semibold text-white">${p.mean.toLocaleString()}</td>
+      <td class="px-4 py-2.5 text-right text-sm font-mono text-slate-300">${p.median.toLocaleString()}</td>
+      <td class="px-4 py-2.5 text-right text-sm font-mono text-puck-red">${p.p10.toLocaleString()}</td>
+      <td class="px-4 py-2.5 text-right text-sm font-mono text-puck-green">${p.p90.toLocaleString()}</td>
+      <td class="px-4 py-2.5 text-right"><span class="text-sm font-bold font-mono ${p.winPct>=30?'text-gold-400':p.winPct>=10?'text-ice-400':'text-slate-500'}">${p.winPct}%</span></td>
+    </tr>`).join('');
+
+    resultsHtml=`<div class="card p-5"><h3 class="text-sm font-semibold text-slate-300 mb-4">Win Probability</h3><div class="space-y-2">${winBars}</div></div>
+    <div class="card overflow-hidden"><div class="px-4 py-3 border-b border-white/5"><h3 class="text-sm font-semibold text-slate-300">Projected Final Scores</h3></div><div class="overflow-x-auto"><table class="w-full"><thead><tr class="border-b border-white/5"><th class="text-left text-[10px] font-medium text-slate-600 uppercase px-4 py-2">Team</th><th class="text-right text-[10px] font-medium text-slate-600 uppercase px-4 py-2">Current</th><th class="text-right text-[10px] font-medium text-slate-600 uppercase px-4 py-2">Proj Mean</th><th class="text-right text-[10px] font-medium text-slate-600 uppercase px-4 py-2">Median</th><th class="text-right text-[10px] font-medium text-slate-600 uppercase px-4 py-2">10th</th><th class="text-right text-[10px] font-medium text-slate-600 uppercase px-4 py-2">90th</th><th class="text-right text-[10px] font-medium text-slate-600 uppercase px-4 py-2">Win%</th></tr></thead><tbody>${tableRows}</tbody></table></div></div>
+    <p class="text-slate-600 text-xs text-center">${cfg.numSims.toLocaleString()} simulations · Variance: ${cfg.variance} · Advance: ${cfg.advProb[1.0]}/${cfg.advProb[1.5]}/${cfg.advProb[2.0]}</p>`;
+  }
+
+  return `<div class="space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div><h2 class="text-lg font-semibold text-white">Monte Carlo Projections</h2><p class="text-slate-500 text-sm">Simulates remaining games based on player pts/game rates and team advancement probability.</p></div>
+      <div class="flex gap-2">
+        <button onclick="setState({showSimSettings:!state.showSimSettings})" class="flex items-center gap-1.5 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-slate-300 text-xs font-medium">⚙ Settings</button>
+        <button onclick="runSimulation()" ${state.simRunning?'disabled':''} class="flex items-center gap-1.5 px-4 py-2 bg-ice-500 hover:bg-ice-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium">${state.simRunning?'<span class="spin inline-block">↻</span> Running...':'▶ Run ('+cfg.numSims.toLocaleString()+')'}</button>
+      </div>
+    </div>
+    ${settingsPanel}
+    ${resultsHtml}
+  </div>`;
+}
+
+function simInput(label,value,key,type,min,max,step){
+  return `<div><label class="text-xs text-slate-400 block mb-1">${label}</label><input type="${type}" value="${value}" onchange="updateSimCfg('${key}',this.value)" min="${min}" max="${max}" step="${step}" class="w-full bg-midnight border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-ice-500/50"></div>`;
+}
+
+// ============================================================
+// POOL INFO TAB
+// ============================================================
+function renderInfo(){
+  const pool=state.entries.length*CONFIG.entryFee;
+  const payouts=CONFIG.payoutSplit.map(p=>({...p,amount:Math.round(pool*p.pct)}));
+
+  const teamsByMult={};
+  Object.entries(CONFIG.teamMultipliers).forEach(([t,m])=>{ const k=m+'x'; if(!teamsByMult[k])teamsByMult[k]=[]; teamsByMult[k].push(t); });
+
+  let multHtml='<p class="text-slate-500 text-sm">Multipliers not yet assigned. Update season.js before playoffs start.</p>';
+  if(Object.keys(CONFIG.teamMultipliers).length>0){
+    multHtml=['2x','1.5x','1x'].filter(k=>teamsByMult[k]?.length).map(tier=>{
+      const m=parseFloat(tier);
+      const label=m===2?'Wild Card':m===1?'Division Winners':'Middle Seeds';
+      const color=m===2?'text-gold-400':m===1?'text-slate-400':'text-ice-400';
+      const chips=(teamsByMult[tier]||[]).sort().map(t=>{
+        const info=NHL_TEAMS[t]; const al=CONFIG.teamsAlive.includes(t);
+        return `<div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium ${al?'border-white/10 bg-white/5 text-white':'border-white/5 bg-white/[0.02] text-slate-600 line-through'}"><div class="w-2 h-2 rounded-full" style="background:${al?(info?.color||'#666'):'#333'}"></div>${t}</div>`;
+      }).join('');
+      return `<div><div class="flex items-center gap-2 mb-2"><span class="text-sm font-bold font-mono ${color}">${tier}</span><span class="text-xs text-slate-500">${label}</span></div><div class="flex flex-wrap gap-2">${chips}</div></div>`;
+    }).join('');
+  }
+
+  const entryCards=state.entries.map(e=>`<div class="flex items-center justify-between p-3 bg-midnight/50 rounded-xl border border-white/5"><div><div class="text-sm font-medium text-white">${esc(e.teamName)}</div><div class="text-xs text-slate-500">${esc(e.owner)}</div></div><div class="text-right"><div class="text-sm font-mono font-bold text-white">${e.totalScore.toLocaleString()}</div><div class="text-xs text-slate-500">#${e.rank}</div></div></div>`).join('');
+
+  const payoutCards=payouts.map(p=>`<div class="flex items-center gap-3 p-4 bg-midnight/50 rounded-xl border border-white/5"><div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${p.place===1?'rank-1 text-midnight':p.place===2?'rank-2 text-midnight':'rank-3 text-white'}">${p.label}</div><div><div class="text-white font-bold text-lg font-mono">$${p.amount}</div><div class="text-slate-500 text-xs">${Math.round(p.pct*100)}% of pool</div></div></div>`).join('');
+
+  return `<div class="space-y-6">
+    <div class="card p-5"><h3 class="text-sm font-semibold text-white mb-4">Pool Rules</h3><div class="space-y-3 text-sm text-slate-300">
+      ${rule(1,`Pick ${CONFIG.forwards} forwards and ${CONFIG.defense} defensemen (${CONFIG.forwards+CONFIG.defense} total).`)}
+      ${rule(2,`Allocate ${CONFIG.totalPucks} pucks across your roster. Min ${CONFIG.minPucks}, max ${CONFIG.maxPucks} per player.`)}
+      ${rule(3,'Each playoff team has a multiplier. Wild cards = 2.0x, middle seeds = 1.5x, division winners = 1.0x.')}
+      ${rule(4,'<span class="text-white font-medium">Score = Playoff Points × Pucks × Team Multiplier</span>')}
+      ${rule(5,`Entry fee is $${CONFIG.entryFee} ${CONFIG.currency}. Multiple entries allowed.`)}
+    </div></div>
+    <div class="card p-5"><h3 class="text-sm font-semibold text-white mb-4">Scoring Example</h3><div class="bg-midnight/50 rounded-xl p-4 font-mono text-sm"><div class="text-slate-500 mb-2">// McDavid, 6 pucks, Oilers (2-seed, 1.5x), 10 playoff pts</div><div class="text-slate-300">Score = <span class="text-ice-400">10 pts</span> × <span class="text-gold-400">1.5x</span> × <span class="text-puck-orange">6 pucks</span> = <span class="text-white font-bold">90</span></div></div></div>
+    <div class="card p-5"><h3 class="text-sm font-semibold text-white mb-4">Team Multipliers</h3><div class="space-y-4">${multHtml}</div></div>
+    <div class="card p-5"><h3 class="text-sm font-semibold text-white mb-4">Payout Structure</h3><div class="grid grid-cols-1 sm:grid-cols-3 gap-3">${payoutCards}</div><div class="mt-3 text-xs text-slate-500">Total: $${pool.toLocaleString()} ${CONFIG.currency} (${state.entries.length} × $${CONFIG.entryFee})</div></div>
+    <div class="card p-5"><h3 class="text-sm font-semibold text-white mb-4">Entries</h3><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${entryCards}</div></div>
+  </div>`;
+}
+
+function rule(n,text){
+  return `<div class="flex gap-3"><span class="flex-shrink-0 w-6 h-6 rounded-full bg-ice-500/10 border border-ice-500/20 flex items-center justify-center text-xs font-bold text-ice-400">${n}</span><p class="pt-0.5">${text}</p></div>`;
+}
+
+// ============================================================
+// CHART RENDERING (Chart.js)
+// ============================================================
+function renderCharts(){
+  // Destroy existing charts
+  Object.values(state.chartInstances).forEach(c=>c.destroy());
+  state.chartInstances={};
+
+  if(state.tab==='chart'){
+    renderPosChart();
+    renderMultChart();
+  }
+  if(state.tab==='players'){
+    renderOwnerChart();
+  }
+}
+
+function renderPosChart(){
+  const el=document.getElementById('posChart');
+  if(!el) return;
+  const labels=state.entries.map(e=>e.teamName.length>14?e.teamName.slice(0,14)+'…':e.teamName);
+  const fwdData=state.entries.map(e=>Math.round(e.players.filter(p=>p.position==='F').reduce((s,p)=>s+p.score,0)));
+  const defData=state.entries.map(e=>Math.round(e.players.filter(p=>p.position==='D').reduce((s,p)=>s+p.score,0)));
+  state.chartInstances.pos=new Chart(el,{type:'bar',data:{labels,datasets:[
+    {label:'Forwards',data:fwdData,backgroundColor:'rgba(59,130,196,.7)',borderRadius:4},
+    {label:'Defense',data:defData,backgroundColor:'rgba(245,200,66,.7)',borderRadius:4},
+  ]},options:{responsive:true,plugins:{legend:{labels:{color:'#94a3b8',font:{family:'DM Sans'}}}},scales:{x:{ticks:{color:'#64748b',font:{size:11}},grid:{color:'rgba(255,255,255,.03)'}},y:{ticks:{color:'#64748b'},grid:{color:'rgba(255,255,255,.03)'}}}}});
+}
+
+function renderMultChart(){
+  const el=document.getElementById('multChart');
+  if(!el) return;
+  const labels=state.entries.map(e=>e.teamName.length>14?e.teamName.slice(0,14)+'…':e.teamName);
+  const m10=state.entries.map(e=>Math.round(e.players.filter(p=>p.mult===1).reduce((s,p)=>s+p.score,0)));
+  const m15=state.entries.map(e=>Math.round(e.players.filter(p=>p.mult===1.5).reduce((s,p)=>s+p.score,0)));
+  const m20=state.entries.map(e=>Math.round(e.players.filter(p=>p.mult===2).reduce((s,p)=>s+p.score,0)));
+  state.chartInstances.mult=new Chart(el,{type:'bar',data:{labels,datasets:[
+    {label:'1.0x (Favs)',data:m10,backgroundColor:'rgba(148,163,184,.6)',borderRadius:4},
+    {label:'1.5x (Mid)',data:m15,backgroundColor:'rgba(59,130,196,.7)',borderRadius:4},
+    {label:'2.0x (WC)',data:m20,backgroundColor:'rgba(245,200,66,.7)',borderRadius:4},
+  ]},options:{responsive:true,plugins:{legend:{labels:{color:'#94a3b8',font:{family:'DM Sans'}}}},scales:{x:{stacked:true,ticks:{color:'#64748b',font:{size:11}},grid:{color:'rgba(255,255,255,.03)'}},y:{stacked:true,ticks:{color:'#64748b'},grid:{color:'rgba(255,255,255,.03)'}}}}});
+}
+
+function renderOwnerChart(){
+  const el=document.getElementById('ownerChart');
+  if(!el||!state.stats) return;
+  const top=state.stats.players.slice(0,10);
+  state.chartInstances.owner=new Chart(el,{type:'bar',data:{
+    labels:top.map(p=>p.name.split(' ').pop()),
+    datasets:[{data:top.map(p=>p.ownership),backgroundColor:top.map(p=>p.ownership===100?'rgba(245,200,66,.8)':'rgba(59,130,196,.7)'),borderRadius:4}]
+  },options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.raw}% ownership`}}},scales:{x:{ticks:{color:'#64748b',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,.03)'}},y:{ticks:{color:'#94a3b8',font:{size:12}},grid:{display:false}}}}});
+}
+
+// ============================================================
+// EVENT HANDLERS
+// ============================================================
+function bindEvents(){}
+
+function updateSimCfg(key, val){
+  const v=parseFloat(val);
+  if(key==='numSims') state.simCfg.numSims=Math.max(100,Math.min(10000,parseInt(val)||1000));
+  else if(key==='variance') state.simCfg.variance=Math.max(0,Math.min(2,v||0.5));
+  else if(key==='adv10') state.simCfg.advProb[1.0]=Math.max(0,Math.min(1,v||0.6));
+  else if(key==='adv15') state.simCfg.advProb[1.5]=Math.max(0,Math.min(1,v||0.5));
+  else if(key==='adv20') state.simCfg.advProb[2.0]=Math.max(0,Math.min(1,v||0.35));
+  render();
+}
+
+function resetSimCfg(){
+  state.simCfg={numSims:1000,variance:0.5,advProb:{1.0:0.60,1.5:0.50,2.0:0.35}};
+  render();
+}
+
+function runSimulation(){
+  setState({simRunning:true});
+  setTimeout(()=>{
+    const res=runSim(state.entries,state.simCfg);
+    setState({simResults:res,simRunning:false});
+  },50);
+}
+
+function esc(s){ if(!s)return''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+
+// ============================================================
+// BOOT
+// ============================================================
+// Show immediate loading state
+document.getElementById('app').innerHTML='<div class="min-h-screen flex items-center justify-center" style="min-height:100vh;display:flex;align-items:center;justify-content:center"><div style="text-align:center"><div style="width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,#f5c842,#ff6b35);display:flex;align-items:center;justify-content:center;color:#0a0e1a;font-weight:bold;font-size:24px;margin:0 auto 24px">50</div><p style="color:#64748b;font-size:14px">Loading playoff stats...</p></div></div>';
+
+window.addEventListener('DOMContentLoaded', () => { loadData(); });
+if(document.readyState !== 'loading') { loadData(); }
+</script>
+</body>
 </html>
