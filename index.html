@@ -12,9 +12,13 @@
 <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','system-ui','sans-serif']},colors:{navy:{900:'#0f1729',800:'#172035',700:'#1e2a45'},accent:'#d4a843',accentLight:'#e8c36a'}}}}</script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter',system-ui,sans-serif;background:#f4f5f7;color:#1e293b;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+html,body{overflow-x:hidden;max-width:100vw;width:100%}
+body{font-family:'Inter',system-ui,sans-serif;background:#f4f5f7;color:#1e293b;-webkit-font-smoothing:antialiased}
+#app{overflow-x:hidden;max-width:100vw;width:100%}
 ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:2px}
-.hdr{background:#0f1729;color:#fff}
+.hdr{background:#0f1729;color:#fff;overflow-x:hidden}
+.hdr select{color:#fff}
+.hdr select option{color:#1e293b;background:#fff}
 .card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden}
 .trow{transition:background .1s}.trow:hover{background:#f8fafc}
 .tab-on{color:#0f1729;font-weight:600;border-bottom:2px solid #d4a843}
@@ -31,6 +35,8 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .bar-f{height:100%;border-radius:4px;display:flex;align-items:center;padding:0 6px;transition:width .3s}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .fade-in{animation:fadeIn .3s ease}
+nav div::-webkit-scrollbar{display:none}
+header,nav,main,footer{max-width:100vw;overflow-x:hidden}
 </style>
 </head>
 <body>
@@ -156,11 +162,11 @@ function render(){
   </div>
 </header>
 <nav class="bg-white border-b border-slate-200 sticky top-0 z-40">
-  <div class="max-w-5xl mx-auto px-3 sm:px-4 flex gap-0 overflow-x-auto">
+  <div class="max-w-5xl mx-auto px-3 sm:px-4 flex gap-0 overflow-x-auto" style="-ms-overflow-style:none;scrollbar-width:none;-webkit-overflow-scrolling:touch">
     ${tabs.map(([id,l])=>`<button onclick="set({tab:'${id}'})" class="px-2.5 sm:px-3 py-2 text-[11px] sm:text-xs whitespace-nowrap ${S.tab===id?'tab-on':'tab-off'}">${l}</button>`).join('')}
   </div>
 </nav>
-<main class="max-w-5xl mx-auto px-3 sm:px-4 py-4 fade-in">${tabC()}</main>
+<main class="max-w-5xl mx-auto px-3 sm:px-4 py-4 fade-in w-full min-w-0">${tabC()}</main>
 <footer class="border-t border-slate-200 py-3 mt-4"><p class="text-center text-slate-400 text-[10px]">${CFG.title} · ${S.yr}${_src?' · '+_src:''}</p></footer>`;
   if(S._chart){try{S._chart.destroy();}catch{}}S._chart=null;
   setTimeout(drawChart,20);
