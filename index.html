@@ -45,8 +45,8 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 // SEASONS
 // ============================================================
 const SEASONS={
-  2025:{id:'20242025',fee:40,mult:{CAR:1.5,COL:1.5,DAL:1.5,EDM:1.5,FLA:1.5,LAK:1.5,NJD:1.5,TBL:1.5,TOR:1.0,WSH:1.0,WPG:1.0,VGK:1.0,MTL:2.0,OTT:2.0,MIN:2.0,STL:2.0},alive:['CAR','DAL','EDM','FLA']},
-  2026:{id:'20252026',fee:40,mult:{},alive:[]},
+  2025:{id:'20242025',fee:40,sheetUrl:'',mult:{CAR:1.5,COL:1.5,DAL:1.5,EDM:1.5,FLA:1.5,LAK:1.5,NJD:1.5,TBL:1.5,TOR:1.0,WSH:1.0,WPG:1.0,VGK:1.0,MTL:2.0,OTT:2.0,MIN:2.0,STL:2.0},alive:['CAR','DAL','EDM','FLA']},
+  2026:{id:'20252026',fee:40,sheetUrl:'',mult:{},alive:[]},
 };
 const CFG={title:'50 Pucks',pk:50,minPk:1,maxPk:6,fwd:10,def:5,cur:'CAD',pay:[{p:1,l:'1st',r:.6},{p:2,l:'2nd',r:.3},{p:3,l:'3rd',r:.1}]};
 const TM={ANA:'#F47A38',BOS:'#FFB81C',BUF:'#003087',CGY:'#D2001C',CAR:'#CC0000',CHI:'#CF0A2C',COL:'#6F263D',CBJ:'#002654',DAL:'#006847',DET:'#CE1126',EDM:'#FF4C00',FLA:'#C8102E',LAK:'#A2AAAD',MIN:'#154734',MTL:'#AF1E2D',NSH:'#FFB81C',NJD:'#CE1126',NYI:'#00539B',NYR:'#0038A8',OTT:'#C52032',PHI:'#F74902',PIT:'#FCB514',SJS:'#006D75',SEA:'#001628',STL:'#002F87',TBL:'#002868',TOR:'#00205B',UTA:'#71AFE5',VAN:'#00205B',VGK:'#B4975A',WSH:'#041E42',WPG:'#041E42'};
@@ -344,7 +344,8 @@ function doSim(){S.simRun=true;render();setTimeout(()=>{S.simRes=runSim(S.entrie
 // ============================================================
 // ENTRY FORM — player database + form + mailto submit
 // ============================================================
-const POOL_EMAIL='rkunka31@gmail.com'; // ← CHANGE THIS to your email address
+const POOL_EMAIL='rkunka31@gmail.com'; // fallback email
+const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbxbstEyuXo2ydoxzF7WXgYIlw9-ot-vC2L5jw4rOor0_CxlMsf3gADprJv1n22vLvAY/exec'; // ← PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE
 
 const ROSTER_F=[
 ['Nathan MacKinnon','COL'],['Mikko Rantanen','COL'],['Artturi Lehkonen','COL'],['Casey Mittelstadt','COL'],['Ross Colton','COL'],['Jonathan Drouin','COL'],['Nazem Kadri','COL'],
@@ -407,7 +408,38 @@ function efValid(){
   return{ok:true,msg:'Ready to submit!'};
 }
 
-function efMailto(){
+function efBuildRows(){
+  const rows=[];
+  [...EF.fwd,...EF.def].forEach((x,i)=>{
+    if(!x.p)return;
+    const parts=x.p.split(' – ');
+    rows.push({team_name:EF.name,owner_name:EF.owner,player_name:parts[0],player_team:parts[1]||'',position:i<10?'F':'D',pucks:x.pk});
+  });
+  return rows;
+}
+
+async function efSubmit(){
+  const v=efValid();if(!v.ok)return;
+  const rows=efBuildRows();
+  // Try direct-to-sheet first
+  if(APPS_SCRIPT_URL){
+    EF._status='sending';saveEF();render();
+    try{
+      const r=await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({rows})});
+      // no-cors means we can't read the response, but if it didn't throw, it likely succeeded
+      EF.submitted=true;EF._status='sent';saveEF();render();
+      return;
+    }catch(e){
+      console.error('Sheet submit failed:',e);
+      EF._status='error';saveEF();render();
+      // Fall through to email
+    }
+  }
+  // Fallback: email
+  efMailtoFallback();
+}
+
+function efMailtoFallback(){
   const lines=[];
   lines.push(`50 PUCKS ENTRY — ${S.yr}`);
   lines.push(`Team: ${EF.name}`);
@@ -422,16 +454,10 @@ function efMailto(){
   lines.push(`Total Pucks: ${efPkTotal()}/50`);
   lines.push('');
   lines.push('--- CSV (for upload) ---');
-  [...EF.fwd,...EF.def].forEach((x,i)=>{
-    if(!x.p)return;
-    const parts=x.p.split(' – ');
-    const name=parts[0];const team=parts[1]||'';
-    const pos=i<10?'F':'D';
-    lines.push(`${EF.name},${EF.owner},${name},${team},${pos},${x.pk}`);
-  });
+  efBuildRows().forEach(r=>lines.push(`${r.team_name},${r.owner_name},${r.player_name},${r.player_team},${r.position},${r.pucks}`));
   const body=encodeURIComponent(lines.join('\n'));
   const subj=encodeURIComponent(`50 Pucks Entry: ${EF.name}`);
-  return`mailto:${POOL_EMAIL}?subject=${subj}&body=${body}`;
+  window.location.href=`mailto:${POOL_EMAIL}?subject=${subj}&body=${body}`;
 }
 
 function efUpdate(type,idx,field,val){
@@ -502,11 +528,25 @@ function EN(){
     </div>
 
     <div class="flex gap-2">
-      <a href="${v.ok?efMailto():'#'}" ${v.ok?'':'onclick="return false"'} class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-sm font-semibold text-white ${v.ok?'cursor-pointer':'opacity-40 cursor-not-allowed'}" style="background:#0f1729">
-        ✉ Submit via Email
-      </a>
+      ${EF.submitted?`
+        <div class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-sm font-semibold text-white bg-emerald-600">
+          ✓ Entry Submitted
+        </div>
+      `:EF._status==='sending'?`
+        <div class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-sm font-semibold text-white bg-slate-400">
+          Submitting...
+        </div>
+      `:EF._status==='error'?`
+        <button onclick="efMailtoFallback()" class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-sm font-semibold text-white bg-amber-600">
+          ✉ Submit via Email (fallback)
+        </button>
+      `:`
+        <button onclick="efSubmit()" ${v.ok?'':'disabled'} class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-sm font-semibold text-white ${v.ok?'cursor-pointer':'opacity-40 cursor-not-allowed'}" style="background:#0f1729">
+          Submit Entry
+        </button>
+      `}
     </div>
-    ${v.ok?'<p class="text-[10px] text-slate-400 text-center">Opens your email app with your entry pre-filled. Send it to complete your submission.</p>':''}
+    ${EF.submitted?'<p class="text-[10px] text-emerald-600 text-center font-medium">Your entry has been received. Good luck!</p>':EF._status==='error'?'<p class="text-[10px] text-amber-600 text-center">Auto-submit failed. Click above to send via email instead.</p>':v.ok?'<p class="text-[10px] text-slate-400 text-center">Your entry will be sent directly to the pool host.</p>':''}
 
     <div class="card p-3">
       <div class="text-[10px] text-slate-500 font-medium mb-1">RULES</div>
