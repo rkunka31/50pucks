@@ -101,10 +101,21 @@ function calcScores(entries,lu){
   sc.sort((a,b)=>b.total-a.total);let r=1;for(let i=0;i<sc.length;i++){if(i>0&&sc[i].total<sc[i-1].total)r=i+1;sc[i].rank=r;}return sc;
 }
 function poolStats(en){
-  const pop=new Map();for(const e of en)for(const p of e.players){if(!pop.has(p.name))pop.set(p.name,{c:0,tp:0,sc:[],pos:p.position,team:p.team,pts:p.pts,gp:p.gp,alive:p.alive});const o=pop.get(p.name);o.c++;o.tp+=p.pucks;o.sc.push(p.score);if(p.pts>o.pts){o.pts=p.pts;o.gp=p.gp;o.alive=p.alive;}}
+  const pop=new Map();let totalPucks=0,deadPucks=0;
+  for(const e of en)for(const p of e.players){
+    totalPucks+=p.pucks;if(!p.alive)deadPucks+=p.pucks;
+    if(!pop.has(p.name))pop.set(p.name,{c:0,tp:0,sc:[],pos:p.position,team:p.team,pts:p.pts,gp:p.gp,alive:p.alive});
+    const o=pop.get(p.name);o.c++;o.tp+=p.pucks;o.sc.push(p.score);if(p.pts>o.pts){o.pts=p.pts;o.gp=p.gp;o.alive=p.alive;}
+  }
   const pl=[...pop.entries()].map(([n,d])=>({name:n,pos:d.pos,team:d.team,pts:d.pts,alive:d.alive,c:d.c,tp:d.tp,ap:Math.round(d.tp/d.c*10)/10,as:Math.round(d.sc.reduce((a,b)=>a+b,0)/d.c*10)/10,ms:Math.max(...d.sc),own:Math.round(d.c/en.length*100)})).sort((a,b)=>b.c-a.c||b.as-a.as);
   let gB=null,gW=null;for(const e of en)for(const p of e.players){if(!gB||p.score>gB.score)gB={...p,tn:e.teamName};if(!gW||p.score<gW.score)gW={...p,tn:e.teamName};}
-  return{n:en.length,pool:en.length*sn().fee,pl,gB,gW,avg:en.length?Math.round(en.reduce((s,e)=>s+e.total,0)/en.length):0};
+  // Pool Concentration: % of total pucks on top 5 most-owned players
+  const top5=pl.slice(0,5);const top5pucks=top5.reduce((s,p)=>s+p.tp,0);
+  const concentration=totalPucks>0?Math.round(top5pucks/totalPucks*100):0;
+  const top5names=top5.map(p=>p.name.split(' ').pop()).join(', ');
+  // Dead Puck Rate: % of all pucks on eliminated players
+  const deadRate=totalPucks>0?Math.round(deadPucks/totalPucks*100):0;
+  return{n:en.length,pool:en.length*sn().fee,pl,gB,gW,avg:en.length?Math.round(en.reduce((s,e)=>s+e.total,0)/en.length):0,concentration,top5names,deadRate,deadPucks,totalPucks};
 }
 
 // ============================================================
@@ -180,33 +191,66 @@ function tabC(){switch(S.tab){case'leaderboard':return LB();case'team':return TD
 function LB(){
   const e=S.entries,s=S.stats,pool=s?.pool||0;
   const pay=CFG.pay.map(p=>({...p,a:Math.round(pool*p.r)}));
-  return`
-  <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4">
-    <div class="rounded-lg p-2.5 sm:p-3" style="background:#0f172910;border:1px solid #0f172920"><div class="text-[10px] text-slate-500 font-medium">Prize Pool</div><div class="text-base sm:text-lg font-bold text-slate-900 num">$${pool}</div></div>
-    <div class="rounded-lg p-2.5 sm:p-3" style="background:#d4a84310;border:1px solid #d4a84330"><div class="text-[10px] font-medium" style="color:#96792f">Best Pick</div><div class="text-base sm:text-lg font-bold text-slate-900 num">${fmt(s?.gB?.score||0)}</div><div class="text-[10px] text-slate-500 truncate">${esc(s?.gB?.name||'')}</div></div>
-    <div class="rounded-lg p-2.5 sm:p-3 bg-slate-50 border border-slate-200"><div class="text-[10px] text-slate-500 font-medium">Avg Score</div><div class="text-base sm:text-lg font-bold text-slate-900 num">${fmt(s?.avg||0)}</div></div>
-    <div class="rounded-lg p-2.5 sm:p-3 bg-slate-50 border border-slate-200"><div class="text-[10px] text-slate-500 font-medium mb-0.5">Payouts</div><div class="flex gap-2">${pay.map(p=>`<div><div class="text-xs sm:text-sm font-bold text-slate-900 num">$${p.a}</div><div class="text-[9px] text-slate-400">${p.l}</div></div>`).join('')}</div></div>
-  </div>
-  <div class="card"><div class="overflow-x-auto">
-    <table class="w-full text-xs sm:text-sm"><thead><tr class="bg-slate-50 border-b border-slate-200">
-      <th class="text-left text-[9px] sm:text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-2 sm:px-3 py-2 w-8">#</th>
-      <th class="text-left text-[9px] sm:text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-2 sm:px-3 py-2">Team</th>
-      <th class="text-right text-[9px] sm:text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-2 sm:px-3 py-2">Score</th>
-      <th class="text-center text-[9px] sm:text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-2 sm:px-3 py-2">Alive</th>
-      <th class="text-center text-[9px] sm:text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-2 sm:px-3 py-2 hidden sm:table-cell">Pucks Left</th>
-      <th class="text-right text-[9px] sm:text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-2 sm:px-3 py-2 hidden md:table-cell">Best</th>
+  // Stat cards: 1) Prize Pool+Payouts merged, 2) Best Pick, 3) Concentration, 4) Dead Puck Rate
+  const cards=`<div class="grid grid-cols-2 gap-2 sm:gap-3 mb-4">
+    <div class="rounded-lg p-2.5 sm:p-3" style="background:#0f172908;border:1px solid #0f172915">
+      <div class="text-[10px] text-slate-500 font-medium">Prize Pool</div>
+      <div class="text-lg sm:text-xl font-bold text-slate-900 num">$${pool}</div>
+      <div class="flex gap-2 mt-1">${pay.map(p=>`<span class="text-[10px] text-slate-400"><span class="font-semibold text-slate-600 num">$${p.a}</span> ${p.l}</span>`).join(' · ')}</div>
+    </div>
+    <div class="rounded-lg p-2.5 sm:p-3" style="background:#d4a84308;border:1px solid #d4a84320">
+      <div class="text-[10px] font-medium" style="color:#96792f">Best Pick</div>
+      <div class="text-lg sm:text-xl font-bold text-slate-900 num">${fmt(s?.gB?.score||0)}</div>
+      <div class="text-[10px] text-slate-500 truncate">${esc(s?.gB?.name||'')} <span class="text-slate-400">· ${esc(s?.gB?.tn||'')}</span></div>
+    </div>
+    <div class="rounded-lg p-2.5 sm:p-3" style="background:#3b82f608;border:1px solid #3b82f615">
+      <div class="text-[10px] text-blue-600 font-medium">Pool Concentration</div>
+      <div class="text-lg sm:text-xl font-bold text-slate-900 num">${s?.concentration||0}%</div>
+      <div class="text-[10px] text-slate-400 truncate">Top 5: ${esc(s?.top5names||'')}</div>
+    </div>
+    <div class="rounded-lg p-2.5 sm:p-3" style="background:#ef444408;border:1px solid #ef444415">
+      <div class="text-[10px] text-red-500 font-medium">Dead Puck Rate</div>
+      <div class="text-lg sm:text-xl font-bold text-slate-900 num">${s?.deadRate||0}%</div>
+      <div class="text-[10px] text-slate-400">${s?.deadPucks||0} of ${s?.totalPucks||0} pucks eliminated</div>
+    </div>
+  </div>`;
+
+  // Mobile: card layout. Desktop: table.
+  const mobileRows=e.map(en=>`
+    <div onclick="set({sel:'${esc(en.teamName)}',tab:'team'})" class="flex items-center gap-2 p-2.5 border-b border-slate-100 trow cursor-pointer active:bg-slate-50">
+      <div class="flex-shrink-0 w-6">${rb(en.rank)}</div>
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold text-slate-900 text-xs leading-tight truncate">${esc(en.teamName)}</div>
+        <div class="text-slate-400 text-[10px]">${esc(en.owner)} · ${en.alive}/${en.cnt} alive · ${en.pkR}pk left</div>
+      </div>
+      <div class="flex-shrink-0 text-right">
+        <div class="font-bold text-slate-900 text-sm num">${fmt(en.total)}</div>
+      </div>
+      <div class="flex-shrink-0 text-slate-300 text-[10px]">›</div>
+    </div>`).join('');
+
+  const desktopRows=e.map(en=>`<tr onclick="set({sel:'${esc(en.teamName)}',tab:'team'})" class="border-b border-slate-100 trow cursor-pointer">
+    <td class="px-3 py-2.5">${rb(en.rank)}</td>
+    <td class="px-3 py-2.5"><div class="font-semibold text-slate-900 text-sm leading-tight">${esc(en.teamName)}</div><div class="text-slate-400 text-[10px]">${esc(en.owner)}</div></td>
+    <td class="px-3 py-2.5 text-right font-bold text-slate-900 num">${fmt(en.total)}</td>
+    <td class="px-3 py-2.5 text-center"><span class="font-semibold ${ac(en.alive,en.cnt)}">${en.alive}<span class="text-slate-300">/${en.cnt}</span></span></td>
+    <td class="px-3 py-2.5 text-center"><span class="font-semibold ${pc(en.pkR,50)} num">${en.pkR}<span class="text-slate-300">/${en.pkU}</span></span></td>
+    <td class="px-3 py-2.5 text-right"><div class="text-[10px] font-medium" style="color:#96792f">${esc(en.bp)}</div><div class="text-[10px] text-slate-400 num">${fmt(en.bs)}</div></td>
+    <td class="px-1 text-slate-300 text-[10px]">›</td>
+  </tr>`).join('');
+
+  return`${cards}
+  <div class="card sm:hidden">${mobileRows}</div>
+  <div class="card hidden sm:block"><div class="overflow-x-auto">
+    <table class="w-full text-sm"><thead><tr class="bg-slate-50 border-b border-slate-200">
+      <th class="text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2 w-8">#</th>
+      <th class="text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">Team</th>
+      <th class="text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">Score</th>
+      <th class="text-center text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">Alive</th>
+      <th class="text-center text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">Pucks Left</th>
+      <th class="text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">Best Pick</th>
       <th class="w-4"></th>
-    </tr></thead><tbody>
-    ${e.map(en=>`<tr onclick="set({sel:'${esc(en.teamName)}',tab:'team'})" class="border-b border-slate-100 trow cursor-pointer">
-      <td class="px-2 sm:px-3 py-2">${rb(en.rank)}</td>
-      <td class="px-2 sm:px-3 py-2"><div class="font-semibold text-slate-900 text-xs sm:text-sm leading-tight">${esc(en.teamName)}</div><div class="text-slate-400 text-[10px]">${esc(en.owner)}</div></td>
-      <td class="px-2 sm:px-3 py-2 text-right font-bold text-slate-900 num">${fmt(en.total)}</td>
-      <td class="px-2 sm:px-3 py-2 text-center"><span class="font-semibold ${ac(en.alive,en.cnt)}">${en.alive}<span class="text-slate-300">/${en.cnt}</span></span></td>
-      <td class="px-2 sm:px-3 py-2 text-center hidden sm:table-cell"><span class="font-semibold ${pc(en.pkR,50)} num">${en.pkR}<span class="text-slate-300">/${en.pkU}</span></span></td>
-      <td class="px-2 sm:px-3 py-2 text-right hidden md:table-cell"><div class="text-[10px] font-medium" style="color:#96792f">${esc(en.bp)}</div><div class="text-[10px] text-slate-400 num">${fmt(en.bs)}</div></td>
-      <td class="px-1 text-slate-300 text-[10px]">›</td>
-    </tr>`).join('')}
-    </tbody></table>
+    </tr></thead><tbody>${desktopRows}</tbody></table>
   </div></div>`;
 }
 
