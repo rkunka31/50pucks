@@ -78,8 +78,9 @@ function getAliveTeams(){
 // API + FALLBACK
 // ============================================================
 async function fetchStats(sid){
-  try{const r=await fetch(`https://api.nhle.com/stats/rest/en/skater/summary?isAggregate=false&isGame=false&sort=[{"property":"points","direction":"DESC"},{"property":"goals","direction":"DESC"}]&start=0&limit=200&cayenneExp=gameTypeId=3 and seasonId<=${sid} and seasonId>=${sid}`);if(r.ok){const d=await r.json();if(d.data?.length>0)return d.data.map(p=>({id:p.playerId,name:p.skaterFullName,team:nm(p.teamAbbrevs),pos:p.positionCode,gp:p.gamesPlayed||0,g:p.goals||0,a:p.assists||0,pts:p.points||0,_s:'NHL API'}));}}catch(e){console.warn('API1:',e);}
-  try{const r=await fetch(`https://api-web.nhle.com/v1/skater-stats-leaders/${sid}/3?categories=points,goals,assists&limit=-1`);if(r.ok){const d=await r.json();const m=new Map();const pr=(l,c)=>{if(!l)return;for(const p of l){const id=p.id;if(!m.has(id))m.set(id,{id,name:`${p.firstName?.default||''} ${p.lastName?.default||''}`.trim(),team:nm(p.teamAbbrev?.default||''),pos:p.positionCode||'',gp:0,g:0,a:0,pts:0,_s:'NHL API'});const o=m.get(id);if(c==='points')o.pts=p.value||0;if(c==='goals')o.g=p.value||0;if(c==='assists')o.a=p.value||0;}};pr(d.points,'points');pr(d.goals,'goals');pr(d.assists,'assists');const res=[...m.values()];if(res.length>0)return res;}}catch(e){console.warn('API2:',e);}
+  const gameType = sid === '20252026' ? 2 : 3; // 2 = regular season, 3 = playoffs
+  try{const r=await fetch(`https://api.nhle.com/stats/rest/en/skater/summary?isAggregate=false&isGame=false&sort=[{"property":"points","direction":"DESC"},{"property":"goals","direction":"DESC"}]&start=0&limit=200&cayenneExp=gameTypeId=${gameType} and seasonId<=${sid} and seasonId>=${sid}`);if(r.ok){const d=await r.json();if(d.data?.length>0)return d.data.map(p=>({id:p.playerId,name:p.skaterFullName,team:nm(p.teamAbbrevs),pos:p.positionCode,gp:p.gamesPlayed||0,g:p.goals||0,a:p.assists||0,pts:p.points||0,_s:'NHL API'}));}}catch(e){console.warn('API1:',e);}
+  try{const r=await fetch(`https://api-web.nhle.com/v1/skater-stats-leaders/${sid}/${gameType}?categories=points,goals,assists&limit=-1`);if(r.ok){const d=await r.json();const m=new Map();const pr=(l,c)=>{if(!l)return;for(const p of l){const id=p.id;if(!m.has(id))m.set(id,{id,name:`${p.firstName?.default||''} ${p.lastName?.default||''}`.trim(),team:nm(p.teamAbbrev?.default||''),pos:p.positionCode||'',gp:0,g:0,a:0,pts:0,_s:'NHL API'});const o=m.get(id);if(c==='points')o.pts=p.value||0;if(c==='goals')o.g=p.value||0;if(c==='assists')o.a=p.value||0;}};pr(d.points,'points');pr(d.goals,'goals');pr(d.assists,'assists');const res=[...m.values()];if(res.length>0)return res;}}catch(e){console.warn('API2:',e);}
   if(sid==='20242025')return fallback2025();return[];
 }
 
@@ -142,7 +143,7 @@ function poi(l){if(l<=0)return 0;const L=Math.exp(-l);let k=0,p=1;do{k++;p*=Math
 // ============================================================
 // STATE
 // ============================================================
-let S={loading:true,entries:[],stats:null,yr:2025,tab:'entry',sel:null,simRes:null,simRun:false,simCfg:{n:1000,v:.5,adv:{1:.6,1.5:.5,2:.35}},showSim:false,pSort:'ownership',pPos:'all',chartView:'score',_chart:null,adminAuth:false,hiddenTabs:new Set(),_nhlStats:null};
+let S={loading:true,entries:[],stats:null,yr:2026,tab:'entry',sel:null,simRes:null,simRun:false,simCfg:{n:1000,v:.5,adv:{1:.6,1.5:.5,2:.35}},showSim:false,pSort:'ownership',pPos:'all',chartView:'score',_chart:null,adminAuth:false,hiddenTabs:new Set(),_nhlStats:null};
 let _src='',_ld=false;
 function set(u){Object.assign(S,u);render();}
 async function loadData(){if(_ld)return;_ld=true;
@@ -394,7 +395,9 @@ function ST(){
   stats=stats.filter(p=>alive.includes(p.team));
   // Show top 100
   stats=stats.slice(0,100);
+  const seasonNote=S.yr===2026?'<div class="text-xs text-amber-600 mb-3">📊 Regular season stats (will update to playoff stats once playoffs begin)</div>':'';
   return`<div class="space-y-3">
+    ${seasonNote}
     <div class="text-xs text-slate-600"><span class="font-semibold">${stats.length}</span> skaters from playoff teams (top 100 shown)</div>
     <div class="card"><div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="bg-slate-50 border-b border-slate-200">
       <th class="text-left text-[9px] font-semibold text-slate-400 uppercase px-2 sm:px-3 py-1.5">#</th>
@@ -546,7 +549,8 @@ const ROSTER_D=[
 
 // Entry form state (persists in localStorage per device)
 let EF={name:'',owner:'',fwd:Array.from({length:10},()=>({p:'',pk:1})),def:Array.from({length:5},()=>({p:'',pk:1})),submitted:false};
-try{const saved=localStorage.getItem('50pucks_entry');if(saved)EF=JSON.parse(saved);}catch{}
+// Clear any old localStorage data on page load
+try{localStorage.removeItem('50pucks_entry');}catch{}
 function saveEF(){try{localStorage.setItem('50pucks_entry',JSON.stringify(EF));}catch{}}
 
 function efPkTotal(){return EF.fwd.reduce((s,x)=>s+(parseInt(x.pk)||0),0)+EF.def.reduce((s,x)=>s+(parseInt(x.pk)||0),0);}
@@ -583,6 +587,8 @@ async function efSubmit(){
       const r=await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({rows})});
       // no-cors means we can't read the response, but if it didn't throw, it likely succeeded
       EF.submitted=true;EF._status='sent';saveEF();render();
+      // Allow resubmission for testing - don't lock the form
+      setTimeout(()=>{EF.submitted=false;render();},3000);
       return;
     }catch(e){
       console.error('Sheet submit failed:',e);
@@ -623,7 +629,7 @@ function efUpdate(type,idx,field,val){
   saveEF();render();
 }
 
-function efReset(){if(confirm('Clear your entire entry? This cannot be undone.')){EF={name:'',owner:'',fwd:Array.from({length:10},()=>({p:'',pk:1})),def:Array.from({length:5},()=>({p:'',pk:1})),submitted:false};saveEF();render();}}
+function efReset(){if(confirm('Clear your entire entry? This cannot be undone.')){EF={name:'',owner:'',fwd:Array.from({length:10},()=>({p:'',pk:1})),def:Array.from({length:5},()=>({p:'',pk:1})),submitted:false};localStorage.removeItem('50pucks_entry');render();}}
 
 function EN(){
   const v=efValid();const t=efPkTotal();
