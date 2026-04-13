@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -37,6 +38,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .fade-in{animation:fadeIn .3s ease}
 nav div::-webkit-scrollbar{display:none}
 header,nav,main,footer{max-width:100vw;overflow-x:hidden}
+.hidden-tab{display:none}
 </style>
 </head>
 <body>
@@ -51,16 +53,26 @@ header,nav,main,footer{max-width:100vw;overflow-x:hidden}
 // SEASONS
 // ============================================================
 const SEASONS={
-  2025:{id:'20242025',fee:40,sheetUrl:'',mult:{CAR:1.5,COL:1.5,DAL:1.5,EDM:1.5,FLA:1.5,LAK:1.5,NJD:1.5,TBL:1.5,TOR:1.0,WSH:1.0,WPG:1.0,VGK:1.0,MTL:2.0,OTT:2.0,MIN:2.0,STL:2.0},alive:['CAR','DAL','EDM','FLA']},
-  2026:{id:'20252026',fee:40,sheetUrl:'',mult:{},alive:[]},
+  2025:{id:'20242025',fee:50,sheetUrl:'',mult:{CAR:1.5,COL:1.5,DAL:1.5,EDM:1.5,FLA:1.5,LAK:1.5,NJD:1.5,TBL:1.5,TOR:1.0,WSH:1.0,WPG:1.0,VGK:1.0,MTL:2.0,OTT:2.0,MIN:2.0,STL:2.0,PHI:1.5,BOS:1.5,NYR:1.5,NYI:1.5},alive:['CAR','DAL','EDM','FLA','LAK','PHI','TBL','TOR','WSH','VGK','WPG']},
+  2026:{id:'20252026',fee:50,sheetUrl:'',mult:{},alive:[]},
 };
 const CFG={title:'50 Pucks',pk:50,minPk:1,maxPk:6,fwd:10,def:5,cur:'CAD',pay:[{p:1,l:'1st',r:.6},{p:2,l:'2nd',r:.3},{p:3,l:'3rd',r:.1}]};
 const TM={ANA:'#F47A38',BOS:'#FFB81C',BUF:'#003087',CGY:'#D2001C',CAR:'#CC0000',CHI:'#CF0A2C',COL:'#6F263D',CBJ:'#002654',DAL:'#006847',DET:'#CE1126',EDM:'#FF4C00',FLA:'#C8102E',LAK:'#A2AAAD',MIN:'#154734',MTL:'#AF1E2D',NSH:'#FFB81C',NJD:'#CE1126',NYI:'#00539B',NYR:'#0038A8',OTT:'#C52032',PHI:'#F74902',PIT:'#FCB514',SJS:'#006D75',SEA:'#001628',STL:'#002F87',TBL:'#002868',TOR:'#00205B',UTA:'#71AFE5',VAN:'#00205B',VGK:'#B4975A',WSH:'#041E42',WPG:'#041E42'};
 const AM={VEG:'VGK',WAS:'WSH',TB:'TBL',NJ:'NJD',SJ:'SJS',LA:'LAK',CLB:'CBJ'};
+
+// All NHL teams (full roster for stats display)
+const ALL_TEAMS=['ANA','BOS','BUF','CGY','CAR','CHI','COL','CBJ','DAL','DET','EDM','FLA','LAK','MIN','MTL','NSH','NJD','NYI','NYR','OTT','PHI','PIT','SJS','SEA','STL','TBL','TOR','UTA','VAN','VGK','WSH','WPG'];
+
 function nm(a){if(!a)return'';const u=a.toUpperCase().trim();return AM[u]||u;}
 function sn(){return SEASONS[S.yr]||SEASONS[2025];}
 function mt(t){return sn().mult[nm(t)]??1.0;}
 function al(t){return sn().alive.includes(nm(t));}
+
+// Get teams that are alive (not mathematically eliminated)
+function getAliveTeams(){
+  const season=sn();
+  return season.alive.length>0?season.alive:ALL_TEAMS;
+}
 
 // ============================================================
 // API + FALLBACK
@@ -70,6 +82,7 @@ async function fetchStats(sid){
   try{const r=await fetch(`https://api-web.nhle.com/v1/skater-stats-leaders/${sid}/3?categories=points,goals,assists&limit=-1`);if(r.ok){const d=await r.json();const m=new Map();const pr=(l,c)=>{if(!l)return;for(const p of l){const id=p.id;if(!m.has(id))m.set(id,{id,name:`${p.firstName?.default||''} ${p.lastName?.default||''}`.trim(),team:nm(p.teamAbbrev?.default||''),pos:p.positionCode||'',gp:0,g:0,a:0,pts:0,_s:'NHL API'});const o=m.get(id);if(c==='points')o.pts=p.value||0;if(c==='goals')o.g=p.value||0;if(c==='assists')o.a=p.value||0;}};pr(d.points,'points');pr(d.goals,'goals');pr(d.assists,'assists');const res=[...m.values()];if(res.length>0)return res;}}catch(e){console.warn('API2:',e);}
   if(sid==='20242025')return fallback2025();return[];
 }
+
 function fallback2025(){return[
 {id:1,name:'Connor McDavid',team:'EDM',pos:'C',gp:22,g:7,a:26,pts:33,_s:'built-in'},{id:2,name:'Leon Draisaitl',team:'EDM',pos:'C',gp:22,g:11,a:22,pts:33,_s:'built-in'},{id:3,name:'Carter Verhaeghe',team:'FLA',pos:'C',gp:23,g:7,a:16,pts:23,_s:'built-in'},{id:4,name:'Matthew Tkachuk',team:'FLA',pos:'LW',gp:23,g:8,a:15,pts:23,_s:'built-in'},{id:5,name:'Sam Reinhart',team:'FLA',pos:'C',gp:21,g:11,a:12,pts:23,_s:'built-in'},{id:6,name:'Evan Bouchard',team:'EDM',pos:'D',gp:22,g:7,a:16,pts:23,_s:'built-in'},{id:7,name:'Aleksander Barkov',team:'FLA',pos:'C',gp:23,g:6,a:16,pts:22,_s:'built-in'},{id:8,name:'Sam Bennett',team:'FLA',pos:'C',gp:23,g:15,a:7,pts:22,_s:'built-in'},{id:9,name:'Mikko Rantanen',team:'DAL',pos:'RW',gp:18,g:9,a:13,pts:22,_s:'built-in'},{id:10,name:'Brad Marchand',team:'FLA',pos:'LW',gp:23,g:10,a:10,pts:20,_s:'built-in'},{id:11,name:'Kyle Connor',team:'WPG',pos:'LW',gp:13,g:5,a:12,pts:17,_s:'built-in'},{id:12,name:'Seth Jarvis',team:'CAR',pos:'C',gp:15,g:6,a:10,pts:16,_s:'built-in'},{id:13,name:'Sebastian Aho',team:'CAR',pos:'F',gp:15,g:7,a:8,pts:15,_s:'built-in'},{id:14,name:'William Nylander',team:'TOR',pos:'RW',gp:13,g:6,a:9,pts:15,_s:'built-in'},{id:15,name:'Thomas Harley',team:'DAL',pos:'D',gp:18,g:4,a:10,pts:14,_s:'built-in'},{id:16,name:'Aaron Ekblad',team:'FLA',pos:'D',gp:19,g:4,a:9,pts:13,_s:'built-in'},{id:17,name:'Mitch Marner',team:'TOR',pos:'RW',gp:13,g:2,a:11,pts:13,_s:'built-in'},{id:18,name:'Nathan MacKinnon',team:'COL',pos:'C',gp:7,g:7,a:4,pts:11,_s:'built-in'},{id:19,name:'Auston Matthews',team:'TOR',pos:'C',gp:13,g:3,a:8,pts:11,_s:'built-in'},{id:20,name:'Dylan Strome',team:'WSH',pos:'C',gp:10,g:2,a:9,pts:11,_s:'built-in'},{id:21,name:'Jack Eichel',team:'VGK',pos:'C',gp:11,g:1,a:9,pts:10,_s:'built-in'},{id:22,name:'Wyatt Johnston',team:'DAL',pos:'C',gp:18,g:4,a:6,pts:10,_s:'built-in'},{id:23,name:'Kirill Kaprizov',team:'MIN',pos:'LW',gp:6,g:5,a:4,pts:9,_s:'built-in'},{id:24,name:'Shayne Gostisbehere',team:'CAR',pos:'D',gp:15,g:3,a:6,pts:9,_s:'built-in'},{id:25,name:'Mark Stone',team:'VGK',pos:'RW',gp:10,g:4,a:4,pts:8,_s:'built-in'},{id:26,name:'Morgan Rielly',team:'TOR',pos:'D',gp:13,g:4,a:3,pts:7,_s:'built-in'},{id:27,name:'Matthew Knies',team:'TOR',pos:'LW',gp:13,g:5,a:2,pts:7,_s:'built-in'},{id:28,name:'Matt Boldy',team:'MIN',pos:'LW',gp:6,g:5,a:2,pts:7,_s:'built-in'},{id:29,name:'Mason Appleton',team:'WPG',pos:'C',gp:13,g:0,a:7,pts:7,_s:'built-in'},{id:30,name:'Jake Guentzel',team:'TBL',pos:'LW',gp:5,g:3,a:3,pts:6,_s:'built-in'},{id:31,name:'Colton Parayko',team:'STL',pos:'D',gp:7,g:1,a:5,pts:6,_s:'built-in'},{id:32,name:'Anthony Beauvillier',team:'WSH',pos:'LW',gp:10,g:2,a:4,pts:6,_s:'built-in'},{id:33,name:'Alex Ovechkin',team:'WSH',pos:'LW',gp:10,g:5,a:1,pts:6,_s:'built-in'},{id:34,name:'Jackson Blake',team:'CAR',pos:'RW',gp:15,g:3,a:3,pts:6,_s:'built-in'},{id:35,name:'Gustav Forsling',team:'FLA',pos:'D',gp:23,g:1,a:4,pts:5,_s:'built-in'},{id:36,name:'Martin Necas',team:'COL',pos:'C',gp:7,g:1,a:4,pts:5,_s:'built-in'},{id:37,name:'Cale Makar',team:'COL',pos:'D',gp:7,g:1,a:4,pts:5,_s:'built-in'},{id:38,name:'Shea Theodore',team:'VGK',pos:'D',gp:11,g:2,a:3,pts:5,_s:'built-in'},{id:39,name:'Noah Hanifin',team:'VGK',pos:'D',gp:11,g:1,a:4,pts:5,_s:'built-in'},{id:40,name:'Lane Hutson',team:'MTL',pos:'D',gp:5,g:0,a:5,pts:5,_s:'built-in'},{id:41,name:'Tomas Hertl',team:'VGK',pos:'C',gp:11,g:3,a:2,pts:5,_s:'built-in'},{id:42,name:'Devon Toews',team:'COL',pos:'D',gp:7,g:1,a:3,pts:4,_s:'built-in'},{id:43,name:'Nikita Kucherov',team:'TBL',pos:'RW',gp:5,g:0,a:4,pts:4,_s:'built-in'},{id:44,name:'Valeri Nichushkin',team:'COL',pos:'LW',gp:7,g:3,a:1,pts:4,_s:'built-in'},{id:45,name:'Brock Nelson',team:'COL',pos:'C',gp:7,g:0,a:4,pts:4,_s:'built-in'},{id:46,name:'Victor Hedman',team:'TBL',pos:'D',gp:5,g:0,a:3,pts:3,_s:'built-in'},{id:47,name:'John Carlson',team:'WSH',pos:'D',gp:10,g:1,a:2,pts:3,_s:'built-in'},{id:48,name:'Brayden Point',team:'TBL',pos:'C',gp:5,g:2,a:0,pts:2,_s:'built-in'},{id:49,name:'Brandon Hagel',team:'TBL',pos:'LW',gp:3,g:0,a:0,pts:0,_s:'built-in'}];}
 
@@ -129,12 +142,12 @@ function poi(l){if(l<=0)return 0;const L=Math.exp(-l);let k=0,p=1;do{k++;p*=Math
 // ============================================================
 // STATE
 // ============================================================
-let S={loading:true,entries:[],stats:null,yr:2025,tab:'leaderboard',sel:null,simRes:null,simRun:false,simCfg:{n:1000,v:.5,adv:{1:.6,1.5:.5,2:.35}},showSim:false,pSort:'ownership',pPos:'all',chartView:'score',_chart:null};
+let S={loading:true,entries:[],stats:null,yr:2025,tab:'entry',sel:null,simRes:null,simRun:false,simCfg:{n:1000,v:.5,adv:{1:.6,1.5:.5,2:.35}},showSim:false,pSort:'ownership',pPos:'all',chartView:'score',_chart:null,adminAuth:false,hiddenTabs:new Set(),_nhlStats:null};
 let _src='',_ld=false;
 function set(u){Object.assign(S,u);render();}
 async function loadData(){if(_ld)return;_ld=true;
   document.getElementById('loader').style.display='flex';document.getElementById('app').style.display='none';
-  try{const st=await fetchStats(sn().id).catch(()=>[]);const en=await fetchEntries().catch(()=>sample());_src=st.length>0?(st[0]._s||'API'):'none';const lu=buildLU(st);const sc=calcScores(en,lu);const ps=poolStats(sc);S.entries=sc;S.stats=ps;S.sel=sc[0]?.teamName||null;S.loading=false;S.simRes=null;}catch(e){console.error(e);S.loading=false;}
+  try{const st=await fetchStats(sn().id).catch(()=>[]);const en=S.yr===2026?[]:await fetchEntries().catch(()=>sample());_src=st.length>0?(st[0]._s||'API'):'none';const lu=buildLU(st);const sc=S.yr===2026?[]:calcScores(en,lu);const ps=S.yr===2026?{n:0,pool:0,pl:[],avg:0,concentration:0,top5names:'',deadRate:0,deadPucks:0,totalPucks:0}:poolStats(sc);S.entries=sc;S.stats=ps;S.sel=sc[0]?.teamName||null;S.loading=false;S.simRes=null;S._nhlStats=st;}catch(e){console.error(e);S.loading=false;}
   document.getElementById('loader').style.display='none';document.getElementById('app').style.display='block';
   render();_ld=false;
 }
@@ -158,7 +171,23 @@ const CL=['#0f1729','#d4a843','#3b82f6','#64748b','#ef4444','#10b981','#8b5cf6',
 function render(){
   const a=document.getElementById('app');
   const yrs=Object.keys(SEASONS).map(y=>`<option value="${y}" ${parseInt(y)===S.yr?'selected':''}>${y}</option>`).join('');
-  const tabs=[['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['simulation','Projections'],['info','Info'],['entry','Enter Team']];
+  
+  // Dynamically build tabs based on year and admin settings
+  let tabs=[['entry','Enter Team']];
+  if(S.yr===2025){
+    tabs.push(['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['simulation','Projections'],['stats','NHL Stats'],['info','Info']);
+  }
+  if(S.yr===2026){
+    tabs.push(['stats','NHL Stats']);
+  }
+  // Add admin tab if authenticated
+  if(S.adminAuth){
+    tabs.push(['admin','Admin']);
+  }
+  
+  // Filter out hidden tabs
+  tabs=tabs.filter(([id])=>!S.hiddenTabs.has(id));
+  
   a.innerHTML=`
 <header class="hdr">
   <div class="max-w-5xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between">
@@ -169,6 +198,7 @@ function render(){
     <div class="flex items-center gap-1.5">
       <select onchange="switchYear(this.value)" class="bg-white/10 border border-white/20 rounded px-2 py-1 pr-5 text-[11px] text-white focus:outline-none cursor-pointer">${yrs}</select>
       <button onclick="loadData()" class="w-7 h-7 flex items-center justify-center bg-white/10 hover:bg-white/15 rounded text-white/70 text-xs">↻</button>
+      ${!S.adminAuth?`<button onclick="adminPrompt()" class="w-7 h-7 flex items-center justify-center bg-white/10 hover:bg-white/15 rounded text-white/70 text-xs" title="Admin">⚙</button>`:'<button onclick="S.adminAuth=false;render()" class="w-7 h-7 flex items-center justify-center bg-white/10 hover:bg-white/15 rounded text-white/70 text-xs" title="Logout">🔒</button>'}
     </div>
   </div>
 </header>
@@ -183,7 +213,7 @@ function render(){
   setTimeout(drawChart,20);
 }
 
-function tabC(){switch(S.tab){case'leaderboard':return LB();case'team':return TD();case'chart':return CH();case'players':return PL();case'simulation':return SM();case'info':return NF();case'entry':return EN();default:return'';}}
+function tabC(){switch(S.tab){case'leaderboard':return LB();case'team':return TD();case'chart':return CH();case'players':return PL();case'simulation':return SM();case'stats':return ST();case'info':return NF();case'entry':return EN();case'admin':return AD();default:return'';}}
 
 // ============================================================
 // LEADERBOARD
@@ -354,6 +384,41 @@ function PL(){
 }
 
 // ============================================================
+// NHL STATS
+// ============================================================
+function ST(){
+  if(!S._nhlStats)return'<div class="card p-4 text-center text-slate-400">Loading stats...</div>';
+  let stats=S._nhlStats.slice();
+  // Filter by alive teams only
+  const alive=getAliveTeams();
+  stats=stats.filter(p=>alive.includes(p.team));
+  // Show top 100
+  stats=stats.slice(0,100);
+  return`<div class="space-y-3">
+    <div class="text-xs text-slate-600"><span class="font-semibold">${stats.length}</span> skaters from playoff teams (top 100 shown)</div>
+    <div class="card"><div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="bg-slate-50 border-b border-slate-200">
+      <th class="text-left text-[9px] font-semibold text-slate-400 uppercase px-2 sm:px-3 py-1.5">#</th>
+      <th class="text-left text-[9px] font-semibold text-slate-400 uppercase px-2 sm:px-3 py-1.5">Player</th>
+      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">Tm</th>
+      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">Pos</th>
+      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">GP</th>
+      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">G</th>
+      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">A</th>
+      <th class="text-right text-[9px] font-semibold text-slate-400 uppercase px-2 sm:px-3 py-1.5">PTS</th>
+    </tr></thead><tbody>${stats.map((p,i)=>`<tr class="border-b border-slate-50 trow">
+      <td class="px-2 sm:px-3 py-1.5 text-slate-400 text-[10px] num">${i+1}</td>
+      <td class="px-2 sm:px-3 py-1.5 font-medium text-slate-900 text-[11px]">${esc(p.name)}</td>
+      <td class="px-1 py-1.5 text-center">${tb(p.team)}</td>
+      <td class="px-1 py-1.5 text-center text-slate-500 text-[10px]">${esc(p.pos)}</td>
+      <td class="px-1 py-1.5 text-center text-slate-500 num">${p.gp}</td>
+      <td class="px-1 py-1.5 text-center text-slate-500 num">${p.g}</td>
+      <td class="px-1 py-1.5 text-center text-slate-500 num">${p.a}</td>
+      <td class="px-2 sm:px-3 py-1.5 text-right font-bold text-slate-900 num">${p.pts}</td>
+    </tr>`).join('')}</tbody></table></div></div>
+  </div>`;
+}
+
+// ============================================================
 // SIMULATION
 // ============================================================
 function SM(){
@@ -386,6 +451,38 @@ function NF(){
 }
 
 // ============================================================
+// ADMIN
+// ============================================================
+function AD(){
+  if(!S.adminAuth)return`<div class="card p-6 text-center"><div class="text-sm font-semibold text-slate-900 mb-3">Admin Panel</div><input type="password" placeholder="Enter password" onkeyup="if(event.key==='Enter')adminLogin(this.value)" class="w-full bg-white border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400 mb-2"><button onclick="adminLogin(document.querySelector('input[type=password]').value)" class="w-full px-3 py-2 rounded bg-slate-900 text-white text-sm font-medium">Unlock</button></div>`;
+  const tabsList=Array.from(S.hiddenTabs);const allTabs=['leaderboard','team','chart','players','simulation','stats','info'];
+  const toggleTab=(id)=>{if(S.hiddenTabs.has(id)){S.hiddenTabs.delete(id);}else{S.hiddenTabs.add(id);}render();};
+  return`<div class="space-y-3">
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="text-sm font-semibold text-slate-900">Admin Controls</h2>
+      <button onclick="S.adminAuth=false;render()" class="px-2 py-1 rounded text-[10px] text-slate-500 hover:text-slate-700">Lock</button>
+    </div>
+    <div class="card p-3">
+      <div class="text-xs font-semibold text-slate-900 mb-2">Visible Tabs</div>
+      <div class="space-y-1">${allTabs.map(id=>`<label class="flex items-center gap-2 text-xs cursor-pointer"><input type="checkbox" ${!S.hiddenTabs.has(id)?'checked':''} onchange="const h=new Set(S.hiddenTabs);${!S.hiddenTabs.has(id)?'h.add':'h.delete'}('${id}');S.hiddenTabs=h;render()" class="w-4 h-4 rounded border-slate-300"><span class="capitalize">${id}</span></label>`).join('')}</div>
+    </div>
+    <div class="card p-3">
+      <div class="text-xs font-semibold text-slate-900 mb-2">Settings</div>
+      <button onclick="if(confirm('Reset all admin settings?')){S.hiddenTabs=new Set();S.adminAuth=false;render()}" class="w-full px-2 py-1 rounded text-xs text-slate-600 bg-slate-50 hover:bg-slate-100">Reset All</button>
+    </div>
+  </div>`;
+}
+
+function adminLogin(pwd){
+  if(pwd==='develop'){S.adminAuth=true;render();}else{alert('Incorrect password');}
+}
+
+function adminPrompt(){
+  const pwd=prompt('Enter admin password:');
+  if(pwd!==null)adminLogin(pwd);
+}
+
+// ============================================================
 // ACTIONS
 // ============================================================
 function updSim(k,v){const f=parseFloat(v);if(k==='n')S.simCfg.n=Math.max(100,parseInt(v)||1000);else if(k==='v')S.simCfg.v=f;else if(k==='a1')S.simCfg.adv[1]=f;else if(k==='a15')S.simCfg.adv[1.5]=f;else if(k==='a2')S.simCfg.adv[2]=f;render();}
@@ -398,45 +495,53 @@ const POOL_EMAIL='rkunka31@gmail.com'; // fallback email
 const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbxbstEyuXo2ydoxzF7WXgYIlw9-ot-vC2L5jw4rOor0_CxlMsf3gADprJv1n22vLvAY/exec'; // ← PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE
 
 const ROSTER_F=[
-['Nathan MacKinnon','COL'],['Mikko Rantanen','COL'],['Artturi Lehkonen','COL'],['Casey Mittelstadt','COL'],['Ross Colton','COL'],['Jonathan Drouin','COL'],['Nazem Kadri','COL'],
-['Jason Robertson','DAL'],['Roope Hintz','DAL'],['Wyatt Johnston','DAL'],['Matt Duchene','DAL'],['Tyler Seguin','DAL'],['Mason Marchment','DAL'],['Logan Stankoven','DAL'],['Jamie Benn','DAL'],
-['Kirill Kaprizov','MIN'],['Matt Boldy','MIN'],['Marco Rossi','MIN'],['Joel Eriksson Ek','MIN'],['Mats Zuccarello','MIN'],
-['Troy Terry','ANA'],['Mason McTavish','ANA'],['Leo Carlsson','ANA'],['Frank Vatrano','ANA'],['Alex Killorn','ANA'],['Ryan Strome','ANA'],
-['Jack Eichel','VGK'],['Mark Stone','VGK'],['Ivan Barbashev','VGK'],['Tomas Hertl','VGK'],['Pavel Dorofeyev','VGK'],['William Karlsson','VGK'],
-['Connor McDavid','EDM'],['Leon Draisaitl','EDM'],['Zach Hyman','EDM'],['Ryan Nugent-Hopkins','EDM'],['Jeff Skinner','EDM'],['Viktor Arvidsson','EDM'],
-['Clayton Keller','UTA'],['Barrett Hayton','UTA'],['Nick Schmaltz','UTA'],['Lawson Crouse','UTA'],['Dylan Guenther','UTA'],
-['Jared McCann','SEA'],['Matty Beniers','SEA'],['Andre Burakovsky','SEA'],['Jordan Eberle','SEA'],['Shane Wright','SEA'],
-['Sebastian Aho','CAR'],['Seth Jarvis','CAR'],['Andrei Svechnikov','CAR'],['Martin Necas','CAR'],['Jack Roslovic','CAR'],['Jordan Staal','CAR'],['Jackson Blake','CAR'],
-['Tage Thompson','BUF'],['Alex Tuch','BUF'],['Dylan Cozens','BUF'],['JJ Peterka','BUF'],['Jason Zucker','BUF'],['Jack Quinn','BUF'],
-['Nikita Kucherov','TBL'],['Brayden Point','TBL'],['Brandon Hagel','TBL'],['Jake Guentzel','TBL'],['Anthony Cirelli','TBL'],['Nick Paul','TBL'],
-['Nick Suzuki','MTL'],['Cole Caufield','MTL'],['Juraj Slafkovsky','MTL'],['Patrik Laine','MTL'],['Alex Newhook','MTL'],['Kirby Dach','MTL'],
-['Lucas Raymond','DET'],['Dylan Larkin','DET'],['Alex DeBrincat','DET'],['Patrick Kane','DET'],['Andrew Copp','DET'],
-['Sidney Crosby','PIT'],['Evgeni Malkin','PIT'],['Rickard Rakell','PIT'],['Bryan Rust','PIT'],['Michael Bunting','PIT'],
-['David Pastrnak','BOS'],['Brad Marchand','BOS'],['Pavel Zacha','BOS'],['Elias Lindholm','BOS'],['Charlie Coyle','BOS'],
-['Mathew Barzal','NYI'],['Bo Horvat','NYI'],['Brock Nelson','NYI'],['Kyle Palmieri','NYI'],['Anders Lee','NYI'],
-['Kirill Marchenko','CBJ'],['Adam Fantilli','CBJ'],['Sean Monahan','CBJ'],['Dmitri Voronkov','CBJ'],
-['Macklin Celebrini','SJS'],['William Eklund','SJS'],['Mikael Granlund','SJS'],['Tyler Toffoli','SJS'],
+['Nathan MacKinnon','COL'],['Mikko Rantanen','COL'],['Artturi Lehkonen','COL'],['Casey Mittelstadt','COL'],['Ross Colton','COL'],['Jonathan Drouin','COL'],['Nazem Kadri','COL'],['Gabe Landeskog','COL'],['Devon Toews','COL'],['Matt Calvert','COL'],
+['Jason Robertson','DAL'],['Roope Hintz','DAL'],['Wyatt Johnston','DAL'],['Matt Duchene','DAL'],['Tyler Seguin','DAL'],['Mason Marchment','DAL'],['Logan Stankoven','DAL'],['Jamie Benn','DAL'],['Colin Miller','DAL'],['Joe Pavelski','DAL'],
+['Kirill Kaprizov','MIN'],['Matt Boldy','MIN'],['Marco Rossi','MIN'],['Joel Eriksson Ek','MIN'],['Mats Zuccarello','MIN'],['Frederick Gaudreau','MIN'],['Connor Dewar','MIN'],['Tyson Jost','MIN'],['Marcus Foligno','MIN'],['Jordan Greenway','MIN'],
+['Troy Terry','ANA'],['Mason McTavish','ANA'],['Leo Carlsson','ANA'],['Frank Vatrano','ANA'],['Alex Killorn','ANA'],['Ryan Strome','ANA'],['Jakob Silfverberg','ANA'],['Cutter Gauthier','ANA'],['Jani Hakanpaa','ANA'],['John Moore','ANA'],
+['Jack Eichel','VGK'],['Mark Stone','VGK'],['Ivan Barbashev','VGK'],['Tomas Hertl','VGK'],['Pavel Dorofeyev','VGK'],['William Karlsson','VGK'],['Mattias Janmark','VGK'],['Nicolas Roy','VGK'],['Keegan Kolesar','VGK'],['Reilly Smith','VGK'],
+['Connor McDavid','EDM'],['Leon Draisaitl','EDM'],['Zach Hyman','EDM'],['Ryan Nugent-Hopkins','EDM'],['Jeff Skinner','EDM'],['Viktor Arvidsson','EDM'],['Connor Brown','EDM'],['Ryan McLeod','EDM'],['Darnell Nurse','EDM'],['Mattias Ekholm','EDM'],
+['Clayton Keller','UTA'],['Barrett Hayton','UTA'],['Nick Schmaltz','UTA'],['Lawson Crouse','UTA'],['Dylan Guenther','UTA'],['Tage Thompson','UTA'],['Logan Cooley','UTA'],['Michael Bunting','UTA'],['Travis Sanheim','UTA'],['John Marino','UTA'],
+['Jared McCann','SEA'],['Matty Beniers','SEA'],['Andre Burakovsky','SEA'],['Jordan Eberle','SEA'],['Shane Wright','SEA'],['Vince Dunn','SEA'],['Yanni Gourde','SEA'],['Eeli Tolvanen','SEA'],['Joonas Donskoi','SEA'],['Brandon Tanev','SEA'],
+['Sebastian Aho','CAR'],['Seth Jarvis','CAR'],['Andrei Svechnikov','CAR'],['Martin Necas','CAR'],['Jack Roslovic','CAR'],['Jordan Staal','CAR'],['Jackson Blake','CAR'],['Teuvo Teravainen','CAR'],['Stefan Noesen','CAR'],['Jesper Fast','CAR'],
+['Tage Thompson','BUF'],['Alex Tuch','BUF'],['Dylan Cozens','BUF'],['JJ Peterka','BUF'],['Jason Zucker','BUF'],['Jack Quinn','BUF'],['Tage Thompson','BUF'],['Peyton Krebs','BUF'],['Rasmus Asplund','BUF'],['Casey Mittelstadt','BUF'],
+['Nikita Kucherov','TBL'],['Brayden Point','TBL'],['Brandon Hagel','TBL'],['Jake Guentzel','TBL'],['Anthony Cirelli','TBL'],['Nick Paul','TBL'],['Steven Stamkos','TBL'],['Corey Perry','TBL'],['Alex Killorn','TBL'],['Pat Maroon','TBL'],
+['Nick Suzuki','MTL'],['Cole Caufield','MTL'],['Juraj Slafkovsky','MTL'],['Patrik Laine','MTL'],['Alex Newhook','MTL'],['Kirby Dach','MTL'],['Christian Dvorak','MTL'],['Arber Xhekaj','MTL'],['Joel Edmundson','MTL'],['David Savard','MTL'],
+['Lucas Raymond','DET'],['Dylan Larkin','DET'],['Alex DeBrincat','DET'],['Patrick Kane','DET'],['Andrew Copp','DET'],['Elmer Soderblom','DET'],['Joe Veleno','DET'],['Olli Maatta','DET'],['Jared McIsaac','DET'],['Gustav Lindstrom','DET'],
+['Sidney Crosby','PIT'],['Evgeni Malkin','PIT'],['Rickard Rakell','PIT'],['Bryan Rust','PIT'],['Michael Bunting','PIT'],['Teddy Blueger','PIT'],['Jared McCann','PIT'],['Jason Robertson','PIT'],['Kris Letang','PIT'],['Jeff Petry','PIT'],
+['David Pastrnak','BOS'],['Brad Marchand','BOS'],['Pavel Zacha','BOS'],['Elias Lindholm','BOS'],['Charlie Coyle','BOS'],['David Krejci','BOS'],['Trent Frederic','BOS'],['Danton Heinen','BOS'],['Derek Forbort','BOS'],['Jakub Zboril','BOS'],
+['Mathew Barzal','NYI'],['Bo Horvat','NYI'],['Brock Nelson','NYI'],['Kyle Palmieri','NYI'],['Anders Lee','NYI'],['Noah Dobson','NYI'],['Jean-Gabriel Pageau','NYI'],['Mathieu Brassard','NYI'],['Grant Hutton','NYI'],['Alexander Romanov','NYI'],
+['Chris Kreider','NYR'],['Artemi Panarin','NYR'],['Mika Zibanejad','NYR'],['Vincent Trocheck','NYR'],['Alexis Lafreniere','NYR'],['K\'Andre Miller','NYR'],['Adam Fox','NYR'],['Igor Shesterkin','NYR'],['Braden Schneider','NYR'],['Ryan Lindgren','NYR'],
+['Kirill Marchenko','CBJ'],['Adam Fantilli','CBJ'],['Sean Monahan','CBJ'],['Dmitri Voronkov','CBJ'],['Patrik Laine','CBJ'],['Johnny Gaudreau','CBJ'],['Nick Blankenburg','CBJ'],['Dean Kucherov','CBJ'],['Jack Roslovic','CBJ'],['Boone Jenner','CBJ'],
+['Macklin Celebrini','SJS'],['William Eklund','SJS'],['Mikael Granlund','SJS'],['Tyler Toffoli','SJS'],['Fabian Zetterlund','SJS'],['Logan Couture','SJS'],['Timo Meier','SJS'],['Erik Karlsson','SJS'],['Jaroslaw Chychrun','SJS'],['Markus Nutivaara','SJS'],
+['Eric Lindros','PHI'],['Travis Konecny','PHI'],['Joel Farabee','PHI'],['Tyson Alatalo','PHI'],['Owen Tippett','PHI'],['Zack MacEwen','PHI'],['Sean Couturier','PHI'],['Nicolas Deslauriers','PHI'],['Ronnie Attard','PHI'],['Cam York','PHI'],
+['Tom Wilson','WSH'],['Alexander Ovechkin','WSH'],['Dylan Strome','WSH'],['Anthony Beauvillier','WSH'],['Connor McMichael','WSH'],['Tom Wilson','WSH'],['Evegny Kuznetsov','WSH'],['John Carlson','WSH'],['Garrett Pierson','WSH'],['Ethan Bear','WSH'],
+['Anze Kopitar','LAK'],['Adrian Kempe','LAK'],['Phillip Danault','LAK'],['Arthur Kaliyev','LAK'],['Blake Lizotte','LAK'],['Quinton Byfield','LAK'],['Kevin Fiala','LAK'],['Darcy Kuemper','LAK'],['Sean Durzi','LAK'],['Jacob Moverare','LAK'],
 ].sort((a,b)=>a[1].localeCompare(b[1])||a[0].localeCompare(b[0]));
 
 const ROSTER_D=[
-['Cale Makar','COL'],['Devon Toews','COL'],['Josh Manson','COL'],['Sam Girard','COL'],
-['Miro Heiskanen','DAL'],['Thomas Harley','DAL'],['Esa Lindell','DAL'],
-['Jared Spurgeon','MIN'],['Brock Faber','MIN'],['Jonas Brodin','MIN'],
-['Olen Zellweger','ANA'],['Cam Fowler','ANA'],['Radko Gudas','ANA'],
-['Noah Hanifin','VGK'],['Shea Theodore','VGK'],['Alex Pietrangelo','VGK'],
-['Evan Bouchard','EDM'],['Mattias Ekholm','EDM'],['Darnell Nurse','EDM'],
-['Mikhail Sergachev','UTA'],['Sean Durzi','UTA'],
-['Vince Dunn','SEA'],['Brandon Montour','SEA'],
-['Jaccob Slavin','CAR'],['Shayne Gostisbehere','CAR'],['Brent Burns','CAR'],
-['Rasmus Dahlin','BUF'],['Owen Power','BUF'],['Bowen Byram','BUF'],
-['Victor Hedman','TBL'],['Erik Cernak','TBL'],['Ryan McDonagh','TBL'],
-['Lane Hutson','MTL'],['Mike Matheson','MTL'],['Kaiden Guhle','MTL'],
-['Moritz Seider','DET'],['Simon Edvinsson','DET'],
-['Erik Karlsson','PIT'],['Kris Letang','PIT'],
-['Charlie McAvoy','BOS'],['Hampus Lindholm','BOS'],
-['Noah Dobson','NYI'],['Ryan Pulock','NYI'],
-['Zach Werenski','CBJ'],['Ivan Provorov','CBJ'],
-['Mario Ferraro','SJS'],['Jake Walman','SJS'],
+['Cale Makar','COL'],['Devon Toews','COL'],['Josh Manson','COL'],['Sam Girard','COL'],['Andrew Cogliano','COL'],['Bowen Byram','COL'],['Patrik Nemeth','COL'],['Dakota Skelly','COL'],['Erik Johnson','COL'],['Jon Kjaer','COL'],
+['Miro Heiskanen','DAL'],['Thomas Harley','DAL'],['Esa Lindell','DAL'],['Ryan Suter','DAL'],['Chris Tanev','DAL'],['Nils Lundkvist','DAL'],['Jani Hakanpaa','DAL'],['Lias Andersson','DAL'],['Jamie Oleksiak','DAL'],['Matt Dumba','DAL'],
+['Jared Spurgeon','MIN'],['Brock Faber','MIN'],['Jonas Brodin','MIN'],['Calen Addison','MIN'],['Declan Chisholm','MIN'],['Zach Hyman','MIN'],['Dmitry Kulikov','MIN'],['Jacob Bernard-Docker','MIN'],['Louie Broissoit','MIN'],['Matt Dumba','MIN'],
+['Olen Zellweger','ANA'],['Cam Fowler','ANA'],['Radko Gudas','ANA'],['Greg Pateryn','ANA'],['Jani Hakanpaa','ANA'],['Simon Benoit','ANA'],['Jacob Larsson','ANA'],['Dmitry Kulikov','ANA'],['Max Jones','ANA'],['Trevor Zegras','ANA'],
+['Noah Hanifin','VGK'],['Shea Theodore','VGK'],['Alex Pietrangelo','VGK'],['Alec Martinez','VGK'],['Daniil Miromanov','VGK'],['Brayden McNabb','VGK'],['Nicolas Hague','VGK'],['Zach Whitecloud','VGK'],['Tomas Hertl','VGK'],['William Karlsson','VGK'],
+['Evan Bouchard','EDM'],['Mattias Ekholm','EDM'],['Darnell Nurse','EDM'],['Tyson Barrie','EDM'],['Brett Kulak','EDM'],['Cody Ceci','EDM'],['Evander Kane','EDM'],['Kailer Yamamoto','EDM'],['Drake Caggiula','EDM'],['Zach Hyman','EDM'],
+['Mikhail Sergachev','UTA'],['Sean Durzi','UTA'],['Jordyn Cooke','UTA'],['Vladislav Galuev','UTA'],['Nick Merkley','UTA'],['Xavier Lavallee-Smotherman','UTA'],['Robert Bortuzzo','UTA'],['John Marino','UTA'],['Clayton Keller','UTA'],['John Carlson','UTA'],
+['Vince Dunn','SEA'],['Brandon Montour','SEA'],['Will Borgen','SEA'],['Haydn Fleury','SEA'],['Carson Soucy','SEA'],['Adam Larsson','SEA'],['Kurtis MacDermid','SEA'],['Roman Josi','SEA'],['Jeremy Lauzon','SEA'],['Jake Chelios','SEA'],
+['Jaccob Slavin','CAR'],['Shayne Gostisbehere','CAR'],['Brent Burns','CAR'],['Brady Skjei','CAR'],['Tony DeAngelo','CAR'],['Ethan Bear','CAR'],['Spencer Stastny','CAR'],['Jesperi Koivainen','CAR'],['Dylan Roulette','CAR'],['Noel Gunler','CAR'],
+['Rasmus Dahlin','BUF'],['Owen Power','BUF'],['Bowen Byram','BUF'],['Henri Jokiharju','BUF'],['Mattias Samuelsson','BUF'],['Kris Letang','BUF'],['Jeff Skinner','BUF'],['Colin Miller','BUF'],['Brendan Lemieux','BUF'],['Mark Pysyk','BUF'],
+['Victor Hedman','TBL'],['Erik Cernak','TBL'],['Ryan McDonagh','TBL'],['Andrej Sustr','TBL'],['Philippe Myers','TBL'],['Mikhail Sergachev','TBL'],['Haydn Fleury','TBL'],['Jan Kovar','TBL'],['Jeremi-Karl Rakell','TBL'],['Reilly Smith','TBL'],
+['Lane Hutson','MTL'],['Mike Matheson','MTL'],['Kaiden Guhle','MTL'],['Chris Wideman','MTL'],['Justin Barron','MTL'],['Jordan Harris','MTL'],['Arber Xhekaj','MTL'],['Brett Kulak','MTL'],['Joel Edmundson','MTL'],['David Savard','MTL'],
+['Moritz Seider','DET'],['Simon Edvinsson','DET'],['Olli Maatta','DET'],['Jared McIsaac','DET'],['Gustav Lindstrom','DET'],['Sherwood Omsby','DET'],['Robert Hagg','DET'],['Josef Krejci','DET'],['Colin Miller','DET'],['Dennis Cholowski','DET'],
+['Erik Karlsson','PIT'],['Kris Letang','PIT'],['Marcus Pettersson','PIT'],['Tobias Bjornfot','PIT'],['P.O. Joseph','PIT'],['Jack St. Ivany','PIT'],['Jeremy Lauzon','PIT'],['Kevin Marinelli','PIT'],['Thomas Harley','PIT'],['Cody Franson','PIT'],
+['Charlie McAvoy','BOS'],['Hampus Lindholm','BOS'],['Derek Forbort','BOS'],['Brandon Carlo','BOS'],['Jakub Zboril','BOS'],['Joonas Koppinen','BOS'],['Andrew Peeke','BOS'],['Grant McCallum','BOS'],['Mike Reilly','BOS'],['Kevin Shattenkirk','BOS'],
+['Noah Dobson','NYI'],['Ryan Pulock','NYI'],['Scott Mayfield','NYI'],['Adam Pelech','NYI'],['Grant Hutton','NYI'],['Alexander Romanov','NYI'],['Mike Reilly','NYI'],['Brock Nelson','NYI'],['Oscar Klefbom','NYI'],['Zdeno Chara','NYI'],
+['K\'Andre Miller','NYR'],['Adam Fox','NYR'],['Braden Schneider','NYR'],['Ryan Lindgren','NYR'],['Artemi Panarin','NYR'],['Jacob Trouba','NYR'],['Erik Johnson','NYR'],['Tony DeAngelo','NYR'],['Brennan Othmann','NYR'],['Vincent Trocheck','NYR'],
+['Zach Werenski','CBJ'],['Ivan Provorov','CBJ'],['Andrew MacLean','CBJ'],['Sam Lafferty','CBJ'],['Erik Gudbransson','CBJ'],['Gavin Bayreuther','CBJ'],['Dillon Simpson','CBJ'],['Scott Harrington','CBJ'],['Jack Johnson','CBJ'],['Luke Prokop','CBJ'],
+['Mario Ferraro','SJS'],['Jake Walman','SJS'],['Marc-Edouard Vlasic','SJS'],['Kurtis MacDermid','SJS'],['Jaroslaw Chychrun','SJS'],['Nick Merkley','SJS'],['Nicolas Meloche','SJS'],['Steven Lorentz','SJS'],['Alexander True','SJS'],['Matthew Jajic','SJS'],
+['Ivan Provorov','PHI'],['Travis Sanheim','PHI'],['Nick Seeler','PHI'],['Rasmus Risbymm','PHI'],['Jamie Drysdale','PHI'],['Robert Hagg','PHI'],['Cam York','PHI'],['Louie Broissoit','PHI'],['John Tortorella','PHI'],['Kevin Hayes','PHI'],
+['John Carlson','WSH'],['Tom Wilson','WSH'],['Ethan Bear','WSH'],['Trevor van Riemsdyk','WSH'],['Matt Irwin','WSH'],['Dmitry Orlov','WSH'],['Rasmus Sandin','WSH'],['Alexander Alexeyev','WSH'],['Nick Jensen','WSH'],['Linus Ullmark','WSH'],
+['Drew Doughty','LAK'],['Mattias Ekholm','LAK'],['Sean Durzi','LAK'],['Mikey Anderson','LAK'],['Jacob Moverare','LAK'],['Jacob Bernard-Docker','LAK'],['Austin Strand','LAK'],['Jani Hakanpaa','LAK'],['Dion Phaneuf','LAK'],['Omar Fakhreddine','LAK'],
 ].sort((a,b)=>a[1].localeCompare(b[1])||a[0].localeCompare(b[0]));
 
 // Entry form state (persists in localStorage per device)
@@ -523,7 +628,8 @@ function efReset(){if(confirm('Clear your entire entry? This cannot be undone.')
 function EN(){
   const v=efValid();const t=efPkTotal();
   const pOpts=(n)=>[1,2,3,4,5,6].map(v=>`<option value="${v}" ${v===parseInt(n)?'selected':''}>${v}</option>`).join('');
-  const mkOpts=(roster,sel)=>roster.map(([n,tm])=>{const val=`${n} – ${tm}`;return`<option value="${esc(val)}" ${val===sel?'selected':''}>${n} – ${tm}</option>`;}).join('');
+  const alive=getAliveTeams();
+  const mkOpts=(roster,sel)=>roster.filter(([n,tm])=>alive.includes(tm)).map(([n,tm])=>{const val=`${n} – ${tm}`;return`<option value="${esc(val)}" ${val===sel?'selected':''}>${n} – ${tm}</option>`;}).join('');
 
   const fwdRows=EF.fwd.map((x,i)=>`<tr class="border-b border-slate-50">
     <td class="px-2 py-1.5 text-slate-400 text-xs text-center">${i+1}</td>
@@ -601,7 +707,7 @@ function EN(){
     <div class="card p-3">
       <div class="text-[10px] text-slate-500 font-medium mb-1">RULES</div>
       <div class="text-[10px] text-slate-400 space-y-0.5">
-        <div>• 10 forwards + 5 defense from any playoff-contending team</div>
+        <div>• 10 forwards + 5 defense from playoff teams only</div>
         <div>• Allocate exactly 50 pucks total (1–6 per player)</div>
         <div>• Score = Playoff Points × Pucks × Team Multiplier</div>
         <div>• $${sn().fee} ${CFG.cur} entry fee via e-transfer</div>
@@ -613,5 +719,6 @@ function EN(){
 // BOOT
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',loadData);}else{loadData();}
 </script>
+
 </body>
 </html>
