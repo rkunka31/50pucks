@@ -225,75 +225,6 @@ function parseRosterCSV(csv){
 }
 
 
-function validateHockeyRefCSV(csv,players){
-  const issues=[];
-  
-  // Check player count
-  if(players.length<DATA_VALIDATION.minPlayers){
-    issues.push(`❌ Only ${players.length} players (need ≥${DATA_VALIDATION.minPlayers})`);
-  }
-  
-  // Check for invalid teams
-  const invalidTeams=new Set();
-  for(const p of players){
-    if(!DATA_VALIDATION.validTeams.includes(p.team)){
-      invalidTeams.add(p.team);
-    }
-  }
-  if(invalidTeams.size>0){
-    issues.push(`❌ Invalid teams: ${Array.from(invalidTeams).join(', ')}`);
-  }
-  
-  // Check team roster sizes
-  const teamCounts={};
-  for(const p of players){
-    teamCounts[p.team]=(teamCounts[p.team]||0)+1;
-  }
-  const oversizedTeams=Object.entries(teamCounts).filter(([t,c])=>c>DATA_VALIDATION.maxPlayersPerTeam);
-  if(oversizedTeams.length>0){
-    issues.push(`❌ Teams with too many players: ${oversizedTeams.map(([t,c])=>`${t}(${c})`).join(', ')}`);
-  }
-  
-  // Check top scorer
-  const topScorer=players[0];
-  if(!topScorer || topScorer.pts<DATA_VALIDATION.minPointsLeader){
-    issues.push(`❌ Top scorer has only ${topScorer?.pts||0} points (need ≥${DATA_VALIDATION.minPointsLeader})`);
-  }
-  
-  // Check for duplicate names
-  const names=new Map();
-  const dups=[];
-  for(const p of players){
-    if(names.has(p.name)){dups.push(p.name);}
-    names.set(p.name,true);
-  }
-  if(dups.length>0){
-    issues.push(`⚠️ ${dups.length} duplicate names (may be multi-team players)`);
-  }
-  
-  // Check for missing critical stats
-  const missingStats=players.filter(p=>!p.gp||p.gp<1||!p.pts).length;
-  if(missingStats>0){
-    issues.push(`⚠️ ${missingStats} players missing games played or points`);
-  }
-  
-  return {valid:issues.length===0,issues,warnings:issues.filter(i=>i.startsWith('⚠️')),errors:issues.filter(i=>i.startsWith('❌'))};
-}
-
-function logDataImport(source,playerCount,validation){
-  const entry={
-    timestamp:new Date().toISOString(),
-    source,
-    playerCount,
-    valid:validation.valid,
-    issues:validation.issues.length,
-    notes:validation.issues
-  };
-  dataImportLog.push(entry);
-  // Keep last 20 imports
-  if(dataImportLog.length>20)dataImportLog.shift();
-  localStorage.setItem('dataImportLog',JSON.stringify(dataImportLog));
-}
 
 async function fetchPlayoffStats(){
   // Fetch live playoff stats from NHL API (game_type=3)
@@ -433,29 +364,6 @@ function initializePlaceholderPlayoffStats(){
   }));
 }
 
-// Merge roster with playoff stats
-function mergeRosterWithStats(){
-  if(!rostersData)return null;
-  // Create map of playoff stats by player name
-  const statsMap=new Map();
-  if(playoffStats){
-    for(const p of playoffStats){
-      statsMap.set(p.name.toLowerCase(),p);
-    }
-  }
-  
-  // Merge: keep roster info, update with playoff stats where available
-  return rostersData.map(r=>{
-    const playoff=statsMap.get(r.name.toLowerCase());
-    return{
-      ...r,
-      playoff_pts:playoff?.pts||0,
-      playoff_g:playoff?.g||0,
-      playoff_a:playoff?.a||0,
-      playoff_fetched:!!playoff
-    };
-  });
-}
 
 async function fetchStats(sid){
   // If custom CSV was imported, use it for 2026
@@ -1500,44 +1408,18 @@ function efSubmit(){
     timestamp:new Date().toISOString()
   };
 
-  const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbxEBshWgbYw1b0cFIFteji_pXBgz2MfAlPtxRzQpeHdg8_xdD5Nj-tJYzZyVHG9J-O9/exec';
-
-  fetch(APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)})
-  .then(r=>r.json())
-  .then(data=>{
-    if(data.success){
-      alert('✓ Entry submitted to pool!');
-    }else{
-      alert('⚠ Saved locally (sheet submit failed)');
-    }
+  // no-cors avoids CORS preflight; GAS receives e.postData.contents as text/plain JSON
+  fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',body:JSON.stringify(payload)})
+  .then(()=>{
+    alert('✓ Entry submitted to pool!');
     render();
   })
-  .catch(err=>{
-    alert('⚠ Saved locally (network error)');
+  .catch(()=>{
+    alert('⚠ Saved locally (network error — check your connection)');
     render();
   });
 }
 
-function efMailtoFallback(){
-  const lines=[];
-  lines.push(`50 PUCKS ENTRY — ${S.yr}`);
-  lines.push(`Team: ${EF.name}`);
-  lines.push(`Owner: ${EF.owner}`);
-  lines.push('');
-  lines.push('FORWARDS:');
-  EF.fwd.forEach((x,i)=>{if(x.p)lines.push(`  ${i+1}. ${x.p} — ${x.pk} pucks`);});
-  lines.push('');
-  lines.push('DEFENSE:');
-  EF.def.forEach((x,i)=>{if(x.p)lines.push(`  ${i+1}. ${x.p} — ${x.pk} pucks`);});
-  lines.push('');
-  lines.push(`Total Pucks: ${efPkTotal()}/50`);
-  lines.push('');
-  lines.push('--- CSV (for upload) ---');
-  efBuildRows().forEach(r=>lines.push(`${r.team_name},${r.owner_name},${r.player_name},${r.player_team},${r.position},${r.pucks}`));
-  const body=encodeURIComponent(lines.join('\n'));
-  const subj=encodeURIComponent(`50 Pucks Entry: ${EF.name}`);
-  window.location.href=`mailto:${POOL_EMAIL}?subject=${subj}&body=${body}`;
-}
 
 function efUpdate(type,idx,field,val){
   if(type==='name')EF.name=val;
@@ -1659,6 +1541,16 @@ function initApp(){
   if(!entriesLoaded||!statsLoaded){
     loadData();
   }else{
+    // Both entries and stats loaded from localStorage — recalculate scores
+    if(S._nhlStats&&S._nhlStats.length>0&&S.entries&&S.entries.length>0){
+      const lu=buildLU(S._nhlStats);
+      const sc=calcScores(S.entries,lu);
+      const ps=poolStats(sc);
+      S.entries=sc;S.stats=ps;S.sel=sc[0]?.teamName||null;
+    }
+    S.loading=false;
+    document.getElementById('loader').style.display='none';
+    document.getElementById('app').style.display='block';
     render();
   }
 }
@@ -1667,4 +1559,3 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
 
 </body>
 </html>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
