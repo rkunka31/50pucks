@@ -1260,7 +1260,7 @@ function doSim(){S.simRun=true;render();setTimeout(()=>{S.simRes=runSim(S.entrie
 // ENTRY FORM — player database + form + mailto submit
 // ============================================================
 const POOL_EMAIL='rkunka31@gmail.com'; // fallback email
-const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbwugM_l1VEVQYYA7rD5uNdbU5YyXLZiwdrMwD2NAUU1N7k7J885AN9zUkx29KJhWalg/exec';
+const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycby-YJ86yXiTTiqawVq8jpQg6akGvH9idbXXw_n5aeIwGK1JkVheqSGJBeRW7wZTWuQ/exec';
 
 const ROSTER_F=[
 ['Nathan MacKinnon','COL'],['Mikko Rantanen','COL'],['Artturi Lehkonen','COL'],['Casey Mittelstadt','COL'],['Ross Colton','COL'],['Jonathan Drouin','COL'],['Nazem Kadri','COL'],['Gabe Landeskog','COL'],['Devon Toews','COL'],['Matt Calvert','COL'],
@@ -1345,24 +1345,40 @@ function efBuildRows(){
 async function efSubmit(){
   const v=efValid();if(!v.ok)return;
   const rows=efBuildRows();
-  // Try direct-to-sheet first
-  if(APPS_SCRIPT_URL){
-    EF._status='sending';saveEF();render();
-    try{
-      const r=await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({rows})});
-      // no-cors means we can't read the response, but if it didn't throw, it likely succeeded
-      EF.submitted=true;EF._status='sent';saveEF();render();
-      // Allow resubmission for testing - don't lock the form
-      setTimeout(()=>{EF.submitted=false;render();},3000);
-      return;
-    }catch(e){
-      console.error('Sheet submit failed:',e);
-      EF._status='error';saveEF();render();
-      // Fall through to email
+  if(!APPS_SCRIPT_URL){efMailtoFallback();return;}
+
+  EF._status='sending';saveEF();render();
+
+  try{
+    // Hidden iframe form POST — bypasses CORS entirely, no preflight, GAS receives it reliably
+    let iframe=document.getElementById('_gas_iframe');
+    if(!iframe){
+      iframe=document.createElement('iframe');
+      iframe.name='_gas_iframe';
+      iframe.id='_gas_iframe';
+      iframe.style.display='none';
+      document.body.appendChild(iframe);
     }
+    const form=document.createElement('form');
+    form.method='POST';
+    form.action=APPS_SCRIPT_URL;
+    form.target='_gas_iframe';
+    const inp=document.createElement('input');
+    inp.type='hidden';inp.name='data';
+    inp.value=JSON.stringify({rows});
+    form.appendChild(inp);
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+
+    // GAS processes in background — wait 2s then show success
+    await new Promise(r=>setTimeout(r,2000));
+    EF.submitted=true;EF._status='sent';saveEF();render();
+    setTimeout(()=>{EF.submitted=false;render();},3000);
+  }catch(err){
+    console.error('Submit error:',err);
+    EF._status='error';saveEF();render();
   }
-  // Fallback: email
-  efMailtoFallback();
 }
 
 function efMailtoFallback(){
