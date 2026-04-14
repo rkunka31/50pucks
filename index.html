@@ -112,12 +112,10 @@ function saveRoster(){
 
 function parseRosterCSV(csv){
   // Parse Hockey-Reference CSV with multi-team player handling
-  // Format: Rk,Player,Age,Team,Pos,GP,G,A,PTS,...
-  // Multi-team rows: Team="2TM"/"3TM" contains totals, next row has actual first team
+  // For multi-team players, uses LAST team occurrence (post-trade team)
   
   const lines=csv.trim().split('\n');
-  const roster=[];
-  const players=new Map(); // Track processed players to avoid duplicates
+  const players=new Map(); // Track all occurrences - last one wins
   
   let i=0;
   // Skip header comments
@@ -143,44 +141,31 @@ function parseRosterCSV(csv){
     // Skip goalie and non-skaters
     if(pos==='G'||!name||name==='Player')continue;
     
-    // Check if this is a multi-team row (2TM, 3TM, etc)
+    // Skip 2TM/3TM rows (totals) - we'll use individual team rows instead
     if(team.match(/^\d+TM$/)){
-      // This is totals row - get actual team from next row
-      const nextLine=lines[i+1]?.trim().split(',').map(c=>c.trim());
-      const actualTeam=nextLine?nextLine[3]:'UNK';
-      
-      // Only add if we haven't seen this player
-      if(!players.has(name)){
-        roster.push({
-          name,
-          team:nm(actualTeam),
-          pos:pos[0]||'F',
-          gp,g,a,pts,
-          _src:'Roster Lock'
-        });
-        players.set(name,true);
-      }
-      i+=2; // Skip next line (team breakdown)
-    }else if(team.match(/^[A-Z]{2,3}$/)&&!team.match(/TM/)){
-      // Single-team player
-      if(!players.has(name)){
-        roster.push({
-          name,
-          team:nm(team),
-          pos:pos[0]||'F',
-          gp,g,a,pts,
-          _src:'Roster Lock'
-        });
-        players.set(name,true);
-      }
       i++;
-    }else{
-      i++;
+      continue;
     }
+    
+    // Process individual team rows
+    if(team.match(/^[A-Z]{2,3}$/)){
+      const key=name.toLowerCase();
+      // For multi-team players, this overwrites with the latest (last) team
+      players.set(key,{
+        name,
+        team:nm(team),
+        pos:pos[0]||'F',
+        gp,g,a,pts,
+        _src:'Roster Lock'
+      });
+    }
+    i++;
   }
   
+  const roster=Array.from(players.values());
   return roster.length>0?roster:null;
 }
+
 
 function validateHockeyRefCSV(csv,players){
   const issues=[];
