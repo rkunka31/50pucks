@@ -1,135 +1,1014 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>50 Pucks - NHL Playoff Pool</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>50 Pucks — NHL Playoff Pool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','system-ui','sans-serif']},colors:{navy:{900:'#0f1729',800:'#172035',700:'#1e2a45'},accent:'#d4a843',accentLight:'#e8c36a'}}}}</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{overflow-x:hidden;max-width:100vw;width:100%}
+body{font-family:'Inter',system-ui,sans-serif;background:#f4f5f7;color:#1e293b;-webkit-font-smoothing:antialiased}
+#app{overflow-x:hidden;max-width:100vw;width:100%}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:2px}
+.hdr{background:#0f1729;color:#fff;overflow-x:hidden}
+.hdr select{color:#fff}
+.hdr select option{color:#1e293b;background:#fff}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden}
+.trow{transition:background .1s}.trow:hover{background:#f8fafc}
+.tab-on{color:#0f1729;font-weight:600;border-bottom:2px solid #d4a843}
+.tab-off{color:#94a3b8;border-bottom:2px solid transparent}.tab-off:hover{color:#64748b}
+.r1{background:linear-gradient(135deg,#d4a843,#c49530);color:#0f1729}
+.r2{background:linear-gradient(135deg,#cbd5e1,#94a3b8);color:#0f1729}
+.r3{background:linear-gradient(135deg,#b87333,#96652a);color:#fff}
+.pk{width:5px;height:5px;border-radius:50%;background:#d4a843;display:inline-block;margin:0 0.5px}
+.pk-dead{background:#e2e8f0}
+.dot{width:5px;height:5px;border-radius:50%;display:inline-block}
+.num{font-variant-numeric:tabular-nums}
+select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2394a3b8'%3e%3cpath d='M6 8l4 4 4-4'/%3e%3c/svg%3e");background-position:right 6px center;background-repeat:no-repeat;background-size:14px}
+.bar-bg{background:#f1f5f9;border-radius:4px;overflow:hidden;height:18px}
+.bar-f{height:100%;border-radius:4px;display:flex;align-items:center;padding:0 6px;transition:width .3s}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .3s ease}
+nav div::-webkit-scrollbar{display:none}
+header,nav,main,footer{max-width:100vw;overflow-x:hidden}
+.hidden-tab{display:none}
+</style>
 </head>
-<body class="bg-slate-50">
-  <div id="app"></div>
+<body>
+<!-- Loading screen (standalone, not inside #app) -->
+<div id="loader" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f4f5f7">
+  <div style="text-align:center"><div style="width:44px;height:44px;border-radius:10px;background:#0f1729;display:flex;align-items:center;justify-content:center;color:#d4a843;font-weight:800;font-size:16px;margin:0 auto 10px">50</div><p style="color:#94a3b8;font-size:12px">Loading playoff stats...</p></div>
+</div>
+<div id="app" style="display:none"></div>
 
-  <script>
-    // State
-    const S = {yr: 2026, tab: 'entry', _nhlStats: null};
+<script>
+// ============================================================
+// SEASONS
+// ============================================================
+const SEASONS={
+  2025:{id:'20242025',fee:50,sheetUrl:'',mult:{CAR:1.5,COL:1.5,DAL:1.5,EDM:1.5,FLA:1.5,LAK:1.5,NJD:1.5,TBL:1.5,TOR:1.0,WSH:1.0,WPG:1.0,VGK:1.0,MTL:2.0,OTT:2.0,MIN:2.0,STL:2.0,PHI:1.5,BOS:1.5,NYR:1.5,NYI:1.5},alive:['CAR','DAL','EDM','FLA','LAK','PHI','TBL','TOR','WSH','VGK','WPG']},
+  2026:{id:'20252026',fee:50,sheetUrl:'',mult:{BUF:1.0,CAR:1.0,COL:1.0,VGK:1.0,MTL:1.5,TBL:1.5,PIT:1.5,PHI:1.5,DAL:1.5,MIN:1.5,EDM:1.5,ANA:1.5,BOS:2.0,OTT:2.0,UTA:2.0,LAK:2.0},alive:['BUF','BOS','MTL','TBL','CAR','OTT','PIT','COL','DAL','MIN','EDM','UTA','VGK','PHI','ANA','LAK']},
+};
+const CFG={title:'50 Pucks',pk:50,minPk:1,maxPk:6,fwd:10,def:5,cur:'CAD',pay:[{p:1,l:'1st',r:.6},{p:2,l:'2nd',r:.3},{p:3,l:'3rd',r:.1}]};
+const TM={ANA:'#F47A38',BOS:'#FFB81C',BUF:'#003087',CGY:'#D2001C',CAR:'#CC0000',CHI:'#CF0A2C',COL:'#6F263D',CBJ:'#002654',DAL:'#006847',DET:'#CE1126',EDM:'#FF4C00',FLA:'#C8102E',LAK:'#A2AAAD',MIN:'#154734',MTL:'#AF1E2D',NSH:'#FFB81C',NJD:'#CE1126',NYI:'#00539B',NYR:'#0038A8',OTT:'#C52032',PHI:'#F74902',PIT:'#FCB514',SJS:'#006D75',SEA:'#001628',STL:'#002F87',TBL:'#002868',TOR:'#00205B',UTA:'#71AFE5',VAN:'#00205B',VGK:'#B4975A',WSH:'#041E42',WPG:'#041E42'};
+const AM={VEG:'VGK',WAS:'WSH',TB:'TBL',NJ:'NJD',SJ:'SJS',LA:'LAK',CLB:'CBJ'};
 
-    // Fallback player data for 2026
-    function fallback2026() {
-      return [
-        {id:1,name:'Connor McDavid',team:'EDM',pos:'F',gp:80,g:47,a:86,pts:133},
-        {id:2,name:'Nikita Kucherov',team:'TBL',pos:'F',gp:74,g:43,a:85,pts:128},
-        {id:3,name:'Nathan MacKinnon',team:'COL',pos:'F',gp:78,g:52,a:74,pts:126},
-        {id:4,name:'Nick Suzuki',team:'MTL',pos:'F',gp:81,g:29,a:72,pts:101},
-        {id:5,name:'Martin Nečas',team:'COL',pos:'F',gp:76,g:38,a:61,pts:99},
-        {id:6,name:'David Pastrňák',team:'BOS',pos:'F',gp:76,g:29,a:70,pts:99},
-        {id:7,name:'Leon Draisaitl',team:'EDM',pos:'F',gp:65,g:35,a:62,pts:97},
-        {id:8,name:'Jason Robertson',team:'DAL',pos:'F',gp:80,g:44,a:50,pts:94},
-        {id:9,name:'Evan Bouchard',team:'EDM',pos:'D',gp:80,g:21,a:70,pts:91},
-        {id:10,name:'Kirill Kaprizov',team:'MIN',pos:'F',gp:78,g:45,a:44,pts:89},
-        {id:11,name:'Cole Caufield',team:'MTL',pos:'F',gp:80,g:51,a:37,pts:88},
-        {id:12,name:'Jake Guentzel',team:'TBL',pos:'F',gp:80,g:37,a:50,pts:87},
-        {id:13,name:'Matt Boldy',team:'MIN',pos:'F',gp:76,g:42,a:43,pts:85},
-        {id:14,name:'Wyatt Johnston',team:'DAL',pos:'F',gp:80,g:44,a:41,pts:85},
-        {id:15,name:'Clayton Keller',team:'UTA',pos:'F',gp:80,g:26,a:59,pts:85},
-        {id:16,name:'Jack Eichel',team:'VGK',pos:'F',gp:72,g:26,a:58,pts:84},
-        {id:17,name:'Tim Stützle',team:'OTT',pos:'F',gp:80,g:34,a:49,pts:83},
-        {id:18,name:'Artemi Panarin',team:'LAK',pos:'F',gp:75,g:28,a:55,pts:83},
-        {id:19,name:'Sebastian Aho',team:'CAR',pos:'F',gp:79,g:27,a:53,pts:80},
-        {id:20,name:'Mitch Marner',team:'VGK',pos:'F',gp:79,g:23,a:56,pts:79}
-      ];
-    }
+// All NHL teams (full roster for stats display)
+const ALL_TEAMS=['ANA','BOS','BUF','CGY','CAR','CHI','COL','CBJ','DAL','DET','EDM','FLA','LAK','MIN','MTL','NSH','NJD','NYI','NYR','OTT','PHI','PIT','SJS','SEA','STL','TBL','TOR','UTA','VAN','VGK','WSH','WPG'];
 
-    // Get alive teams for 2026
-    const alive2026 = ['BUF','BOS','MTL','TBL','CAR','OTT','PIT','COL','DAL','MIN','EDM','UTA','VGK','PHI','ANA','LAK'];
+function nm(a){if(!a)return'';const u=a.toUpperCase().trim();return AM[u]||u;}
+function sn(){return SEASONS[S.yr]||SEASONS[2025];}
+function mt(t){return sn().mult[nm(t)]??1.0;}
+function al(t){return sn().alive.includes(nm(t));}
 
-    // Build player list by team and position
-    function buildPlayerList(stats) {
-      const byTeam = {};
-      for (const p of stats) {
-        if (!byTeam[p.team]) byTeam[p.team] = {F: [], D: []};
-        if (p.pos === 'D') byTeam[p.team].D.push(p);
-        else byTeam[p.team].F.push(p);
+// Build player lists by PPG: top 6 forwards and top 4 defensemen per team
+function buildPlayerListByPPG(stats){
+  const byTeam={};for(const p of stats){if(!byTeam[p.team])byTeam[p.team]={F:[],D:[]};if(p.pos==='D')byTeam[p.team].D.push(p);else byTeam[p.team].F.push(p);}
+  const result={};for(const team in byTeam){const fwd=byTeam[team].F.sort((a,b)=>(b.gp>0?b.pts/b.gp:0)-(a.gp>0?a.pts/a.gp:0)).slice(0,6);const def=byTeam[team].D.sort((a,b)=>(b.gp>0?b.pts/b.gp:0)-(a.gp>0?a.pts/a.gp:0)).slice(0,4);result[team]=[...fwd,...def];}
+  return result;
+}
+// Get teams that are alive (not mathematically eliminated)
+function getAliveTeams(){
+  const season=sn();
+  return season.alive.length>0?season.alive:ALL_TEAMS;
+}
+
+// ============================================================
+// CSV PARSING - Hockey-Reference Format
+// ============================================================
+let rostersData=null; // Locked roster from uploaded CSV
+let playoffStats=null; // Live playoff stats from API
+
+function parseRosterCSV(csv){
+  // Parse Hockey-Reference CSV with multi-team player handling
+  // Format: Rk,Player,Age,Team,Pos,GP,G,A,PTS,...
+  // Multi-team rows: Team="2TM"/"3TM" contains totals, next row has actual first team
+  
+  const lines=csv.trim().split('\n');
+  const roster=[];
+  const players=new Map(); // Track processed players to avoid duplicates
+  
+  let i=0;
+  // Skip header comments
+  while(i<lines.length&&!lines[i].includes('Rk,Player')){i++;}
+  i++; // Skip header line
+  
+  while(i<lines.length){
+    const line=lines[i].trim();
+    if(!line||line.startsWith('League Average'))break;
+    
+    const cols=line.split(',').map(c=>c.trim());
+    if(cols.length<10)continue;
+    
+    const rk=cols[0];
+    const name=cols[1];
+    const team=cols[3];
+    const pos=cols[4];
+    const gp=parseInt(cols[5])||0;
+    const g=parseInt(cols[6])||0;
+    const a=parseInt(cols[7])||0;
+    const pts=parseInt(cols[8])||0;
+    
+    // Skip goalie and non-skaters
+    if(pos==='G'||!name||name==='Player')continue;
+    
+    // Check if this is a multi-team row (2TM, 3TM, etc)
+    if(team.match(/^\d+TM$/)){
+      // This is totals row - get actual team from next row
+      const nextLine=lines[i+1]?.trim().split(',').map(c=>c.trim());
+      const actualTeam=nextLine?nextLine[3]:'UNK';
+      
+      // Only add if we haven't seen this player
+      if(!players.has(name)){
+        roster.push({
+          name,
+          team:nm(actualTeam),
+          pos:pos[0]||'F',
+          gp,g,a,pts,
+          _src:'Roster Lock'
+        });
+        players.set(name,true);
       }
-
-      const result = {};
-      for (const team in byTeam) {
-        const fwd = byTeam[team].F.sort((a,b) => (b.pts/b.gp) - (a.pts/a.gp)).slice(0,6);
-        const def = byTeam[team].D.sort((a,b) => (b.pts/b.gp) - (a.pts/a.gp)).slice(0,4);
-        result[team] = [...fwd, ...def];
+      i+=2; // Skip next line (team breakdown)
+    }else if(team.match(/^[A-Z]{2,3}$/)&&!team.match(/TM/)){
+      // Single-team player
+      if(!players.has(name)){
+        roster.push({
+          name,
+          team:nm(team),
+          pos:pos[0]||'F',
+          gp,g,a,pts,
+          _src:'Roster Lock'
+        });
+        players.set(name,true);
       }
-      return result;
+      i++;
+    }else{
+      i++;
     }
+  }
+  
+  return roster.length>0?roster:null;
+}
 
-    // Render the app
-    function render() {
-      const app = document.getElementById('app');
-      const stats = S._nhlStats || [];
-      const playersByTeam = buildPlayerList(stats);
+function validateHockeyRefCSV(csv,players){
+  const issues=[];
+  
+  // Check player count
+  if(players.length<DATA_VALIDATION.minPlayers){
+    issues.push(`❌ Only ${players.length} players (need ≥${DATA_VALIDATION.minPlayers})`);
+  }
+  
+  // Check for invalid teams
+  const invalidTeams=new Set();
+  for(const p of players){
+    if(!DATA_VALIDATION.validTeams.includes(p.team)){
+      invalidTeams.add(p.team);
+    }
+  }
+  if(invalidTeams.size>0){
+    issues.push(`❌ Invalid teams: ${Array.from(invalidTeams).join(', ')}`);
+  }
+  
+  // Check team roster sizes
+  const teamCounts={};
+  for(const p of players){
+    teamCounts[p.team]=(teamCounts[p.team]||0)+1;
+  }
+  const oversizedTeams=Object.entries(teamCounts).filter(([t,c])=>c>DATA_VALIDATION.maxPlayersPerTeam);
+  if(oversizedTeams.length>0){
+    issues.push(`❌ Teams with too many players: ${oversizedTeams.map(([t,c])=>`${t}(${c})`).join(', ')}`);
+  }
+  
+  // Check top scorer
+  const topScorer=players[0];
+  if(!topScorer || topScorer.pts<DATA_VALIDATION.minPointsLeader){
+    issues.push(`❌ Top scorer has only ${topScorer?.pts||0} points (need ≥${DATA_VALIDATION.minPointsLeader})`);
+  }
+  
+  // Check for duplicate names
+  const names=new Map();
+  const dups=[];
+  for(const p of players){
+    if(names.has(p.name)){dups.push(p.name);}
+    names.set(p.name,true);
+  }
+  if(dups.length>0){
+    issues.push(`⚠️ ${dups.length} duplicate names (may be multi-team players)`);
+  }
+  
+  // Check for missing critical stats
+  const missingStats=players.filter(p=>!p.gp||p.gp<1||!p.pts).length;
+  if(missingStats>0){
+    issues.push(`⚠️ ${missingStats} players missing games played or points`);
+  }
+  
+  return {valid:issues.length===0,issues,warnings:issues.filter(i=>i.startsWith('⚠️')),errors:issues.filter(i=>i.startsWith('❌'))};
+}
 
-      let playerOptions = '';
-      for (const team of alive2026) {
-        if (playersByTeam[team]) {
-          for (const p of playersByTeam[team]) {
-            playerOptions += `<option value="${p.name} – ${p.team}">${p.name} – ${p.team} (${(p.pts/p.gp).toFixed(2)} PPG)</option>`;
-          }
+function logDataImport(source,playerCount,validation){
+  const entry={
+    timestamp:new Date().toISOString(),
+    source,
+    playerCount,
+    valid:validation.valid,
+    issues:validation.issues.length,
+    notes:validation.issues
+  };
+  dataImportLog.push(entry);
+  // Keep last 20 imports
+  if(dataImportLog.length>20)dataImportLog.shift();
+  localStorage.setItem('dataImportLog',JSON.stringify(dataImportLog));
+}
+
+async function fetchPlayoffStats(){
+  // Fetch live playoff stats from NHL API (game_type=3)
+  try{
+    const r=await fetch('https://api-web.nhle.com/v1/skater-stats-leaders/20252026/3?categories=points,goals,assists&limit=-1');
+    if(r.ok){
+      const d=await r.json();
+      const stats=new Map();
+      const processCategory=(list,category)=>{
+        if(!list)return;
+        for(const p of list){
+          const id=p.id;
+          if(!stats.has(id))stats.set(id,{
+            id,
+            name:`${p.firstName?.default||''} ${p.lastName?.default||''}`.trim(),
+            team:nm(p.teamAbbrev?.default||''),
+            pts:0,g:0,a:0,_s:'NHL Playoff API'
+          });
+          const entry=stats.get(id);
+          if(category==='points')entry.pts=p.value||0;
+          if(category==='goals')entry.g=p.value||0;
+          if(category==='assists')entry.a=p.value||0;
+        }
+      };
+      processCategory(d.points,'points');
+      processCategory(d.goals,'goals');
+      processCategory(d.assists,'assists');
+      
+      playoffStats=[...stats.values()];
+      return true;
+    }
+  }catch(e){
+    console.error('Playoff fetch error:',e);
+  }
+  return false;
+}
+
+// Merge roster with playoff stats
+function mergeRosterWithStats(){
+  if(!rostersData)return null;
+  // Create map of playoff stats by player name
+  const statsMap=new Map();
+  if(playoffStats){
+    for(const p of playoffStats){
+      statsMap.set(p.name.toLowerCase(),p);
+    }
+  }
+  
+  // Merge: keep roster info, update with playoff stats where available
+  return rostersData.map(r=>{
+    const playoff=statsMap.get(r.name.toLowerCase());
+    return{
+      ...r,
+      playoff_pts:playoff?.pts||0,
+      playoff_g:playoff?.g||0,
+      playoff_a:playoff?.a||0,
+      playoff_fetched:!!playoff
+    };
+  });
+}
+
+async function fetchStats(sid){
+  // Use locked roster if available
+  if(rostersData&&sid==='20252026'){return rostersData;}
+  // Return built-in fallback data (skip slow NHL APIs for now)
+  if(sid==='20242025'){return fallback2025();}
+  if(sid==='20252026'){return fallback2026();}
+  return [];
+}
+
+function fallback2025(){return[
+{id:1,name:'Connor McDavid',team:'EDM',pos:'C',gp:22,g:7,a:26,pts:33,_s:'built-in'},{id:2,name:'Leon Draisaitl',team:'EDM',pos:'C',gp:22,g:11,a:22,pts:33,_s:'built-in'},{id:3,name:'Carter Verhaeghe',team:'FLA',pos:'C',gp:23,g:7,a:16,pts:23,_s:'built-in'},{id:4,name:'Matthew Tkachuk',team:'FLA',pos:'LW',gp:23,g:8,a:15,pts:23,_s:'built-in'},{id:5,name:'Sam Reinhart',team:'FLA',pos:'C',gp:21,g:11,a:12,pts:23,_s:'built-in'},{id:6,name:'Evan Bouchard',team:'EDM',pos:'D',gp:22,g:7,a:16,pts:23,_s:'built-in'},{id:7,name:'Aleksander Barkov',team:'FLA',pos:'C',gp:23,g:6,a:16,pts:22,_s:'built-in'},{id:8,name:'Sam Bennett',team:'FLA',pos:'C',gp:23,g:15,a:7,pts:22,_s:'built-in'},{id:9,name:'Mikko Rantanen',team:'DAL',pos:'RW',gp:18,g:9,a:13,pts:22,_s:'built-in'},{id:10,name:'Brad Marchand',team:'FLA',pos:'LW',gp:23,g:10,a:10,pts:20,_s:'built-in'},{id:11,name:'Kyle Connor',team:'WPG',pos:'LW',gp:13,g:5,a:12,pts:17,_s:'built-in'},{id:12,name:'Seth Jarvis',team:'CAR',pos:'C',gp:15,g:6,a:10,pts:16,_s:'built-in'},{id:13,name:'Sebastian Aho',team:'CAR',pos:'F',gp:15,g:7,a:8,pts:15,_s:'built-in'},{id:14,name:'William Nylander',team:'TOR',pos:'RW',gp:13,g:6,a:9,pts:15,_s:'built-in'},{id:15,name:'Thomas Harley',team:'DAL',pos:'D',gp:18,g:4,a:10,pts:14,_s:'built-in'},{id:16,name:'Aaron Ekblad',team:'FLA',pos:'D',gp:19,g:4,a:9,pts:13,_s:'built-in'},{id:17,name:'Mitch Marner',team:'TOR',pos:'RW',gp:13,g:2,a:11,pts:13,_s:'built-in'},{id:18,name:'Nathan MacKinnon',team:'COL',pos:'C',gp:7,g:7,a:4,pts:11,_s:'built-in'},{id:19,name:'Auston Matthews',team:'TOR',pos:'C',gp:13,g:3,a:8,pts:11,_s:'built-in'},{id:20,name:'Dylan Strome',team:'WSH',pos:'C',gp:10,g:2,a:9,pts:11,_s:'built-in'},{id:21,name:'Jack Eichel',team:'VGK',pos:'C',gp:11,g:1,a:9,pts:10,_s:'built-in'},{id:22,name:'Wyatt Johnston',team:'DAL',pos:'C',gp:18,g:4,a:6,pts:10,_s:'built-in'},{id:23,name:'Kirill Kaprizov',team:'MIN',pos:'LW',gp:6,g:5,a:4,pts:9,_s:'built-in'},{id:24,name:'Shayne Gostisbehere',team:'CAR',pos:'D',gp:15,g:3,a:6,pts:9,_s:'built-in'},{id:25,name:'Mark Stone',team:'VGK',pos:'RW',gp:10,g:4,a:4,pts:8,_s:'built-in'},{id:26,name:'Morgan Rielly',team:'TOR',pos:'D',gp:13,g:4,a:3,pts:7,_s:'built-in'},{id:27,name:'Matthew Knies',team:'TOR',pos:'LW',gp:13,g:5,a:2,pts:7,_s:'built-in'},{id:28,name:'Matt Boldy',team:'MIN',pos:'LW',gp:6,g:5,a:2,pts:7,_s:'built-in'},{id:29,name:'Mason Appleton',team:'WPG',pos:'C',gp:13,g:0,a:7,pts:7,_s:'built-in'},{id:30,name:'Jake Guentzel',team:'TBL',pos:'LW',gp:5,g:3,a:3,pts:6,_s:'built-in'},{id:31,name:'Colton Parayko',team:'STL',pos:'D',gp:7,g:1,a:5,pts:6,_s:'built-in'},{id:32,name:'Anthony Beauvillier',team:'WSH',pos:'LW',gp:10,g:2,a:4,pts:6,_s:'built-in'},{id:33,name:'Alex Ovechkin',team:'WSH',pos:'LW',gp:10,g:5,a:1,pts:6,_s:'built-in'},{id:34,name:'Jackson Blake',team:'CAR',pos:'RW',gp:15,g:3,a:3,pts:6,_s:'built-in'},{id:35,name:'Gustav Forsling',team:'FLA',pos:'D',gp:23,g:1,a:4,pts:5,_s:'built-in'},{id:36,name:'Martin Necas',team:'COL',pos:'C',gp:7,g:1,a:4,pts:5,_s:'built-in'},{id:37,name:'Cale Makar',team:'COL',pos:'D',gp:7,g:1,a:4,pts:5,_s:'built-in'},{id:38,name:'Shea Theodore',team:'VGK',pos:'D',gp:11,g:2,a:3,pts:5,_s:'built-in'},{id:39,name:'Noah Hanifin',team:'VGK',pos:'D',gp:11,g:1,a:4,pts:5,_s:'built-in'},{id:40,name:'Lane Hutson',team:'MTL',pos:'D',gp:5,g:0,a:5,pts:5,_s:'built-in'},{id:41,name:'Tomas Hertl',team:'VGK',pos:'C',gp:11,g:3,a:2,pts:5,_s:'built-in'},{id:42,name:'Devon Toews',team:'COL',pos:'D',gp:7,g:1,a:3,pts:4,_s:'built-in'},{id:43,name:'Nikita Kucherov',team:'TBL',pos:'RW',gp:5,g:0,a:4,pts:4,_s:'built-in'},{id:44,name:'Valeri Nichushkin',team:'COL',pos:'LW',gp:7,g:3,a:1,pts:4,_s:'built-in'},{id:45,name:'Brock Nelson',team:'COL',pos:'C',gp:7,g:0,a:4,pts:4,_s:'built-in'},{id:46,name:'Victor Hedman',team:'TBL',pos:'D',gp:5,g:0,a:3,pts:3,_s:'built-in'},{id:47,name:'John Carlson',team:'WSH',pos:'D',gp:10,g:1,a:2,pts:3,_s:'built-in'},{id:48,name:'Brayden Point',team:'TBL',pos:'C',gp:5,g:2,a:0,pts:2,_s:'built-in'},{id:49,name:'Brandon Hagel',team:'TBL',pos:'LW',gp:3,g:0,a:0,pts:0,_s:'built-in'}];}
+
+function fallback2026(){return[{id:1,name:'Connor McDavid',team:'EDM',pos:'F',gp:80,g:47,a:86,pts:133,_s:'Built-in'},{id:2,name:'Nikita Kucherov',team:'TBL',pos:'F',gp:74,g:43,a:85,pts:128,_s:'Built-in'},{id:3,name:'Nathan MacKinnon',team:'COL',pos:'F',gp:78,g:52,a:74,pts:126,_s:'Built-in'},{id:4,name:'Nick Suzuki',team:'MTL',pos:'F',gp:81,g:29,a:72,pts:101,_s:'Built-in'},{id:5,name:'Martin Nečas',team:'COL',pos:'F',gp:76,g:38,a:61,pts:99,_s:'Built-in'},{id:6,name:'David Pastrňák',team:'BOS',pos:'F',gp:76,g:29,a:70,pts:99,_s:'Built-in'},{id:7,name:'Leon Draisaitl',team:'EDM',pos:'F',gp:65,g:35,a:62,pts:97,_s:'Built-in'},{id:8,name:'Jason Robertson',team:'DAL',pos:'F',gp:80,g:44,a:50,pts:94,_s:'Built-in'},{id:9,name:'Evan Bouchard',team:'EDM',pos:'D',gp:80,g:21,a:70,pts:91,_s:'Built-in'},{id:10,name:'Kirill Kaprizov',team:'MIN',pos:'F',gp:78,g:45,a:44,pts:89,_s:'Built-in'},{id:11,name:'Cole Caufield',team:'MTL',pos:'F',gp:80,g:51,a:37,pts:88,_s:'Built-in'},{id:12,name:'Jake Guentzel',team:'TBL',pos:'F',gp:80,g:37,a:50,pts:87,_s:'Built-in'},{id:13,name:'Matt Boldy',team:'MIN',pos:'F',gp:76,g:42,a:43,pts:85,_s:'Built-in'},{id:14,name:'Wyatt Johnston',team:'DAL',pos:'F',gp:80,g:44,a:41,pts:85,_s:'Built-in'},{id:15,name:'Clayton Keller',team:'UTA',pos:'F',gp:80,g:26,a:59,pts:85,_s:'Built-in'},{id:16,name:'Jack Eichel',team:'VGK',pos:'F',gp:72,g:26,a:58,pts:84,_s:'Built-in'},{id:17,name:'Tim Stützle',team:'OTT',pos:'F',gp:80,g:34,a:49,pts:83,_s:'Built-in'},{id:18,name:'Artemi Panarin',team:'LAK',pos:'F',gp:75,g:28,a:55,pts:83,_s:'Built-in'},{id:19,name:'Sebastian Aho',team:'CAR',pos:'F',gp:79,g:27,a:53,pts:80,_s:'Built-in'},{id:20,name:'Mitch Marner',team:'VGK',pos:'F',gp:79,g:23,a:56,pts:79,_s:'Built-in'},{id:21,name:'Tage Thompson',team:'BUF',pos:'F',gp:80,g:38,a:41,pts:79,_s:'Built-in'},{id:22,name:'Lane Hutson',team:'MTL',pos:'D',gp:81,g:12,a:66,pts:78,_s:'Built-in'},{id:23,name:'Mikko Rantanen',team:'DAL',pos:'F',gp:62,g:22,a:54,pts:76,_s:'Built-in'},{id:24,name:'Quinn Hughes',team:'MIN',pos:'D',gp:74,g:7,a:69,pts:76,_s:'Built-in'},{id:25,name:'Cale Makar',team:'COL',pos:'D',gp:73,g:20,a:55,pts:75,_s:'Built-in'},{id:26,name:'Sidney Crosby',team:'PIT',pos:'F',gp:68,g:29,a:45,pts:74,_s:'Built-in'},{id:27,name:'Brandon Hagel',team:'TBL',pos:'F',gp:70,g:36,a:38,pts:74,_s:'Built-in'},{id:28,name:'Juraj Slafkovsky',team:'MTL',pos:'F',gp:81,g:30,a:43,pts:73,_s:'Built-in'},{id:29,name:'Rasmus Dahlin',team:'BUF',pos:'D',gp:76,g:19,a:53,pts:72,_s:'Built-in'},{id:30,name:'Dylan Guenther',team:'UTA',pos:'F',gp:78,g:40,a:32,pts:72,_s:'Built-in'},{id:31,name:'Nick Schmaltz',team:'UTA',pos:'F',gp:80,g:31,a:41,pts:72,_s:'Built-in'},{id:32,name:'Adrian Kempe',team:'LAK',pos:'F',gp:78,g:34,a:37,pts:71,_s:'Built-in'},{id:33,name:'Drake Batherson',team:'OTT',pos:'F',gp:78,g:32,a:38,pts:70,_s:'Built-in'},{id:34,name:'Darren Raddysh',team:'TBL',pos:'D',gp:72,g:22,a:48,pts:70,_s:'Built-in'},{id:35,name:'Mark Stone',team:'VGK',pos:'F',gp:58,g:27,a:43,pts:70,_s:'Built-in'},{id:36,name:'Andrei Svechnikov',team:'CAR',pos:'F',gp:79,g:31,a:39,pts:70,_s:'Built-in'},{id:37,name:'Nikolaj Ehlers',team:'CAR',pos:'F',gp:80,g:24,a:44,pts:68,_s:'Built-in'},{id:38,name:'Travis Konecny',team:'PHI',pos:'F',gp:76,g:27,a:41,pts:68,_s:'Built-in'},{id:39,name:'Cutter Gauthier',team:'ANA',pos:'F',gp:74,g:40,a:27,pts:67,_s:'Built-in'},{id:40,name:'Morgan Geekie',team:'BOS',pos:'F',gp:80,g:38,a:29,pts:67,_s:'Built-in'},{id:41,name:'Leo Carlsson',team:'ANA',pos:'F',gp:68,g:29,a:37,pts:66,_s:'Built-in'},{id:42,name:'Seth Jarvis',team:'CAR',pos:'F',gp:71,g:32,a:34,pts:66,_s:'Built-in'},{id:43,name:'Erik Karlsson',team:'PIT',pos:'D',gp:75,g:15,a:51,pts:66,_s:'Built-in'},{id:44,name:'Trevor Zegras',team:'PHI',pos:'F',gp:80,g:25,a:41,pts:66,_s:'Built-in'},{id:45,name:'Brock Nelson',team:'COL',pos:'F',gp:79,g:33,a:32,pts:65,_s:'Built-in'},{id:46,name:'Bryan Rust',team:'PIT',pos:'F',gp:72,g:29,a:36,pts:65,_s:'Built-in'},{id:47,name:'Pavel Zacha',team:'BOS',pos:'F',gp:77,g:30,a:34,pts:64,_s:'Built-in'},{id:48,name:'Pavel Dorofeyev',team:'VGK',pos:'F',gp:80,g:36,a:27,pts:63,_s:'Built-in'},{id:49,name:'Miro Heiskanen',team:'DAL',pos:'D',gp:77,g:9,a:54,pts:63,_s:'Built-in'},{id:50,name:'Alex Tuch',team:'BUF',pos:'F',gp:77,g:31,a:32,pts:63,_s:'Built-in'},{id:51,name:'Ivan Demidov',team:'MTL',pos:'F',gp:81,g:19,a:43,pts:62,_s:'Built-in'},{id:52,name:'Anthony Mantha',team:'PIT',pos:'F',gp:80,g:32,a:30,pts:62,_s:'Built-in'},{id:53,name:'Evgeni Malkin',team:'PIT',pos:'F',gp:56,g:19,a:42,pts:61,_s:'Built-in'},{id:54,name:'Charlie McAvoy',team:'BOS',pos:'D',gp:68,g:11,a:50,pts:61,_s:'Built-in'},{id:55,name:'Beckett Sennecke',team:'ANA',pos:'F',gp:80,g:23,a:37,pts:60,_s:'Built-in'},{id:56,name:'Ivan Barbashev',team:'VGK',pos:'F',gp:80,g:22,a:37,pts:59,_s:'Built-in'},{id:57,name:'Brady Tkachuk',team:'OTT',pos:'F',gp:60,g:22,a:37,pts:59,_s:'Built-in'},{id:58,name:'Dylan Cozens',team:'OTT',pos:'F',gp:81,g:27,a:31,pts:58,_s:'Built-in'},{id:59,name:'Mikhail Sergachev',team:'UTA',pos:'D',gp:76,g:10,a:48,pts:58,_s:'Built-in'},{id:60,name:'John Carlson',team:'ANA',pos:'D',gp:69,g:14,a:44,pts:58,_s:'Built-in'},{id:61,name:'Tomáš Hertl',team:'VGK',pos:'F',gp:80,g:24,a:33,pts:57,_s:'Built-in'},{id:62,name:'Jackson LaCombe',team:'ANA',pos:'D',gp:80,g:9,a:47,pts:56,_s:'Built-in'},{id:63,name:'Troy Terry',team:'ANA',pos:'F',gp:59,g:18,a:38,pts:56,_s:'Built-in'},{id:64,name:'Ryan Nugent-Hopkins',team:'EDM',pos:'F',gp:70,g:19,a:36,pts:55,_s:'Built-in'},{id:65,name:'Jake Sanderson',team:'OTT',pos:'D',gp:67,g:14,a:40,pts:54,_s:'Built-in'},{id:66,name:'Mats Zuccarello',team:'MIN',pos:'F',gp:59,g:15,a:39,pts:54,_s:'Built-in'},{id:67,name:'Viktor Arvidsson',team:'BOS',pos:'F',gp:68,g:24,a:29,pts:53,_s:'Built-in'},{id:68,name:'Ryan McLeod',team:'BUF',pos:'F',gp:80,g:13,a:40,pts:53,_s:'Built-in'},{id:69,name:'Jackson Blake',team:'CAR',pos:'F',gp:79,g:22,a:30,pts:52,_s:'Built-in'},{id:70,name:'Anthony Cirelli',team:'TBL',pos:'F',gp:70,g:23,a:29,pts:52,_s:'Built-in'},{id:71,name:'Josh Doan',team:'BUF',pos:'F',gp:80,g:25,a:26,pts:51,_s:'Built-in'},{id:72,name:'Christian Dvorak',team:'PHI',pos:'F',gp:79,g:18,a:33,pts:51,_s:'Built-in'},{id:73,name:'Joel Eriksson Ek',team:'MIN',pos:'F',gp:70,g:19,a:32,pts:51,_s:'Built-in'},{id:74,name:'Brock Faber',team:'MIN',pos:'D',gp:80,g:15,a:36,pts:51,_s:'Built-in'},{id:75,name:'Zach Hyman',team:'EDM',pos:'F',gp:57,g:31,a:20,pts:51,_s:'Built-in'},{id:76,name:'Jack Quinn',team:'BUF',pos:'F',gp:80,g:20,a:31,pts:51,_s:'Built-in'},{id:77,name:'Owen Tippett',team:'PHI',pos:'F',gp:80,g:28,a:23,pts:51,_s:'Built-in'},{id:78,name:'Shayne Gostisbehere',team:'CAR',pos:'D',gp:54,g:13,a:37,pts:50,_s:'Built-in'},{id:79,name:'Chris Kreider',team:'ANA',pos:'F',gp:74,g:22,a:28,pts:50,_s:'Built-in'},{id:80,name:'Nazem Kadri',team:'COL',pos:'F',gp:77,g:16,a:34,pts:50,_s:'Built-in'},{id:81,name:'Brayden Point',team:'TBL',pos:'F',gp:62,g:18,a:31,pts:49,_s:'Built-in'},{id:82,name:'Taylor Hall',team:'CAR',pos:'F',gp:79,g:18,a:30,pts:48,_s:'Built-in'},{id:83,name:'Elias Lindholm',team:'BOS',pos:'F',gp:68,g:17,a:31,pts:48,_s:'Built-in'},{id:84,name:'Rickard Rakell',team:'PIT',pos:'F',gp:60,g:24,a:24,pts:48,_s:'Built-in'},{id:85,name:'Noah Dobson',team:'MTL',pos:'D',gp:80,g:12,a:35,pts:47,_s:'Built-in'},{id:86,name:'Claude Giroux',team:'OTT',pos:'F',gp:81,g:14,a:33,pts:47,_s:'Built-in'},{id:87,name:'Marcus Johansson',team:'MIN',pos:'F',gp:73,g:15,a:32,pts:47,_s:'Built-in'},{id:88,name:'Artturi Lehkonen',team:'COL',pos:'F',gp:68,g:20,a:27,pts:47,_s:'Built-in'},{id:89,name:'Matvei Michkov',team:'PHI',pos:'F',gp:79,g:18,a:29,pts:47,_s:'Built-in'},{id:90,name:'Valeri Nichushkin',team:'COL',pos:'F',gp:69,g:17,a:30,pts:47,_s:'Built-in'},{id:91,name:'Noah Cates',team:'PHI',pos:'F',gp:80,g:18,a:28,pts:46,_s:'Built-in'},{id:92,name:'JJ Peterka',team:'UTA',pos:'F',gp:80,g:24,a:21,pts:45,_s:'Built-in'},{id:93,name:'Shane Pinto',team:'OTT',pos:'F',gp:71,g:23,a:22,pts:45,_s:'Built-in'},{id:94,name:'Vladimir Tarasenko',team:'MIN',pos:'F',gp:73,g:23,a:22,pts:45,_s:'Built-in'},{id:95,name:'Quinton Byfield',team:'LAK',pos:'F',gp:76,g:20,a:24,pts:44,_s:'Built-in'},{id:96,name:'Roope Hintz',team:'DAL',pos:'F',gp:53,g:15,a:29,pts:44,_s:'Built-in'},{id:97,name:'Jason Zucker',team:'BUF',pos:'F',gp:61,g:24,a:20,pts:44,_s:'Built-in'},{id:98,name:'Rasmus Andersson',team:'VGK',pos:'D',gp:79,g:16,a:28,pts:44,_s:'Built-in'},{id:99,name:'Lawson Crouse',team:'UTA',pos:'F',gp:79,g:23,a:20,pts:43,_s:'Built-in'},{id:100,name:'Ryan Hartman',team:'MIN',pos:'F',gp:76,g:23,a:20,pts:43,_s:'Built-in'},{id:101,name:'Bowen Byram',team:'BUF',pos:'D',gp:80,g:11,a:31,pts:42,_s:'Built-in'},{id:102,name:'Matt Duchene',team:'DAL',pos:'F',gp:55,g:16,a:26,pts:42,_s:'Built-in'},{id:103,name:'Egor Chinakhov',team:'PIT',pos:'F',gp:72,g:21,a:21,pts:42,_s:'Built-in'},{id:104,name:'Logan Cooley',team:'UTA',pos:'F',gp:52,g:23,a:18,pts:41,_s:'Built-in'},{id:105,name:'Mattias Ekholm',team:'EDM',pos:'D',gp:80,g:6,a:35,pts:41,_s:'Built-in'},{id:106,name:'Mattias Samuelsson',team:'BUF',pos:'D',gp:77,g:13,a:28,pts:41,_s:'Built-in'},{id:107,name:'Brandt Clarke',team:'LAK',pos:'D',gp:79,g:8,a:32,pts:40,_s:'Built-in'},{id:108,name:'Kevin Fiala',team:'LAK',pos:'F',gp:56,g:18,a:22,pts:40,_s:'Built-in'},{id:109,name:'Alex Laferriere',team:'LAK',pos:'F',gp:79,g:19,a:20,pts:39,_s:'Built-in'},{id:110,name:'Sam Malinski',team:'COL',pos:'D',gp:79,g:7,a:31,pts:38,_s:'Built-in'},{id:111,name:'Shea Theodore',team:'VGK',pos:'D',gp:68,g:9,a:29,pts:38,_s:'Built-in'},{id:112,name:'Mikael Granlund',team:'ANA',pos:'F',gp:56,g:19,a:18,pts:37,_s:'Built-in'},{id:113,name:'Oliver Kapanen',team:'MTL',pos:'F',gp:81,g:22,a:15,pts:37,_s:'Built-in'},{id:114,name:'Mike Matheson',team:'MTL',pos:'D',gp:78,g:7,a:30,pts:37,_s:'Built-in'},{id:115,name:'K\'Andre Miller',team:'CAR',pos:'D',gp:71,g:8,a:29,pts:37,_s:'Built-in'},{id:116,name:'Vasily Podkolzin',team:'EDM',pos:'F',gp:80,g:19,a:18,pts:37,_s:'Built-in'},{id:117,name:'Travis Sanheim',team:'PHI',pos:'D',gp:80,g:11,a:26,pts:37,_s:'Built-in'},{id:118,name:'Anže Kopitar',team:'LAK',pos:'F',gp:64,g:12,a:24,pts:36,_s:'Built-in'},{id:119,name:'Jack Roslovic',team:'EDM',pos:'F',gp:67,g:21,a:15,pts:36,_s:'Built-in'},{id:120,name:'Corey Perry',team:'TBL',pos:'F',gp:70,g:16,a:20,pts:36,_s:'Built-in'},{id:121,name:'Thomas Harley',team:'DAL',pos:'D',gp:68,g:6,a:29,pts:35,_s:'Built-in'},{id:122,name:'John Marino',team:'UTA',pos:'D',gp:78,g:4,a:31,pts:35,_s:'Built-in'},{id:123,name:'Brent Burns',team:'COL',pos:'D',gp:79,g:12,a:22,pts:34,_s:'Built-in'},{id:124,name:'Kris Letang',team:'PIT',pos:'D',gp:74,g:3,a:31,pts:34,_s:'Built-in'},{id:125,name:'Ryan Shea',team:'PIT',pos:'D',gp:79,g:6,a:28,pts:34,_s:'Built-in'},{id:126,name:'Jacob Trouba',team:'ANA',pos:'D',gp:79,g:10,a:24,pts:34,_s:'Built-in'},{id:127,name:'Jamie Drysdale',team:'PHI',pos:'D',gp:77,g:8,a:24,pts:32,_s:'Built-in'},{id:128,name:'Alexander Nikishin',team:'CAR',pos:'D',gp:79,g:11,a:21,pts:32,_s:'Built-in'},{id:129,name:'Joshua Norris',team:'BUF',pos:'F',gp:42,g:11,a:21,pts:32,_s:'Built-in'},{id:130,name:'Thomas Chabot',team:'OTT',pos:'D',gp:57,g:7,a:24,pts:31,_s:'Built-in'},{id:131,name:'Esa Lindell',team:'DAL',pos:'D',gp:80,g:5,a:25,pts:30,_s:'Built-in'},{id:132,name:'Jordan Spence',team:'OTT',pos:'D',gp:72,g:7,a:23,pts:30,_s:'Built-in'},{id:133,name:'Sean Walker',team:'CAR',pos:'D',gp:80,g:9,a:21,pts:30,_s:'Built-in'},{id:134,name:'Parker Wotherspoon',team:'PIT',pos:'D',gp:80,g:3,a:27,pts:30,_s:'Built-in'},{id:135,name:'Charle-Edouard D\'Astous',team:'TBL',pos:'D',gp:68,g:6,a:23,pts:29,_s:'Built-in'},{id:136,name:'Sean Durzi',team:'UTA',pos:'D',gp:59,g:5,a:22,pts:27,_s:'Built-in'},{id:137,name:'Noah Hanifin',team:'VGK',pos:'D',gp:69,g:3,a:23,pts:26,_s:'Built-in'},{id:138,name:'Cameron York',team:'PHI',pos:'D',gp:73,g:4,a:22,pts:26,_s:'Built-in'},{id:139,name:'MacKenzie Weegar',team:'UTA',pos:'D',gp:77,g:4,a:22,pts:26,_s:'Built-in'},{id:140,name:'Hampus Lindholm',team:'BOS',pos:'D',gp:66,g:5,a:20,pts:25,_s:'Built-in'},{id:141,name:'Alex Newhook',team:'MTL',pos:'F',gp:41,g:13,a:12,pts:25,_s:'Built-in'},{id:142,name:'Logan Stanley',team:'BUF',pos:'D',gp:74,g:9,a:16,pts:25,_s:'Built-in'},{id:143,name:'Darnell Nurse',team:'EDM',pos:'D',gp:80,g:7,a:16,pts:23,_s:'Built-in'},{id:144,name:'Nick Blankenburg',team:'COL',pos:'D',gp:58,g:7,a:16,pts:23,_s:'Built-in'},{id:145,name:'Drew Doughty',team:'LAK',pos:'D',gp:69,g:5,a:17,pts:22,_s:'Built-in'},{id:146,name:'Joel Edmundson',team:'LAK',pos:'D',gp:79,g:2,a:20,pts:22,_s:'Built-in'},{id:147,name:'Pavel Mintyukov',team:'ANA',pos:'D',gp:71,g:8,a:14,pts:22,_s:'Built-in'},{id:148,name:'Jared Spurgeon',team:'MIN',pos:'D',gp:78,g:6,a:16,pts:22,_s:'Built-in'},{id:149,name:'Ryan McDonagh',team:'TBL',pos:'D',gp:47,g:6,a:14,pts:20,_s:'Built-in'},{id:150,name:'Jake Walman',team:'EDM',pos:'D',gp:51,g:8,a:12,pts:20,_s:'Built-in'},{id:151,name:'Jonas Brodin',team:'MIN',pos:'D',gp:61,g:4,a:14,pts:18,_s:'Built-in'},{id:152,name:'Victor Hedman',team:'TBL',pos:'D',gp:33,g:1,a:16,pts:17,_s:'Built-in'},{id:153,name:'Tyler Seguin',team:'DAL',pos:'F',gp:27,g:7,a:10,pts:17,_s:'Built-in'},{id:154,name:'Ben Hutton',team:'VGK',pos:'D',gp:55,g:6,a:9,pts:15,_s:'Built-in'},{id:155,name:'Henri Jokiharju',team:'BOS',pos:'D',gp:41,g:2,a:13,pts:15,_s:'Built-in'},{id:156,name:'Rasmus Ristolainen',team:'PHI',pos:'D',gp:43,g:1,a:13,pts:14,_s:'Built-in'},{id:157,name:'Nils Lundkvist',team:'DAL',pos:'D',gp:51,g:3,a:8,pts:11,_s:'Built-in'},{id:158,name:'Porter Martone',team:'PHI',pos:'F',gp:7,g:3,a:4,pts:7,_s:'Built-in'},{id:159,name:'Jordan Harris',team:'BOS',pos:'D',gp:8,g:1,a:2,pts:3,_s:'Built-in'},{id:160,name:'Carter Yakemchuk',team:'OTT',pos:'D',gp:4,g:1,a:1,pts:2,_s:'Built-in'},{id:161,name:'Alex Barré-Boulet',team:'COL',pos:'F',gp:1,g:0,a:1,pts:1,_s:'Built-in'},{id:162,name:'Angus Booth',team:'LAK',pos:'D',gp:1,g:1,a:0,pts:1,_s:'Built-in'},{id:163,name:'James Hagens',team:'BOS',pos:'F',gp:1,g:0,a:1,pts:1,_s:'Built-in'},{id:164,name:'David Reinbacher',team:'MTL',pos:'D',gp:1,g:0,a:1,pts:1,_s:'Built-in'},{id:165,name:'Kevin Rooney',team:'UTA',pos:'F',gp:1,g:1,a:0,pts:1,_s:'Built-in'}];}
+
+
+function buildLU(st){const m=new Map();for(const p of st){const k=p.name.toLowerCase().trim();m.set(k,p);const n=k.normalize('NFD').replace(/[\u0300-\u036f]/g,'');if(n!==k)m.set(n,p);}return m;}
+function mp(n,lu){if(!n)return null;const c=n.toLowerCase().trim();if(lu.has(c))return lu.get(c);const d=c.normalize('NFD').replace(/[\u0300-\u036f]/g,'');if(lu.has(d))return lu.get(d);for(const[k,v]of lu)if(k.includes(c)||c.includes(k))return v;return null;}
+
+// ============================================================
+// ENTRIES
+// ============================================================
+async function fetchEntries(){const url=sn().sheetUrl;if(!url)return sample();try{const r=await fetch(url);if(!r.ok)throw 0;const lns=(await r.text()).split('\n').filter(l=>l.trim());if(lns.length<2)return sample();const ent=new Map();for(let i=1;i<lns.length;i++){const c=csvL(lns[i]);if(c.length<6)continue;const[tn,on,pn,pt,pos,pk]=c.map(x=>x.trim());if(!tn||!pn)continue;if(!ent.has(tn))ent.set(tn,{teamName:tn,owner:on||tn,players:[]});ent.get(tn).players.push({name:pn,team:nm(pt),position:['D','DEF','DEFENSE'].includes((pos||'').toUpperCase())?'D':'F',pucks:parseInt(pk)||0});}return[...ent.values()];}catch{return sample();}}
+function csvL(l){const r=[];let c='',q=false;for(let i=0;i<l.length;i++){const ch=l[i];if(ch==='"')q=!q;else if(ch===','&&!q){r.push(c);c='';}else c+=ch;}r.push(c);return r;}
+function sample(){return[
+{teamName:'COWABUNGAR DUDE',owner:'Matt Ungar',players:[{name:'Leon Draisaitl',team:'EDM',position:'F',pucks:6},{name:'Connor McDavid',team:'EDM',position:'F',pucks:6},{name:'Nikita Kucherov',team:'TBL',position:'F',pucks:6},{name:'Brayden Point',team:'TBL',position:'F',pucks:4},{name:'Nathan MacKinnon',team:'COL',position:'F',pucks:4},{name:'Mikko Rantanen',team:'DAL',position:'F',pucks:2},{name:'Wyatt Johnston',team:'DAL',position:'F',pucks:2},{name:'Jack Eichel',team:'VGK',position:'F',pucks:4},{name:'Brandon Hagel',team:'TBL',position:'F',pucks:2},{name:'Seth Jarvis',team:'CAR',position:'F',pucks:2},{name:'Cale Makar',team:'COL',position:'D',pucks:4},{name:'Evan Bouchard',team:'EDM',position:'D',pucks:2},{name:'Victor Hedman',team:'TBL',position:'D',pucks:2},{name:'Thomas Harley',team:'DAL',position:'D',pucks:2},{name:'Shayne Gostisbehere',team:'CAR',position:'D',pucks:2}]},
+{teamName:'WILKES-BARRE ALL STARS',owner:'Shaun Wilkes',players:[{name:'Connor McDavid',team:'EDM',position:'F',pucks:6},{name:'Leon Draisaitl',team:'EDM',position:'F',pucks:6},{name:'Nathan MacKinnon',team:'COL',position:'F',pucks:6},{name:'Sam Bennett',team:'FLA',position:'F',pucks:4},{name:'Brad Marchand',team:'FLA',position:'F',pucks:4},{name:'Mitch Marner',team:'TOR',position:'F',pucks:3},{name:'Auston Matthews',team:'TOR',position:'F',pucks:3},{name:'Matthew Tkachuk',team:'FLA',position:'F',pucks:3},{name:'Aleksander Barkov',team:'FLA',position:'F',pucks:2},{name:'Carter Verhaeghe',team:'FLA',position:'F',pucks:2},{name:'Cale Makar',team:'COL',position:'D',pucks:3},{name:'Devon Toews',team:'COL',position:'D',pucks:2},{name:'Evan Bouchard',team:'EDM',position:'D',pucks:2},{name:'Aaron Ekblad',team:'FLA',position:'D',pucks:2},{name:'Morgan Rielly',team:'TOR',position:'D',pucks:2}]},
+{teamName:'THE ROBFATHER',owner:'Rob Kunka',players:[{name:'Nathan MacKinnon',team:'COL',position:'F',pucks:6},{name:'Martin Necas',team:'COL',position:'F',pucks:6},{name:'Brock Nelson',team:'COL',position:'F',pucks:6},{name:'Jack Eichel',team:'VGK',position:'F',pucks:1},{name:'Tomas Hertl',team:'VGK',position:'F',pucks:1},{name:'Nikita Kucherov',team:'TBL',position:'F',pucks:6},{name:'Brandon Hagel',team:'TBL',position:'F',pucks:6},{name:'Brayden Point',team:'TBL',position:'F',pucks:6},{name:'Seth Jarvis',team:'CAR',position:'F',pucks:1},{name:'Sebastian Aho',team:'CAR',position:'F',pucks:1},{name:'Cale Makar',team:'COL',position:'D',pucks:6},{name:'Victor Hedman',team:'TBL',position:'D',pucks:1},{name:'Lane Hutson',team:'MTL',position:'D',pucks:1},{name:'Shea Theodore',team:'VGK',position:'D',pucks:1},{name:'Devon Toews',team:'COL',position:'D',pucks:1}]},
+{teamName:"IT'S THE CUP",owner:'Adamo Quarin',players:[{name:'Auston Matthews',team:'TOR',position:'F',pucks:4},{name:'Mitch Marner',team:'TOR',position:'F',pucks:5},{name:'Sam Reinhart',team:'FLA',position:'F',pucks:4},{name:'Brayden Point',team:'TBL',position:'F',pucks:4},{name:'Nikita Kucherov',team:'TBL',position:'F',pucks:5},{name:'Connor McDavid',team:'EDM',position:'F',pucks:5},{name:'Kirill Kaprizov',team:'MIN',position:'F',pucks:3},{name:'Alex Ovechkin',team:'WSH',position:'F',pucks:3},{name:'Kyle Connor',team:'WPG',position:'F',pucks:3},{name:'Wyatt Johnston',team:'DAL',position:'F',pucks:2},{name:'Cale Makar',team:'COL',position:'D',pucks:4},{name:'Thomas Harley',team:'DAL',position:'D',pucks:2},{name:'Lane Hutson',team:'MTL',position:'D',pucks:2},{name:'Colton Parayko',team:'STL',position:'D',pucks:2},{name:'John Carlson',team:'WSH',position:'D',pucks:2}]},
+{teamName:"DON'T STOP WIELIEVIN'",owner:'Mariusz Wielocha',players:[{name:'Nathan MacKinnon',team:'COL',position:'F',pucks:6},{name:'Martin Necas',team:'COL',position:'F',pucks:4},{name:'Valeri Nichushkin',team:'COL',position:'F',pucks:3},{name:'Jack Eichel',team:'VGK',position:'F',pucks:4},{name:'Mark Stone',team:'VGK',position:'F',pucks:3},{name:'Tomas Hertl',team:'VGK',position:'F',pucks:3},{name:'Jake Guentzel',team:'TBL',position:'F',pucks:2},{name:'Nikita Kucherov',team:'TBL',position:'F',pucks:5},{name:'Brandon Hagel',team:'TBL',position:'F',pucks:3},{name:'Brayden Point',team:'TBL',position:'F',pucks:3},{name:'Cale Makar',team:'COL',position:'D',pucks:6},{name:'Devon Toews',team:'COL',position:'D',pucks:2},{name:'Shea Theodore',team:'VGK',position:'D',pucks:2},{name:'Victor Hedman',team:'TBL',position:'D',pucks:3},{name:'Noah Hanifin',team:'VGK',position:'D',pucks:1}]},
+{teamName:'6\'7"',owner:'Kevin Little',players:[{name:'William Nylander',team:'TOR',position:'F',pucks:4},{name:'Mitch Marner',team:'TOR',position:'F',pucks:5},{name:'Matthew Knies',team:'TOR',position:'F',pucks:3},{name:'Jack Eichel',team:'VGK',position:'F',pucks:5},{name:'Mark Stone',team:'VGK',position:'F',pucks:4},{name:'Tomas Hertl',team:'VGK',position:'F',pucks:2},{name:'Sam Reinhart',team:'FLA',position:'F',pucks:5},{name:'Aleksander Barkov',team:'FLA',position:'F',pucks:4},{name:'Matthew Tkachuk',team:'FLA',position:'F',pucks:3},{name:'Martin Necas',team:'COL',position:'F',pucks:2},{name:'Morgan Rielly',team:'TOR',position:'D',pucks:3},{name:'Shea Theodore',team:'VGK',position:'D',pucks:3},{name:'Noah Hanifin',team:'VGK',position:'D',pucks:2},{name:'Aaron Ekblad',team:'FLA',position:'D',pucks:3},{name:'Gustav Forsling',team:'FLA',position:'D',pucks:2}]}
+];}
+
+// ============================================================
+// SCORING
+// ============================================================
+function calcScores(entries,lu){
+  const sc=entries.map(e=>{let tot=0,alv=0,pkR=0,bn=null,wn=null,bs=-1e9,ws=1e9;
+    const pl=e.players.map(p=>{const s=mp(p.name,lu);const pts=s?.pts||0,g=s?.g||0,a=s?.a||0,gp=s?.gp||0,m=mt(p.team),ia=al(p.team),sc=pts*m*p.pucks;if(ia){alv++;pkR+=p.pucks;}tot+=sc;if(sc>bs){bs=sc;bn=p.name;}if(sc<ws){ws=sc;wn=p.name;}return{...p,pts,g,a,gp,mult:m,score:Math.round(sc*10)/10,alive:ia,matched:!!s};});
+    const fw=pl.filter(p=>p.position==='F').sort((a,b)=>b.score-a.score),df=pl.filter(p=>p.position==='D').sort((a,b)=>b.score-a.score);
+    return{...e,players:[...fw,...df],total:Math.round(tot*10)/10,alive:alv,cnt:pl.length,pkR,pkU:pl.reduce((s,p)=>s+p.pucks,0),bp:bn,bs:Math.round(bs*10)/10,wp:wn,ws:Math.round(ws*10)/10};});
+  sc.sort((a,b)=>b.total-a.total);let r=1;for(let i=0;i<sc.length;i++){if(i>0&&sc[i].total<sc[i-1].total)r=i+1;sc[i].rank=r;}return sc;
+}
+function poolStats(en){
+  const pop=new Map();let totalPucks=0,deadPucks=0;
+  for(const e of en)for(const p of e.players){
+    totalPucks+=p.pucks;if(!p.alive)deadPucks+=p.pucks;
+    if(!pop.has(p.name))pop.set(p.name,{c:0,tp:0,sc:[],pos:p.position,team:p.team,pts:p.pts,gp:p.gp,alive:p.alive});
+    const o=pop.get(p.name);o.c++;o.tp+=p.pucks;o.sc.push(p.score);if(p.pts>o.pts){o.pts=p.pts;o.gp=p.gp;o.alive=p.alive;}
+  }
+  const pl=[...pop.entries()].map(([n,d])=>({name:n,pos:d.pos,team:d.team,pts:d.pts,alive:d.alive,c:d.c,tp:d.tp,ap:Math.round(d.tp/d.c*10)/10,as:Math.round(d.sc.reduce((a,b)=>a+b,0)/d.c*10)/10,ms:Math.max(...d.sc),own:Math.round(d.c/en.length*100)})).sort((a,b)=>b.c-a.c||b.as-a.as);
+  let gB=null,gW=null;for(const e of en)for(const p of e.players){if(!gB||p.score>gB.score)gB={...p,tn:e.teamName};if(!gW||p.score<gW.score)gW={...p,tn:e.teamName};}
+  // Pool Concentration: % of total pucks on top 5 most-owned players
+  const top5=pl.slice(0,5);const top5pucks=top5.reduce((s,p)=>s+p.tp,0);
+  const concentration=totalPucks>0?Math.round(top5pucks/totalPucks*100):0;
+  const top5names=top5.map(p=>p.name.split(' ').pop()).join(', ');
+  // Dead Puck Rate: % of all pucks on eliminated players
+  const deadRate=totalPucks>0?Math.round(deadPucks/totalPucks*100):0;
+  return{n:en.length,pool:en.length*sn().fee,pl,gB,gW,avg:en.length?Math.round(en.reduce((s,e)=>s+e.total,0)/en.length):0,concentration,top5names,deadRate,deadPucks,totalPucks};
+}
+
+// ============================================================
+// SIMULATION
+// ============================================================
+function runSim(en,c){const ns=c.n||1000,res=new Map();en.forEach(e=>res.set(e.teamName,[]));for(let s=0;s<ns;s++)for(const e of en){let t=0;for(const p of e.players)t+=simP(p,c)*p.mult*p.pucks;res.get(e.teamName).push(Math.round(t*10)/10);}const pr=en.map(e=>{const sm=res.get(e.teamName).sort((a,b)=>a-b);return{tn:e.teamName,cur:e.total,mn:Math.round(sm.reduce((a,b)=>a+b,0)/sm.length),md:Math.round(sm[~~(sm.length*.5)]),p10:Math.round(sm[~~(sm.length*.1)]),p90:Math.round(sm[~~(sm.length*.9)])};});const wn=new Map();en.forEach(e=>wn.set(e.teamName,0));for(let s=0;s<ns;s++){let b='',bv=-1e9;for(const[tn,sm]of res)if(sm[s]>bv){bv=sm[s];b=tn;}wn.set(b,(wn.get(b)||0)+1);}pr.forEach(p=>p.wp=Math.round(wn.get(p.tn)/ns*1000)/10);pr.sort((a,b)=>b.mn-a.mn);return pr;}
+function simP(p,c){const cur=p.pts||0,gp=p.gp||0;if(!p.alive)return cur;const ppg=gp>0?cur/gp:.5;const adv=c.adv?.[p.mult]??.5;let rem=Math.max(0,Math.min(3,7-(gp%7)));for(let r=0;r<3;r++){if(Math.random()<adv)rem+=4+~~(Math.random()*4);else break;}let f=0;for(let g=0;g<rem;g++){f+=poi(Math.max(0,ppg+gau()*ppg*(c.v||.5)));}return cur+f;}
+function gau(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function poi(l){if(l<=0)return 0;const L=Math.exp(-l);let k=0,p=1;do{k++;p*=Math.random();}while(p>L);return k-1;}
+
+// ============================================================
+// STATE
+// ============================================================
+let S={loading:true,entries:[],stats:null,yr:2026,tab:'entry',sel:null,simRes:null,simRun:false,simCfg:{n:1000,v:.5,adv:{1:.6,1.5:.5,2:.35}},showSim:false,pSort:'ownership',pPos:'all',chartView:'score',_chart:null,adminAuth:false,hiddenTabs:new Set(),_nhlStats:null};
+let _src='',_ld=false;
+function set(u){Object.assign(S,u);render();}
+async function loadData(){if(_ld)return;_ld=true;
+  console.log('loadData starting...');
+  document.getElementById('loader').style.display='flex';document.getElementById('app').style.display='none';
+  try{
+    console.log('fetching stats...');
+    const st=await fetchStats(sn().id).catch(()=>[]);
+    console.log('got stats:',st.length,'players');
+    const en=S.yr===2026?[]:await fetchEntries().catch(()=>sample());
+    _src=st.length>0?(st[0]._s||'API'):'none';
+    console.log('building lookup...');
+    const lu=buildLU(st);
+    const sc=S.yr===2026?[]:calcScores(en,lu);
+    const ps=S.yr===2026?{n:0,pool:0,pl:[],avg:0,concentration:0,top5names:'',deadRate:0,deadPucks:0,totalPucks:0}:poolStats(sc);
+    S.entries=sc;S.stats=ps;S.sel=sc[0]?.teamName||null;S.loading=false;S.simRes=null;S._nhlStats=st;
+    console.log('data loaded, calling render...');
+  }catch(e){
+    console.error('ERROR in loadData:',e);
+    S.loading=false;
+  }
+  document.getElementById('loader').style.display='none';document.getElementById('app').style.display='block';
+  console.log('calling render...');
+  render();
+  console.log('render complete');
+  _ld=false;
+}
+async function switchYear(y){S.yr=parseInt(y);await loadData();}
+
+// ============================================================
+// HELPERS
+// ============================================================
+const esc=s=>!s?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+const fmt=n=>typeof n==='number'?n.toLocaleString(undefined,{maximumFractionDigits:1}):'0';
+const rb=r=>r<=3?`<div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${r===1?'r1':r===2?'r2':'r3'}">${r}</div>`:`<span class="text-slate-400 text-xs num">${r}</span>`;
+const pkD=(n,a)=>Array(n).fill(0).map(()=>`<span class="${a?'pk':'pk pk-dead'}"></span>`).join('');
+const tb=t=>`<span class="text-[10px] font-semibold" style="color:${TM[t]||'#666'}">${t}</span>`;
+const ac=(a,t)=>a>t*.66?'text-emerald-600':a>t*.33?'text-amber-500':'text-red-500';
+const pc=(v,mx)=>v>mx*.5?'text-emerald-600':v>mx*.2?'text-amber-500':'text-red-500';
+const CL=['#0f1729','#d4a843','#3b82f6','#64748b','#ef4444','#10b981','#8b5cf6','#f97316','#06b6d4','#ec4899'];
+
+// ============================================================
+// RENDER — #app has NO inline styles now
+// ============================================================
+function render(){
+  const a=document.getElementById('app');
+  const yrs=Object.keys(SEASONS).map(y=>`<option value="${y}" ${parseInt(y)===S.yr?'selected':''}>${y}</option>`).join('');
+  
+  // Dynamically build tabs based on year and admin settings
+  let tabs=[['entry','Enter Team']];
+  if(S.yr===2025){
+    tabs.push(['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['simulation','Projections'],['stats','NHL Stats'],['info','Info']);
+  }
+  if(S.yr===2026){
+    tabs.push(['stats','NHL Stats']);
+  }
+  // Add admin tab if authenticated
+  if(S.adminAuth){
+    tabs.push(['admin','Admin']);
+  }
+  
+  // Filter out hidden tabs
+  tabs=tabs.filter(([id])=>!S.hiddenTabs.has(id));
+  
+  a.innerHTML=`
+<header class="hdr">
+  <div class="max-w-5xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-white font-extrabold text-xs sm:text-sm" style="background:#d4a843">50</div>
+      <div class="leading-tight"><div class="text-xs sm:text-sm font-bold">${CFG.title}</div><div class="text-slate-400 text-[10px] sm:text-[11px]">${S.entries.length} entries · ${S.yr}</div></div>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <select onchange="switchYear(this.value)" class="bg-white/10 border border-white/20 rounded px-2 py-1 pr-5 text-[11px] text-white focus:outline-none cursor-pointer">${yrs}</select>
+      <button onclick="loadData()" class="w-7 h-7 flex items-center justify-center bg-white/10 hover:bg-white/15 rounded text-white/70 text-xs">↻</button>
+      ${!S.adminAuth?`<button onclick="adminPrompt()" class="w-7 h-7 flex items-center justify-center bg-white/10 hover:bg-white/15 rounded text-white/70 text-xs" title="Admin">⚙</button>`:'<button onclick="S.adminAuth=false;render()" class="w-7 h-7 flex items-center justify-center bg-white/10 hover:bg-white/15 rounded text-white/70 text-xs" title="Logout">🔒</button>'}
+    </div>
+  </div>
+</header>
+<nav class="bg-white border-b border-slate-200 sticky top-0 z-40">
+  <div class="max-w-5xl mx-auto px-3 sm:px-4 flex gap-0 overflow-x-auto" style="-ms-overflow-style:none;scrollbar-width:none;-webkit-overflow-scrolling:touch">
+    ${tabs.map(([id,l])=>`<button onclick="set({tab:'${id}'})" class="px-2.5 sm:px-3 py-2 text-[11px] sm:text-xs whitespace-nowrap ${S.tab===id?'tab-on':'tab-off'}">${l}</button>`).join('')}
+  </div>
+</nav>
+<main class="max-w-5xl mx-auto px-3 sm:px-4 py-4 fade-in w-full min-w-0">${tabC()}</main>
+<footer class="border-t border-slate-200 py-3 mt-4"><p class="text-center text-slate-400 text-[10px]">${CFG.title} · ${S.yr}${_src?' · '+_src:''}</p></footer>`;
+  if(S._chart){try{S._chart.destroy();}catch{}}S._chart=null;
+  setTimeout(drawChart,20);
+}
+
+function tabC(){switch(S.tab){case'leaderboard':return LB();case'team':return TD();case'chart':return CH();case'players':return PL();case'simulation':return SM();case'stats':return ST();case'info':return NF();case'entry':return EN();case'admin':return AD();default:return'';}}
+
+// ============================================================
+// LEADERBOARD
+// ============================================================
+function LB(){
+  const e=S.entries,s=S.stats,pool=s?.pool||0;
+  const pay=CFG.pay.map(p=>({...p,a:Math.round(pool*p.r)}));
+  // Stat cards: 1) Prize Pool+Payouts merged, 2) Best Pick, 3) Concentration, 4) Dead Puck Rate
+  const cards=`<div class="grid grid-cols-2 gap-2 sm:gap-3 mb-4">
+    <div class="rounded-lg p-2.5 sm:p-3" style="background:#0f172908;border:1px solid #0f172915">
+      <div class="text-[10px] text-slate-500 font-medium">Prize Pool</div>
+      <div class="text-lg sm:text-xl font-bold text-slate-900 num">$${pool}</div>
+      <div class="flex gap-2 mt-1">${pay.map(p=>`<span class="text-[10px] text-slate-400"><span class="font-semibold text-slate-600 num">$${p.a}</span> ${p.l}</span>`).join(' · ')}</div>
+    </div>
+    <div class="rounded-lg p-2.5 sm:p-3" style="background:#d4a84308;border:1px solid #d4a84320">
+      <div class="text-[10px] font-medium" style="color:#96792f">Best Pick</div>
+      <div class="text-lg sm:text-xl font-bold text-slate-900 num">${fmt(s?.gB?.score||0)}</div>
+      <div class="text-[10px] text-slate-500 truncate">${esc(s?.gB?.name||'')} <span class="text-slate-400">· ${esc(s?.gB?.tn||'')}</span></div>
+    </div>
+    <div class="rounded-lg p-2.5 sm:p-3" style="background:#3b82f608;border:1px solid #3b82f615">
+      <div class="text-[10px] text-blue-600 font-medium">Pool Concentration</div>
+      <div class="text-lg sm:text-xl font-bold text-slate-900 num">${s?.concentration||0}%</div>
+      <div class="text-[10px] text-slate-400 truncate">Top 5: ${esc(s?.top5names||'')}</div>
+    </div>
+    <div class="rounded-lg p-2.5 sm:p-3" style="background:#ef444408;border:1px solid #ef444415">
+      <div class="text-[10px] text-red-500 font-medium">Dead Puck Rate</div>
+      <div class="text-lg sm:text-xl font-bold text-slate-900 num">${s?.deadRate||0}%</div>
+      <div class="text-[10px] text-slate-400">${s?.deadPucks||0} of ${s?.totalPucks||0} pucks eliminated</div>
+    </div>
+  </div>`;
+
+  // Mobile: card layout. Desktop: table.
+  const mobileRows=e.map(en=>`
+    <div onclick="set({sel:'${esc(en.teamName)}',tab:'team'})" class="flex items-center gap-2 p-2.5 border-b border-slate-100 trow cursor-pointer active:bg-slate-50">
+      <div class="flex-shrink-0 w-6">${rb(en.rank)}</div>
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold text-slate-900 text-xs leading-tight truncate">${esc(en.teamName)}</div>
+        <div class="text-slate-400 text-[10px]">${esc(en.owner)} · ${en.alive}/${en.cnt} alive · ${en.pkR}pk left</div>
+      </div>
+      <div class="flex-shrink-0 text-right">
+        <div class="font-bold text-slate-900 text-sm num">${fmt(en.total)}</div>
+      </div>
+      <div class="flex-shrink-0 text-slate-300 text-[10px]">›</div>
+    </div>`).join('');
+
+  const desktopRows=e.map(en=>`<tr onclick="set({sel:'${esc(en.teamName)}',tab:'team'})" class="border-b border-slate-100 trow cursor-pointer">
+    <td class="px-3 py-2.5">${rb(en.rank)}</td>
+    <td class="px-3 py-2.5"><div class="font-semibold text-slate-900 text-sm leading-tight">${esc(en.teamName)}</div><div class="text-slate-400 text-[10px]">${esc(en.owner)}</div></td>
+    <td class="px-3 py-2.5 text-right font-bold text-slate-900 num">${fmt(en.total)}</td>
+    <td class="px-3 py-2.5 text-center"><span class="font-semibold ${ac(en.alive,en.cnt)}">${en.alive}<span class="text-slate-300">/${en.cnt}</span></span></td>
+    <td class="px-3 py-2.5 text-center"><span class="font-semibold ${pc(en.pkR,50)} num">${en.pkR}<span class="text-slate-300">/${en.pkU}</span></span></td>
+    <td class="px-3 py-2.5 text-right"><div class="text-[10px] font-medium" style="color:#96792f">${esc(en.bp)}</div><div class="text-[10px] text-slate-400 num">${fmt(en.bs)}</div></td>
+    <td class="px-1 text-slate-300 text-[10px]">›</td>
+  </tr>`).join('');
+
+  return`${cards}
+  <div class="card sm:hidden">${mobileRows}</div>
+  <div class="card hidden sm:block"><div class="overflow-x-auto">
+    <table class="w-full text-sm"><thead><tr class="bg-slate-50 border-b border-slate-200">
+      <th class="text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2 w-8">#</th>
+      <th class="text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">Team</th>
+      <th class="text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">Score</th>
+      <th class="text-center text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">Alive</th>
+      <th class="text-center text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">Pucks Left</th>
+      <th class="text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">Best Pick</th>
+      <th class="w-4"></th>
+    </tr></thead><tbody>${desktopRows}</tbody></table>
+  </div></div>`;
+}
+
+// ============================================================
+// TEAM DETAIL
+// ============================================================
+function TD(){
+  const e=S.entries.find(x=>x.teamName===S.sel)||S.entries[0];if(!e)return'';
+  const opts=S.entries.map(x=>`<option value="${esc(x.teamName)}" ${x.teamName===e.teamName?'selected':''}>#${x.rank} ${esc(x.teamName)}</option>`).join('');
+  const bar=e.players.map(p=>{const w=(p.pucks/50)*100;return`<div style="width:${w}%;background:${p.alive?(TM[p.team]||'#3b82f6'):'#e2e8f0'};opacity:${p.alive?1:.5}" title="${esc(p.name)}: ${p.pucks}"></div>`;}).join('');
+  const sec=(t,pl)=>{const tot=pl.reduce((s,p)=>s+p.score,0);return`<div class="card"><div class="flex justify-between items-center px-3 py-1.5 bg-slate-50 border-b border-slate-200"><span class="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">${t}</span><span class="text-[11px] text-slate-500 num">${fmt(Math.round(tot))}</span></div><div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="border-b border-slate-100"><th class="text-left text-[9px] text-slate-400 uppercase px-2 sm:px-3 py-1">Player</th><th class="text-center text-[9px] text-slate-400 uppercase px-1 py-1">Tm</th><th class="text-center text-[9px] text-slate-400 uppercase px-1 py-1">GP</th><th class="text-center text-[9px] text-slate-400 uppercase px-1 py-1">G</th><th class="text-center text-[9px] text-slate-400 uppercase px-1 py-1">A</th><th class="text-center text-[9px] text-slate-400 uppercase px-1 py-1">PTS</th><th class="text-center text-[9px] text-slate-400 uppercase px-1 py-1">×</th><th class="text-center text-[9px] text-slate-400 uppercase px-1 py-1">Pk</th><th class="text-right text-[9px] text-slate-400 uppercase px-2 sm:px-3 py-1">Score</th></tr></thead><tbody>${pl.map(p=>`<tr class="border-b border-slate-50 trow"><td class="px-2 sm:px-3 py-1.5"><div class="flex items-center gap-1"><span class="dot" style="background:${p.alive?'#10b981':'#e2e8f0'}"></span><span class="${p.alive?'text-slate-900':'text-slate-400'} text-[11px] sm:text-xs">${esc(p.name)}</span></div></td><td class="px-1 py-1.5 text-center">${tb(p.team)}</td><td class="px-1 py-1.5 text-center text-slate-500 num">${p.gp}</td><td class="px-1 py-1.5 text-center text-slate-500 num">${p.g}</td><td class="px-1 py-1.5 text-center text-slate-500 num">${p.a}</td><td class="px-1 py-1.5 text-center text-slate-900 font-semibold num">${p.pts}</td><td class="px-1 py-1.5 text-center font-semibold ${p.mult===2?'text-amber-500':p.mult===1.5?'text-blue-500':'text-slate-400'}">${p.mult}x</td><td class="px-1 py-1.5 text-center">${pkD(p.pucks,p.alive)}</td><td class="px-2 sm:px-3 py-1.5 text-right font-bold text-slate-900 num">${fmt(p.score)}</td></tr>`).join('')}</tbody></table></div></div>`;};
+  return`<div class="space-y-3">
+    <select onchange="set({sel:this.value})" class="w-full sm:w-auto bg-white border border-slate-300 rounded px-2.5 py-1.5 pr-7 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-400">${opts}</select>
+    <div class="card p-3 sm:p-4">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div><div class="text-sm sm:text-base font-bold text-slate-900">${esc(e.teamName)}</div><div class="text-slate-400 text-[11px]">${esc(e.owner)}</div></div>
+        <div class="flex gap-4 text-center">
+          <div><div class="text-lg font-bold text-slate-900 num">${fmt(e.total)}</div><div class="text-[9px] text-slate-400 uppercase">Score</div></div>
+          <div><div class="text-lg font-bold ${ac(e.alive,e.cnt)} num">${e.alive}/${e.cnt}</div><div class="text-[9px] text-slate-400 uppercase">Alive</div></div>
+          <div><div class="text-lg font-bold ${pc(e.pkR,50)} num">${e.pkR}</div><div class="text-[9px] text-slate-400 uppercase">Pucks Left</div></div>
+        </div>
+      </div>
+      <div class="flex gap-px rounded overflow-hidden h-2">${bar}</div>
+      <div class="flex justify-between mt-1"><span class="text-[9px] text-slate-400">colored = alive, gray = eliminated</span><span class="text-[9px] text-slate-400 num">${e.pkU}/50</span></div>
+    </div>
+    ${sec('Forwards',e.players.filter(p=>p.position==='F'))}
+    ${sec('Defense',e.players.filter(p=>p.position==='D'))}
+  </div>`;
+}
+
+// ============================================================
+// ANALYTICS — single chart with dropdown selector
+// ============================================================
+function CH(){
+  const views=[
+    {id:'score',l:'Score by Position'},
+    {id:'mult',l:'Score by Multiplier'},
+    {id:'alive',l:'Alive vs Eliminated'},
+    {id:'eff',l:'Points per Puck'},
+    {id:'scatter',l:'Pucks Left vs Score'},
+    {id:'team',l:'NHL Team Exposure'},
+    {id:'own',l:'Player Ownership'},
+  ];
+  const opts=views.map(v=>`<option value="${v.id}" ${S.chartView===v.id?'selected':''}>${v.l}</option>`).join('');
+  return`<div class="space-y-3">
+    <div class="flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-slate-900">Analytics</h2>
+      <select onchange="S.chartView=this.value;render()" class="bg-white border border-slate-300 rounded px-2.5 py-1.5 pr-7 text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-amber-400">${opts}</select>
+    </div>
+    <div class="card p-3 sm:p-4"><canvas id="mainChart" style="max-height:380px"></canvas></div>
+  </div>`;
+}
+
+function drawChart(){
+  const el=document.getElementById('mainChart');if(!el)return;
+  const e=S.entries,lb=e.map(x=>x.teamName.length>14?x.teamName.slice(0,14)+'…':x.teamName);
+  const tx={color:'#94a3b8',font:{family:'Inter',size:10}};const gr={color:'#f1f5f9'};
+  const v=S.chartView;
+  let cfg;
+  if(v==='score'){cfg={type:'bar',data:{labels:lb,datasets:[{label:'Forwards',data:e.map(x=>Math.round(x.players.filter(p=>p.position==='F').reduce((s,p)=>s+p.score,0))),backgroundColor:'#0f1729',borderRadius:3},{label:'Defense',data:e.map(x=>Math.round(x.players.filter(p=>p.position==='D').reduce((s,p)=>s+p.score,0))),backgroundColor:'#d4a843',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{...tx,boxWidth:10}}},scales:{x:{stacked:true,ticks:tx,grid:gr},y:{stacked:true,ticks:tx,grid:gr}}}};}
+  else if(v==='mult'){cfg={type:'bar',data:{labels:lb,datasets:[{label:'1.0x',data:e.map(x=>Math.round(x.players.filter(p=>p.mult===1).reduce((s,p)=>s+p.score,0))),backgroundColor:'#cbd5e1',borderRadius:3},{label:'1.5x',data:e.map(x=>Math.round(x.players.filter(p=>p.mult===1.5).reduce((s,p)=>s+p.score,0))),backgroundColor:'#0f1729',borderRadius:3},{label:'2.0x',data:e.map(x=>Math.round(x.players.filter(p=>p.mult===2).reduce((s,p)=>s+p.score,0))),backgroundColor:'#d4a843',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{...tx,boxWidth:10}}},scales:{x:{stacked:true,ticks:tx,grid:gr},y:{stacked:true,ticks:tx,grid:gr}}}};}
+  else if(v==='alive'){cfg={type:'bar',data:{labels:lb,datasets:[{label:'Alive',data:e.map(x=>Math.round(x.players.filter(p=>p.alive).reduce((s,p)=>s+p.score,0))),backgroundColor:'#0f1729',borderRadius:3},{label:'Eliminated',data:e.map(x=>Math.round(x.players.filter(p=>!p.alive).reduce((s,p)=>s+p.score,0))),backgroundColor:'#cbd5e1',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{...tx,boxWidth:10}}},scales:{x:{stacked:true,ticks:tx,grid:gr},y:{stacked:true,ticks:tx,grid:gr}}}};}
+  else if(v==='eff'){const eff=e.map(x=>({n:x.teamName.length>14?x.teamName.slice(0,14)+'…':x.teamName,v:x.pkU>0?Math.round(x.total/x.pkU*10)/10:0})).sort((a,b)=>b.v-a.v);cfg={type:'bar',data:{labels:eff.map(x=>x.n),datasets:[{data:eff.map(x=>x.v),backgroundColor:eff.map((_,i)=>i===0?'#d4a843':'#0f1729'),borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+' pts/puck'}}},scales:{x:{ticks:{...tx,callback:v=>v+' p/pk'},grid:gr},y:{ticks:{...tx,color:'#334155',font:{size:11,weight:'500'}},grid:{display:false}}}}};}
+  else if(v==='scatter'){cfg={type:'bubble',data:{datasets:[{data:e.map((x,i)=>({x:x.pkR,y:x.total,r:Math.max(x.alive*2,5)})),backgroundColor:e.map((_,i)=>CL[i%CL.length]+'66'),borderColor:e.map((_,i)=>CL[i%CL.length]),borderWidth:1.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${e[c.dataIndex].teamName}: ${fmt(e[c.dataIndex].total)} pts, ${e[c.dataIndex].pkR} pucks left`}}},scales:{x:{title:{display:true,text:'Pucks Remaining',font:{size:11},color:'#94a3b8'},ticks:tx,grid:gr},y:{title:{display:true,text:'Total Score',font:{size:11},color:'#94a3b8'},ticks:tx,grid:gr}}}};}
+  else if(v==='team'){const tp=new Map();for(const en of e)for(const p of en.players)tp.set(p.team,(tp.get(p.team)||0)+p.pucks);const sorted=[...tp.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);cfg={type:'doughnut',data:{labels:sorted.map(x=>x[0]),datasets:[{data:sorted.map(x=>x[1]),backgroundColor:sorted.map(x=>(TM[x[0]]||'#666')+'cc'),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{...tx,boxWidth:10,padding:6}},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw} pucks`}}}}};}
+  else if(v==='own'){const top=S.stats?.pl?.slice(0,12)||[];cfg={type:'bar',data:{labels:top.map(p=>p.name.split(' ').pop()),datasets:[{label:'Ownership %',data:top.map(p=>p.own),backgroundColor:'#0f1729',borderRadius:3},{label:'Avg Score',data:top.map(p=>p.as),backgroundColor:'#d4a843',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{...tx,boxWidth:10}},tooltip:{mode:'index',intersect:false}},scales:{x:{ticks:tx,grid:gr},y:{ticks:tx,grid:gr}}}};}
+  if(cfg){el.parentElement.style.height='360px';S._chart=new Chart(el,cfg);}
+}
+
+// ============================================================
+// PLAYERS
+// ============================================================
+function PL(){
+  if(!S.stats)return'';let pl=S.stats.pl.slice();
+  if(S.pPos!=='all')pl=pl.filter(p=>p.pos===S.pPos);
+  if(S.pSort==='avgScore')pl.sort((a,b)=>b.as-a.as);else if(S.pSort==='pts')pl.sort((a,b)=>b.pts-a.pts);
+  const btn=(v,k,l)=>`<button onclick="set({${k}:'${v}'})" class="px-2 py-1 rounded text-[10px] sm:text-[11px] font-medium ${S[k]===v?'bg-navy-900 text-white':'text-slate-500 hover:text-slate-700'}">${l}</button>`;
+  return`<div class="space-y-3">
+    <div class="flex flex-wrap gap-1.5">
+      <div class="flex gap-px bg-slate-100 rounded p-px">${btn('all','pPos','All')}${btn('F','pPos','Fwd')}${btn('D','pPos','Def')}</div>
+      <div class="flex gap-px bg-slate-100 rounded p-px">${btn('ownership','pSort','Ownership')}${btn('avgScore','pSort','Avg Score')}${btn('pts','pSort','Playoff Pts')}</div>
+    </div>
+    <div class="card"><div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="bg-slate-50 border-b border-slate-200">
+      <th class="text-left text-[9px] font-semibold text-slate-400 uppercase px-2 sm:px-3 py-1.5">Player</th>
+      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">Tm</th>
+      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">PTS</th>
+      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">Own</th>
+      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">Avg Pk</th>
+      <th class="text-right text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">Avg Sc</th>
+      <th class="text-right text-[9px] font-semibold text-slate-400 uppercase px-2 sm:px-3 py-1.5">Best</th>
+    </tr></thead><tbody>${pl.map(p=>`<tr class="border-b border-slate-50 trow">
+      <td class="px-2 sm:px-3 py-1.5"><div class="flex items-center gap-1"><span class="dot" style="background:${p.alive?'#10b981':'#e2e8f0'}"></span><span class="font-medium text-slate-900 text-[11px]">${esc(p.name)}</span><span class="text-[9px] ${p.pos==='D'?'text-amber-500':'text-blue-500'} font-semibold">${p.pos}</span></div></td>
+      <td class="px-1 py-1.5 text-center">${tb(p.team)}</td>
+      <td class="px-1 py-1.5 text-center text-slate-900 font-semibold num">${p.pts}</td>
+      <td class="px-1 py-1.5 text-center"><div class="flex items-center gap-1 justify-center"><div class="w-8 h-1 bg-slate-100 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${p.own}%;background:${p.own===100?'#d4a843':'#0f1729'}"></div></div><span class="text-[10px] text-slate-400 num">${p.own}%</span></div></td>
+      <td class="px-1 py-1.5 text-center num" style="color:#d4a843">${p.ap}</td>
+      <td class="px-1 py-1.5 text-right text-slate-600 num">${fmt(p.as)}</td>
+      <td class="px-2 sm:px-3 py-1.5 text-right font-bold text-slate-900 num">${fmt(p.ms)}</td>
+    </tr>`).join('')}</tbody></table></div></div>
+  </div>`;
+}
+
+// ============================================================
+// NHL STATS
+// ============================================================
+function ST(){
+  if(!S._nhlStats)return'<div class="card p-4 text-center text-slate-400">Loading stats...</div>';
+  let stats=S._nhlStats.slice();
+  // Filter by alive teams only
+  const alive=getAliveTeams();
+  stats=stats.filter(p=>alive.includes(p.team));
+  // Show top 100
+  stats=stats.slice(0,100);
+  const seasonNote=S.yr===2026?'<div class="text-xs text-amber-600 mb-3">📊 Regular season stats (will update to playoff stats once playoffs begin)</div>':'';
+  return`<div class="space-y-3">
+    ${seasonNote}
+    <div class="text-xs text-slate-600"><span class="font-semibold">${stats.length}</span> skaters from playoff teams (top 100 shown)</div>
+    <div class="card"><div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="bg-slate-50 border-b border-slate-200">
+      <th class="text-left text-[9px] font-semibold text-slate-400 uppercase px-2 sm:px-3 py-1.5">#</th>
+      <th class="text-left text-[9px] font-semibold text-slate-400 uppercase px-2 sm:px-3 py-1.5">Player</th>
+      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">Tm</th>
+      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">Pos</th>
+      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">GP</th>
+      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">G</th>
+      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">A</th>
+      <th class="text-right text-[9px] font-semibold text-slate-400 uppercase px-2 sm:px-3 py-1.5">PTS</th>
+    </tr></thead><tbody>${stats.map((p,i)=>`<tr class="border-b border-slate-50 trow">
+      <td class="px-2 sm:px-3 py-1.5 text-slate-400 text-[10px] num">${i+1}</td>
+      <td class="px-2 sm:px-3 py-1.5 font-medium text-slate-900 text-[11px]">${esc(p.name)}</td>
+      <td class="px-1 py-1.5 text-center">${tb(p.team)}</td>
+      <td class="px-1 py-1.5 text-center text-slate-500 text-[10px]">${esc(p.pos)}</td>
+      <td class="px-1 py-1.5 text-center text-slate-500 num">${p.gp}</td>
+      <td class="px-1 py-1.5 text-center text-slate-500 num">${p.g}</td>
+      <td class="px-1 py-1.5 text-center text-slate-500 num">${p.a}</td>
+      <td class="px-2 sm:px-3 py-1.5 text-right font-bold text-slate-900 num">${p.pts}</td>
+    </tr>`).join('')}</tbody></table></div></div>
+  </div>`;
+}
+
+// ============================================================
+// SIMULATION
+// ============================================================
+function SM(){
+  const c=S.simCfg;
+  const si=(l,v,k)=>`<div><label class="text-[10px] text-slate-400">${l}</label><input type="number" value="${v}" onchange="updSim('${k}',this.value)" step="any" class="w-full mt-0.5 bg-white border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400"></div>`;
+  const stg=S.showSim?`<div class="card p-3"><div class="grid grid-cols-2 sm:grid-cols-5 gap-2">${si('Sims',c.n,'n')}${si('Var',c.v,'v')}${si('Fav',c.adv[1],'a1')}${si('Mid',c.adv[1.5],'a15')}${si('WC',c.adv[2],'a2')}</div></div>`:'';
+  let res='';
+  if(!S.simRes&&!S.simRun)res=`<div class="card p-8 text-center text-slate-400 text-xs">Click Run to project outcomes</div>`;
+  else if(S.simRes){const pr=S.simRes;
+    res=`<div class="card p-3"><h3 class="text-xs font-semibold text-slate-700 mb-2">Win Probability</h3>${pr.slice().sort((a,b)=>b.wp-a.wp).map((p,i)=>`<div class="flex items-center gap-2 mb-1"><div class="w-24 sm:w-36 text-[10px] text-slate-500 truncate text-right flex-shrink-0">${esc(p.tn)}</div><div class="flex-1 bar-bg h-4"><div class="bar-f h-4" style="width:${Math.max(p.wp,1)}%;background:${i===0?'#d4a843':'#0f1729'}">${p.wp>=10?`<span class="text-[9px] font-bold text-white">${p.wp}%</span>`:''}</div></div>${p.wp<10?`<span class="text-[10px] text-slate-400 w-8 text-right num">${p.wp}%</span>`:''}</div>`).join('')}</div>
+    <div class="card"><div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="bg-slate-50 border-b border-slate-200"><th class="text-left text-[9px] font-semibold text-slate-400 uppercase px-2 sm:px-3 py-1.5">Team</th><th class="text-right text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">Now</th><th class="text-right text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">Mean</th><th class="text-right text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">10th</th><th class="text-right text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">90th</th><th class="text-right text-[9px] font-semibold text-slate-400 uppercase px-2 sm:px-3 py-1.5">Win%</th></tr></thead><tbody>${pr.map(p=>`<tr class="border-b border-slate-50 trow"><td class="px-2 sm:px-3 py-1.5 font-medium text-slate-900">${esc(p.tn)}</td><td class="px-1 py-1.5 text-right text-slate-400 num">${fmt(p.cur)}</td><td class="px-1 py-1.5 text-right font-bold text-slate-900 num">${fmt(p.mn)}</td><td class="px-1 py-1.5 text-right text-red-400 num">${fmt(p.p10)}</td><td class="px-1 py-1.5 text-right text-emerald-600 num">${fmt(p.p90)}</td><td class="px-2 sm:px-3 py-1.5 text-right font-bold num ${p.wp>=25?'text-amber-600':p.wp>=10?'text-slate-700':'text-slate-400'}">${p.wp}%</td></tr>`).join('')}</tbody></table></div></div>`;}
+  return`<div class="space-y-3"><div class="flex items-center justify-between"><div><div class="text-sm font-semibold text-slate-900">Projections</div><div class="text-[10px] text-slate-400">Monte Carlo simulation</div></div><div class="flex gap-1.5"><button onclick="set({showSim:!S.showSim})" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-[10px] font-medium text-slate-600">⚙</button><button onclick="doSim()" ${S.simRun?'disabled':''} class="px-3 py-1 rounded text-[10px] font-semibold text-white" style="background:${S.simRun?'#94a3b8':'#0f1729'}">${S.simRun?'Running...':'▶ Run'}</button></div></div>${stg}${res}</div>`;
+}
+
+// ============================================================
+// INFO
+// ============================================================
+function NF(){
+  const pool=S.stats?.pool||0;const pay=CFG.pay.map(p=>({...p,a:Math.round(pool*p.r)}));
+  const ms=sn().mult;const tByM={};Object.entries(ms).forEach(([t,m])=>{const k=m+'x';if(!tByM[k])tByM[k]=[];tByM[k].push(t);});
+  const mH=Object.keys(ms).length?['2x','1.5x','1x'].filter(k=>tByM[k]?.length).map(tier=>{const m=parseFloat(tier);const cl=m===2?'#d4a843':m===1?'#94a3b8':'#0f1729';return`<div class="mb-2"><span class="text-xs font-bold" style="color:${cl}">${tier}</span> <span class="text-[10px] text-slate-400">${m===2?'Wild Card':m===1?'Div Winners':'Mid'}</span><div class="flex flex-wrap gap-1 mt-1">${(tByM[tier]||[]).sort().map(t=>`<span class="px-1.5 py-0.5 rounded text-[10px] font-medium ${sn().alive.includes(t)?'bg-slate-100 text-slate-700':'bg-slate-50 text-slate-300 line-through'}">${t}</span>`).join('')}</div></div>`;}).join(''):'';
+  const rl=(n,t)=>`<div class="flex gap-2 mb-2"><span class="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold flex-shrink-0" style="background:#d4a84320;color:#96792f">${n}</span><p class="text-xs text-slate-600">${t}</p></div>`;
+  return`<div class="space-y-3">
+    <div class="card p-3">${rl(1,`${CFG.fwd}F + ${CFG.def}D, ${CFG.pk} pucks (min ${CFG.minPk}, max ${CFG.maxPk})`)}${rl(2,'WC = 2.0x, middle = 1.5x, div winners = 1.0x')}${rl(3,'<strong>Score = Points × Pucks × Multiplier</strong>')}${rl(4,`$${sn().fee} ${CFG.cur} per entry`)}</div>
+    <div class="card p-3"><div class="bg-slate-50 rounded p-2.5 text-xs text-slate-600">McDavid · 6pk · EDM 1.5x · 10pts → <span style="color:#0f1729;font-weight:700">10 × 1.5 × 6 = 90</span></div></div>
+    <div class="card p-3">${mH}</div>
+    <div class="card p-3"><div class="flex gap-3">${pay.map(p=>`<div class="text-center"><div class="w-7 h-7 mx-auto rounded-full flex items-center justify-center text-[9px] font-bold mb-0.5 ${p.p===1?'r1':p.p===2?'r2':'r3'}">${p.l}</div><div class="font-bold text-slate-900 text-xs num">$${p.a}</div></div>`).join('')}</div></div>
+    <div class="card p-3"><div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">${S.entries.map(e=>`<div class="flex items-center justify-between p-2 bg-slate-50 rounded text-xs"><div><span class="font-medium text-slate-900">${esc(e.teamName)}</span> <span class="text-slate-400">${esc(e.owner)}</span></div><div class="font-bold text-slate-900 num">${fmt(e.total)} <span class="text-slate-400 font-normal">#${e.rank}</span></div></div>`).join('')}</div></div>
+  </div>`;
+}
+
+// ============================================================
+// ADMIN
+// ============================================================
+function AD(){
+  if(!S.adminAuth)return`<div class="card p-6 text-center"><div class="text-sm font-semibold text-slate-900 mb-3">Admin Panel</div><input type="password" placeholder="Enter password" onkeyup="if(event.key==='Enter')adminLogin(this.value)" class="w-full bg-white border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400 mb-2"><button onclick="adminLogin(document.querySelector('input[type=password]').value)" class="w-full px-3 py-2 rounded bg-slate-900 text-white text-sm font-medium">Unlock</button></div>`;
+  
+  const rosterStatus=rostersData?`<div class="text-xs text-green-700 bg-green-50 p-2 rounded mb-2">✓ Roster locked: ${rostersData.length} players</div>`:`<div class="text-xs text-amber-700 bg-amber-50 p-2 rounded mb-2">⚠️ Roster not loaded</div>`;
+  
+  const playoffStatus=playoffStats?`<div class="text-xs text-green-700">✓ Playoff stats fetched: ${playoffStats.length} players with stats</div>`:`<div class="text-xs text-slate-600">No playoff stats fetched yet</div>`;
+  
+  return`<div class="space-y-3">
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="text-sm font-semibold text-slate-900">Admin Controls</h2>
+      <button onclick="S.adminAuth=false;render()" class="px-2 py-1 rounded text-[10px] text-slate-500 hover:text-slate-700">Lock</button>
+    </div>
+    
+    <div class="card p-3 bg-blue-50 border border-blue-200">
+      <div class="text-xs font-semibold text-slate-900 mb-2">📋 STEP 1: Upload Roster (One-Time)</div>
+      <div class="text-xs text-slate-700 mb-2">Download CSV from <a href="https://www.hockey-reference.com/leagues/NHL_2026_skaters.html" target="_blank" class="text-blue-600 underline">Hockey-Reference</a> and paste below. This locks in player rosters and regular season stats.</div>
+      <textarea placeholder="Paste Hockey-Reference CSV here..." id="rosterInput" class="w-full bg-white border border-slate-300 rounded px-2 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-400 h-20 mb-2"></textarea>
+      <button onclick="const csv=document.getElementById('rosterInput').value;const r=parseRosterCSV(csv);if(r&&r.length>100){rostersData=r;alert('✓ Roster locked: '+r.length+' players');S._nhlStats=null;loadData();document.getElementById('rosterInput').value='';}else{alert('❌ Need at least 100 players')}" class="w-full px-2 py-1 rounded text-xs text-white bg-blue-600 hover:bg-blue-700 mb-2">Lock Roster</button>
+      ${rosterStatus}
+    </div>
+    
+    <div class="card p-3 bg-green-50 border border-green-200">
+      <div class="text-xs font-semibold text-slate-900 mb-2">⚡ STEP 2: Fetch Playoff Stats</div>
+      <div class="text-xs text-slate-700 mb-2">Click to fetch live playoff scoring stats. Run this whenever you want updated playoff performance data.</div>
+      <button onclick="if(!rostersData){alert('❌ Roster not loaded yet');return;}let btn=this;btn.disabled=true;btn.textContent='Fetching...';fetchPlayoffStats().then(ok=>{if(ok){S._nhlStats=null;loadData();alert('✓ Playoff stats updated');btn.textContent='Fetch Playoff Stats';}else{alert('❌ Failed to fetch (API may be down)');}btn.disabled=false;})" class="w-full px-2 py-1 rounded text-xs text-white bg-green-600 hover:bg-green-700 mb-2">Fetch Playoff Stats</button>
+      ${playoffStatus}
+    </div>
+    
+    <div class="card p-3 bg-slate-50 border border-slate-200">
+      <div class="text-xs font-semibold text-slate-900 mb-2">📊 Data Architecture</div>
+      <div class="text-xs text-slate-700 space-y-1">
+        <div><strong>Roster:</strong> Locked on import - names, teams, positions, regular season stats</div>
+        <div><strong>Playoffs:</strong> Fetched on-demand - live scoring stats matched to roster</div>
+        <div><strong>Multi-team:</strong> Uses total season stats + first team listed</div>
+        <div><strong>Updates:</strong> Manual fetch only - you control when data refreshes</div>
+      </div>
+    </div>
+    
+    <div class="card p-3">
+      <div class="text-xs font-semibold text-slate-900 mb-2">Visible Tabs</div>
+      <div class="text-[10px] text-slate-400 mb-1.5">"Enter Team" is always visible. Toggle optional tabs:</div>
+      ${(()=>{const yearTabs=S.yr===2025?['leaderboard','team','chart','players','simulation','stats','info']:['stats'];const tabLabels={leaderboard:'Standings',team:'Teams',chart:'Analytics',players:'Players',simulation:'Projections',stats:'NHL Stats',info:'Info'};return'<div class="space-y-1">'+yearTabs.map(id=>'<label class="flex items-center gap-2 text-xs cursor-pointer"><input type="checkbox" '+(S.hiddenTabs.has(id)?'':'checked')+' onchange="const h=new Set(S.hiddenTabs);'+(S.hiddenTabs.has(id)?"h.delete":"h.add")+"('"+id+"');S.hiddenTabs=h;render()" class="w-4 h-4 rounded border-slate-300"><span>"+(tabLabels[id]||id)+'</span></label>').join('')+'</div>';})()}
+    </div>
+    <div class="card p-3">
+      <div class="text-xs font-semibold text-slate-900 mb-2">Settings</div>
+      <button onclick="if(confirm('Clear all data and reset app?')){rostersData=null;playoffStats=null;S.hiddenTabs=new Set();S.adminAuth=false;S._nhlStats=null;localStorage.clear();location.reload()}" class="w-full px-2 py-1 rounded text-xs text-slate-600 bg-slate-50 hover:bg-slate-100">Reset Everything</button>
+    </div>
+  </div>`;
+}
+
+function adminLogin(pwd){
+  if(pwd==='develop'){S.adminAuth=true;render();}else{alert('Incorrect password');}
+}
+
+function adminPrompt(){
+  const pwd=prompt('Enter admin password:');
+  if(pwd!==null)adminLogin(pwd);
+}
+
+// ============================================================
+// ACTIONS
+// ============================================================
+function updSim(k,v){const f=parseFloat(v);if(k==='n')S.simCfg.n=Math.max(100,parseInt(v)||1000);else if(k==='v')S.simCfg.v=f;else if(k==='a1')S.simCfg.adv[1]=f;else if(k==='a15')S.simCfg.adv[1.5]=f;else if(k==='a2')S.simCfg.adv[2]=f;render();}
+function doSim(){S.simRun=true;render();setTimeout(()=>{S.simRes=runSim(S.entries,S.simCfg);S.simRun=false;render();},50);}
+
+// ============================================================
+// ENTRY FORM — player database + form + mailto submit
+// ============================================================
+const POOL_EMAIL='rkunka31@gmail.com'; // fallback email
+const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbxbstEyuXo2ydoxzF7WXgYIlw9-ot-vC2L5jw4rOor0_CxlMsf3gADprJv1n22vLvAY/exec'; // ← PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE
+
+const ROSTER_F=[
+['Nathan MacKinnon','COL'],['Mikko Rantanen','COL'],['Artturi Lehkonen','COL'],['Casey Mittelstadt','COL'],['Ross Colton','COL'],['Jonathan Drouin','COL'],['Nazem Kadri','COL'],['Gabe Landeskog','COL'],['Devon Toews','COL'],['Matt Calvert','COL'],
+['Jason Robertson','DAL'],['Roope Hintz','DAL'],['Wyatt Johnston','DAL'],['Matt Duchene','DAL'],['Tyler Seguin','DAL'],['Mason Marchment','DAL'],['Logan Stankoven','DAL'],['Jamie Benn','DAL'],['Colin Miller','DAL'],['Joe Pavelski','DAL'],
+['Kirill Kaprizov','MIN'],['Matt Boldy','MIN'],['Marco Rossi','MIN'],['Joel Eriksson Ek','MIN'],['Mats Zuccarello','MIN'],['Frederick Gaudreau','MIN'],['Connor Dewar','MIN'],['Tyson Jost','MIN'],['Marcus Foligno','MIN'],['Jordan Greenway','MIN'],
+['Troy Terry','ANA'],['Mason McTavish','ANA'],['Leo Carlsson','ANA'],['Frank Vatrano','ANA'],['Alex Killorn','ANA'],['Ryan Strome','ANA'],['Jakob Silfverberg','ANA'],['Cutter Gauthier','ANA'],['Jani Hakanpaa','ANA'],['John Moore','ANA'],
+['Jack Eichel','VGK'],['Mark Stone','VGK'],['Ivan Barbashev','VGK'],['Tomas Hertl','VGK'],['Pavel Dorofeyev','VGK'],['William Karlsson','VGK'],['Mattias Janmark','VGK'],['Nicolas Roy','VGK'],['Keegan Kolesar','VGK'],['Reilly Smith','VGK'],
+['Connor McDavid','EDM'],['Leon Draisaitl','EDM'],['Zach Hyman','EDM'],['Ryan Nugent-Hopkins','EDM'],['Jeff Skinner','EDM'],['Viktor Arvidsson','EDM'],['Connor Brown','EDM'],['Ryan McLeod','EDM'],['Darnell Nurse','EDM'],['Mattias Ekholm','EDM'],
+['Clayton Keller','UTA'],['Barrett Hayton','UTA'],['Nick Schmaltz','UTA'],['Lawson Crouse','UTA'],['Dylan Guenther','UTA'],['Tage Thompson','UTA'],['Logan Cooley','UTA'],['Michael Bunting','UTA'],['Travis Sanheim','UTA'],['John Marino','UTA'],
+['Jared McCann','SEA'],['Matty Beniers','SEA'],['Andre Burakovsky','SEA'],['Jordan Eberle','SEA'],['Shane Wright','SEA'],['Vince Dunn','SEA'],['Yanni Gourde','SEA'],['Eeli Tolvanen','SEA'],['Joonas Donskoi','SEA'],['Brandon Tanev','SEA'],
+['Sebastian Aho','CAR'],['Seth Jarvis','CAR'],['Andrei Svechnikov','CAR'],['Martin Necas','CAR'],['Jack Roslovic','CAR'],['Jordan Staal','CAR'],['Jackson Blake','CAR'],['Teuvo Teravainen','CAR'],['Stefan Noesen','CAR'],['Jesper Fast','CAR'],
+['Tage Thompson','BUF'],['Alex Tuch','BUF'],['Dylan Cozens','BUF'],['JJ Peterka','BUF'],['Jason Zucker','BUF'],['Jack Quinn','BUF'],['Tage Thompson','BUF'],['Peyton Krebs','BUF'],['Rasmus Asplund','BUF'],['Casey Mittelstadt','BUF'],
+['Nikita Kucherov','TBL'],['Brayden Point','TBL'],['Brandon Hagel','TBL'],['Jake Guentzel','TBL'],['Anthony Cirelli','TBL'],['Nick Paul','TBL'],['Steven Stamkos','TBL'],['Corey Perry','TBL'],['Alex Killorn','TBL'],['Pat Maroon','TBL'],
+['Nick Suzuki','MTL'],['Cole Caufield','MTL'],['Juraj Slafkovsky','MTL'],['Patrik Laine','MTL'],['Alex Newhook','MTL'],['Kirby Dach','MTL'],['Christian Dvorak','MTL'],['Arber Xhekaj','MTL'],['Joel Edmundson','MTL'],['David Savard','MTL'],
+['Lucas Raymond','DET'],['Dylan Larkin','DET'],['Alex DeBrincat','DET'],['Patrick Kane','DET'],['Andrew Copp','DET'],['Elmer Soderblom','DET'],['Joe Veleno','DET'],['Olli Maatta','DET'],['Jared McIsaac','DET'],['Gustav Lindstrom','DET'],
+['Sidney Crosby','PIT'],['Evgeni Malkin','PIT'],['Rickard Rakell','PIT'],['Bryan Rust','PIT'],['Michael Bunting','PIT'],['Teddy Blueger','PIT'],['Jared McCann','PIT'],['Jason Robertson','PIT'],['Kris Letang','PIT'],['Jeff Petry','PIT'],
+['David Pastrnak','BOS'],['Brad Marchand','BOS'],['Pavel Zacha','BOS'],['Elias Lindholm','BOS'],['Charlie Coyle','BOS'],['David Krejci','BOS'],['Trent Frederic','BOS'],['Danton Heinen','BOS'],['Derek Forbort','BOS'],['Jakub Zboril','BOS'],
+['Mathew Barzal','NYI'],['Bo Horvat','NYI'],['Brock Nelson','NYI'],['Kyle Palmieri','NYI'],['Anders Lee','NYI'],['Noah Dobson','NYI'],['Jean-Gabriel Pageau','NYI'],['Mathieu Brassard','NYI'],['Grant Hutton','NYI'],['Alexander Romanov','NYI'],
+['Chris Kreider','NYR'],['Artemi Panarin','NYR'],['Mika Zibanejad','NYR'],['Vincent Trocheck','NYR'],['Alexis Lafreniere','NYR'],['K\'Andre Miller','NYR'],['Adam Fox','NYR'],['Igor Shesterkin','NYR'],['Braden Schneider','NYR'],['Ryan Lindgren','NYR'],
+['Kirill Marchenko','CBJ'],['Adam Fantilli','CBJ'],['Sean Monahan','CBJ'],['Dmitri Voronkov','CBJ'],['Patrik Laine','CBJ'],['Johnny Gaudreau','CBJ'],['Nick Blankenburg','CBJ'],['Dean Kucherov','CBJ'],['Jack Roslovic','CBJ'],['Boone Jenner','CBJ'],
+['Macklin Celebrini','SJS'],['William Eklund','SJS'],['Mikael Granlund','SJS'],['Tyler Toffoli','SJS'],['Fabian Zetterlund','SJS'],['Logan Couture','SJS'],['Timo Meier','SJS'],['Erik Karlsson','SJS'],['Jaroslaw Chychrun','SJS'],['Markus Nutivaara','SJS'],
+['Eric Lindros','PHI'],['Travis Konecny','PHI'],['Joel Farabee','PHI'],['Tyson Alatalo','PHI'],['Owen Tippett','PHI'],['Zack MacEwen','PHI'],['Sean Couturier','PHI'],['Nicolas Deslauriers','PHI'],['Ronnie Attard','PHI'],['Cam York','PHI'],
+['Tom Wilson','WSH'],['Alexander Ovechkin','WSH'],['Dylan Strome','WSH'],['Anthony Beauvillier','WSH'],['Connor McMichael','WSH'],['Tom Wilson','WSH'],['Evegny Kuznetsov','WSH'],['John Carlson','WSH'],['Garrett Pierson','WSH'],['Ethan Bear','WSH'],
+['Anze Kopitar','LAK'],['Adrian Kempe','LAK'],['Phillip Danault','LAK'],['Arthur Kaliyev','LAK'],['Blake Lizotte','LAK'],['Quinton Byfield','LAK'],['Kevin Fiala','LAK'],['Darcy Kuemper','LAK'],['Sean Durzi','LAK'],['Jacob Moverare','LAK'],
+].sort((a,b)=>a[1].localeCompare(b[1])||a[0].localeCompare(b[0]));
+
+const ROSTER_D=[
+['Cale Makar','COL'],['Devon Toews','COL'],['Josh Manson','COL'],['Sam Girard','COL'],['Andrew Cogliano','COL'],['Bowen Byram','COL'],['Patrik Nemeth','COL'],['Dakota Skelly','COL'],['Erik Johnson','COL'],['Jon Kjaer','COL'],
+['Miro Heiskanen','DAL'],['Thomas Harley','DAL'],['Esa Lindell','DAL'],['Ryan Suter','DAL'],['Chris Tanev','DAL'],['Nils Lundkvist','DAL'],['Jani Hakanpaa','DAL'],['Lias Andersson','DAL'],['Jamie Oleksiak','DAL'],['Matt Dumba','DAL'],
+['Jared Spurgeon','MIN'],['Brock Faber','MIN'],['Jonas Brodin','MIN'],['Calen Addison','MIN'],['Declan Chisholm','MIN'],['Zach Hyman','MIN'],['Dmitry Kulikov','MIN'],['Jacob Bernard-Docker','MIN'],['Louie Broissoit','MIN'],['Matt Dumba','MIN'],
+['Olen Zellweger','ANA'],['Cam Fowler','ANA'],['Radko Gudas','ANA'],['Greg Pateryn','ANA'],['Jani Hakanpaa','ANA'],['Simon Benoit','ANA'],['Jacob Larsson','ANA'],['Dmitry Kulikov','ANA'],['Max Jones','ANA'],['Trevor Zegras','ANA'],
+['Noah Hanifin','VGK'],['Shea Theodore','VGK'],['Alex Pietrangelo','VGK'],['Alec Martinez','VGK'],['Daniil Miromanov','VGK'],['Brayden McNabb','VGK'],['Nicolas Hague','VGK'],['Zach Whitecloud','VGK'],['Tomas Hertl','VGK'],['William Karlsson','VGK'],
+['Evan Bouchard','EDM'],['Mattias Ekholm','EDM'],['Darnell Nurse','EDM'],['Tyson Barrie','EDM'],['Brett Kulak','EDM'],['Cody Ceci','EDM'],['Evander Kane','EDM'],['Kailer Yamamoto','EDM'],['Drake Caggiula','EDM'],['Zach Hyman','EDM'],
+['Mikhail Sergachev','UTA'],['Sean Durzi','UTA'],['Jordyn Cooke','UTA'],['Vladislav Galuev','UTA'],['Nick Merkley','UTA'],['Xavier Lavallee-Smotherman','UTA'],['Robert Bortuzzo','UTA'],['John Marino','UTA'],['Clayton Keller','UTA'],['John Carlson','UTA'],
+['Vince Dunn','SEA'],['Brandon Montour','SEA'],['Will Borgen','SEA'],['Haydn Fleury','SEA'],['Carson Soucy','SEA'],['Adam Larsson','SEA'],['Kurtis MacDermid','SEA'],['Roman Josi','SEA'],['Jeremy Lauzon','SEA'],['Jake Chelios','SEA'],
+['Jaccob Slavin','CAR'],['Shayne Gostisbehere','CAR'],['Brent Burns','CAR'],['Brady Skjei','CAR'],['Tony DeAngelo','CAR'],['Ethan Bear','CAR'],['Spencer Stastny','CAR'],['Jesperi Koivainen','CAR'],['Dylan Roulette','CAR'],['Noel Gunler','CAR'],
+['Rasmus Dahlin','BUF'],['Owen Power','BUF'],['Bowen Byram','BUF'],['Henri Jokiharju','BUF'],['Mattias Samuelsson','BUF'],['Kris Letang','BUF'],['Jeff Skinner','BUF'],['Colin Miller','BUF'],['Brendan Lemieux','BUF'],['Mark Pysyk','BUF'],
+['Victor Hedman','TBL'],['Erik Cernak','TBL'],['Ryan McDonagh','TBL'],['Andrej Sustr','TBL'],['Philippe Myers','TBL'],['Mikhail Sergachev','TBL'],['Haydn Fleury','TBL'],['Jan Kovar','TBL'],['Jeremi-Karl Rakell','TBL'],['Reilly Smith','TBL'],
+['Lane Hutson','MTL'],['Mike Matheson','MTL'],['Kaiden Guhle','MTL'],['Chris Wideman','MTL'],['Justin Barron','MTL'],['Jordan Harris','MTL'],['Arber Xhekaj','MTL'],['Brett Kulak','MTL'],['Joel Edmundson','MTL'],['David Savard','MTL'],
+['Moritz Seider','DET'],['Simon Edvinsson','DET'],['Olli Maatta','DET'],['Jared McIsaac','DET'],['Gustav Lindstrom','DET'],['Sherwood Omsby','DET'],['Robert Hagg','DET'],['Josef Krejci','DET'],['Colin Miller','DET'],['Dennis Cholowski','DET'],
+['Erik Karlsson','PIT'],['Kris Letang','PIT'],['Marcus Pettersson','PIT'],['Tobias Bjornfot','PIT'],['P.O. Joseph','PIT'],['Jack St. Ivany','PIT'],['Jeremy Lauzon','PIT'],['Kevin Marinelli','PIT'],['Thomas Harley','PIT'],['Cody Franson','PIT'],
+['Charlie McAvoy','BOS'],['Hampus Lindholm','BOS'],['Derek Forbort','BOS'],['Brandon Carlo','BOS'],['Jakub Zboril','BOS'],['Joonas Koppinen','BOS'],['Andrew Peeke','BOS'],['Grant McCallum','BOS'],['Mike Reilly','BOS'],['Kevin Shattenkirk','BOS'],
+['Noah Dobson','NYI'],['Ryan Pulock','NYI'],['Scott Mayfield','NYI'],['Adam Pelech','NYI'],['Grant Hutton','NYI'],['Alexander Romanov','NYI'],['Mike Reilly','NYI'],['Brock Nelson','NYI'],['Oscar Klefbom','NYI'],['Zdeno Chara','NYI'],
+['K\'Andre Miller','NYR'],['Adam Fox','NYR'],['Braden Schneider','NYR'],['Ryan Lindgren','NYR'],['Artemi Panarin','NYR'],['Jacob Trouba','NYR'],['Erik Johnson','NYR'],['Tony DeAngelo','NYR'],['Brennan Othmann','NYR'],['Vincent Trocheck','NYR'],
+['Zach Werenski','CBJ'],['Ivan Provorov','CBJ'],['Andrew MacLean','CBJ'],['Sam Lafferty','CBJ'],['Erik Gudbransson','CBJ'],['Gavin Bayreuther','CBJ'],['Dillon Simpson','CBJ'],['Scott Harrington','CBJ'],['Jack Johnson','CBJ'],['Luke Prokop','CBJ'],
+['Mario Ferraro','SJS'],['Jake Walman','SJS'],['Marc-Edouard Vlasic','SJS'],['Kurtis MacDermid','SJS'],['Jaroslaw Chychrun','SJS'],['Nick Merkley','SJS'],['Nicolas Meloche','SJS'],['Steven Lorentz','SJS'],['Alexander True','SJS'],['Matthew Jajic','SJS'],
+['Ivan Provorov','PHI'],['Travis Sanheim','PHI'],['Nick Seeler','PHI'],['Rasmus Risbymm','PHI'],['Jamie Drysdale','PHI'],['Robert Hagg','PHI'],['Cam York','PHI'],['Louie Broissoit','PHI'],['John Tortorella','PHI'],['Kevin Hayes','PHI'],
+['John Carlson','WSH'],['Tom Wilson','WSH'],['Ethan Bear','WSH'],['Trevor van Riemsdyk','WSH'],['Matt Irwin','WSH'],['Dmitry Orlov','WSH'],['Rasmus Sandin','WSH'],['Alexander Alexeyev','WSH'],['Nick Jensen','WSH'],['Linus Ullmark','WSH'],
+['Drew Doughty','LAK'],['Mattias Ekholm','LAK'],['Sean Durzi','LAK'],['Mikey Anderson','LAK'],['Jacob Moverare','LAK'],['Jacob Bernard-Docker','LAK'],['Austin Strand','LAK'],['Jani Hakanpaa','LAK'],['Dion Phaneuf','LAK'],['Omar Fakhreddine','LAK'],
+].sort((a,b)=>a[1].localeCompare(b[1])||a[0].localeCompare(b[0]));
+
+// Entry form state (persists in localStorage per device)
+let EF={name:'',owner:'',fwd:Array.from({length:10},()=>({p:'',pk:1})),def:Array.from({length:5},()=>({p:'',pk:1})),submitted:false};
+// Clear any old localStorage data on page load
+try{localStorage.removeItem('50pucks_entry');}catch{}
+function saveEF(){try{localStorage.setItem('50pucks_entry',JSON.stringify(EF));}catch{}}
+
+function efPkTotal(){return EF.fwd.reduce((s,x)=>s+(parseInt(x.pk)||0),0)+EF.def.reduce((s,x)=>s+(parseInt(x.pk)||0),0);}
+function efValid(){
+  if(!EF.name.trim()||!EF.owner.trim())return{ok:false,msg:'Enter your team name and your name.'};
+  const fwdFilled=EF.fwd.filter(x=>x.p).length;const defFilled=EF.def.filter(x=>x.p).length;
+  if(fwdFilled<10)return{ok:false,msg:`Select ${10-fwdFilled} more forward${10-fwdFilled>1?'s':''}.`};
+  if(defFilled<5)return{ok:false,msg:`Select ${5-defFilled} more defensem${5-defFilled>1?'en':'an'}.`};
+  const t=efPkTotal();if(t!==50)return{ok:false,msg:`Pucks total is ${t}. Must be exactly 50.`};
+  // Check duplicates
+  const all=[...EF.fwd.map(x=>x.p),...EF.def.map(x=>x.p)].filter(Boolean);
+  const dups=all.filter((v,i)=>all.indexOf(v)!==i);
+  if(dups.length)return{ok:false,msg:`Duplicate player: ${dups[0]}`};
+  return{ok:true,msg:'Ready to submit!'};
+}
+
+function efBuildRows(){
+  const rows=[];
+  [...EF.fwd,...EF.def].forEach((x,i)=>{
+    if(!x.p)return;
+    const parts=x.p.split(' – ');
+    rows.push({team_name:EF.name,owner_name:EF.owner,player_name:parts[0],player_team:parts[1]||'',position:i<10?'F':'D',pucks:x.pk});
+  });
+  return rows;
+}
+
+async function efSubmit(){
+  const v=efValid();if(!v.ok)return;
+  const rows=efBuildRows();
+  // Try direct-to-sheet first
+  if(APPS_SCRIPT_URL){
+    EF._status='sending';saveEF();render();
+    try{
+      const r=await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({rows})});
+      // no-cors means we can't read the response, but if it didn't throw, it likely succeeded
+      EF.submitted=true;EF._status='sent';saveEF();render();
+      // Allow resubmission for testing - don't lock the form
+      setTimeout(()=>{EF.submitted=false;render();},3000);
+      return;
+    }catch(e){
+      console.error('Sheet submit failed:',e);
+      EF._status='error';saveEF();render();
+      // Fall through to email
+    }
+  }
+  // Fallback: email
+  efMailtoFallback();
+}
+
+function efMailtoFallback(){
+  const lines=[];
+  lines.push(`50 PUCKS ENTRY — ${S.yr}`);
+  lines.push(`Team: ${EF.name}`);
+  lines.push(`Owner: ${EF.owner}`);
+  lines.push('');
+  lines.push('FORWARDS:');
+  EF.fwd.forEach((x,i)=>{if(x.p)lines.push(`  ${i+1}. ${x.p} — ${x.pk} pucks`);});
+  lines.push('');
+  lines.push('DEFENSE:');
+  EF.def.forEach((x,i)=>{if(x.p)lines.push(`  ${i+1}. ${x.p} — ${x.pk} pucks`);});
+  lines.push('');
+  lines.push(`Total Pucks: ${efPkTotal()}/50`);
+  lines.push('');
+  lines.push('--- CSV (for upload) ---');
+  efBuildRows().forEach(r=>lines.push(`${r.team_name},${r.owner_name},${r.player_name},${r.player_team},${r.position},${r.pucks}`));
+  const body=encodeURIComponent(lines.join('\n'));
+  const subj=encodeURIComponent(`50 Pucks Entry: ${EF.name}`);
+  window.location.href=`mailto:${POOL_EMAIL}?subject=${subj}&body=${body}`;
+}
+
+function efUpdate(type,idx,field,val){
+  if(type==='name')EF.name=val;
+  else if(type==='owner')EF.owner=val;
+  else if(type==='fwd'){EF.fwd=EF.fwd.map((x,i)=>i===idx?{...x,[field]:val}:x);}
+  else if(type==='def'){EF.def=EF.def.map((x,i)=>i===idx?{...x,[field]:val}:x);}
+  saveEF();render();
+}
+
+function efReset(){if(confirm('Clear your entire entry? This cannot be undone.')){EF={name:'',owner:'',fwd:Array.from({length:10},()=>({p:'',pk:1})),def:Array.from({length:5},()=>({p:'',pk:1})),submitted:false};localStorage.removeItem('50pucks_entry');render();}}
+
+function EN(){
+  const v=efValid();const t=efPkTotal();
+  const pOpts=(n)=>[1,2,3,4,5,6].map(v=>`<option value="${v}" ${v===parseInt(n)?'selected':''}>${v}</option>`).join('');
+  const alive=getAliveTeams();
+  
+  // Build dynamic player lists from stats (top 6 F, top 4 D by PPG per team)
+  let playersByTeam={};
+  if(S._nhlStats && S._nhlStats.length>0){
+    playersByTeam=buildPlayerListByPPG(S._nhlStats);
+  }
+  
+  const mkOpts=(pos,sel)=>{
+    let opts=[];
+    for(const team of alive){
+      if(playersByTeam[team]){
+        const players=playersByTeam[team].filter(p=>pos==='F'?p.pos!=='D':p.pos==='D');
+        for(const p of players){
+          const val=`${p.name} – ${p.team}`;
+          opts.push(`<option value="${esc(val)}" ${val===sel?'selected':''}>${p.name} – ${p.team}</option>`);
         }
       }
-
-      app.innerHTML = `
-        <div class="max-w-4xl mx-auto p-4">
-          <header class="mb-6">
-            <h1 class="text-2xl font-bold text-slate-900">50 Pucks - 2026 Playoff Pool</h1>
-            <p class="text-slate-600">Pick 10 forwards + 5 defensemen, allocate 50 pucks</p>
-          </header>
-
-          <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-lg font-semibold mb-4">Enter Your Team</h2>
-
-            <div class="grid grid-cols-2 gap-4 mb-6">
-              <div>
-                <label class="block text-sm font-medium mb-1">Team Name</label>
-                <input type="text" id="teamName" placeholder="e.g., THE ROBFATHER" class="w-full px-3 py-2 border border-slate-300 rounded">
-              </div>
-              <div>
-                <label class="block text-sm font-medium mb-1">Your Name</label>
-                <input type="text" id="ownerName" placeholder="e.g., Rob" class="w-full px-3 py-2 border border-slate-300 rounded">
-              </div>
-            </div>
-
-            <div class="mb-6">
-              <label class="block text-sm font-medium mb-2">Select 10 Forwards</label>
-              <select id="forwards" multiple size="8" class="w-full px-3 py-2 border border-slate-300 rounded">
-                <option disabled>-- Select forwards --</option>
-                ${playerOptions}
-              </select>
-            </div>
-
-            <div class="mb-6">
-              <label class="block text-sm font-medium mb-2">Select 5 Defensemen</label>
-              <select id="defensemen" multiple size="4" class="w-full px-3 py-2 border border-slate-300 rounded">
-                <option disabled>-- Select defensemen --</option>
-                ${playerOptions}
-              </select>
-            </div>
-
-            <button onclick="alert('Entry saved!')" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-              Submit Entry
-            </button>
-          </div>
-
-          <div class="mt-6 text-sm text-slate-500">
-            <p>✓ Players loaded: ${stats.length} total</p>
-            <p>✓ Teams available: ${alive2026.length}</p>
-          </div>
-        </div>
-      `;
     }
+    return opts.join('');
+  };
 
-    // Initialize
-    window.addEventListener('DOMContentLoaded', function() {
-      S._nhlStats = fallback2026();
-      render();
-    });
-  </script>
+  const fwdRows=EF.fwd.map((x,i)=>`<tr class="border-b border-slate-50">
+    <td class="px-2 py-1.5 text-slate-400 text-xs text-center">${i+1}</td>
+    <td class="px-1 py-1"><select onchange="efUpdate('fwd',${i},'p',this.value)" class="w-full bg-white border border-slate-200 rounded px-1.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400"><option value="">Select forward...</option>${mkOpts('F',x.p)}</select></td>
+    <td class="px-1 py-1 text-center"><select onchange="efUpdate('fwd',${i},'pk',parseInt(this.value))" class="bg-white border border-slate-200 rounded px-1 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-amber-400 w-12">${pOpts(x.pk)}</select></td>
+  </tr>`).join('');
+
+  const defRows=EF.def.map((x,i)=>`<tr class="border-b border-slate-50">
+    <td class="px-2 py-1.5 text-slate-400 text-xs text-center">${i+11}</td>
+    <td class="px-1 py-1"><select onchange="efUpdate('def',${i},'p',this.value)" class="w-full bg-white border border-slate-200 rounded px-1.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400"><option value="">Select defenseman...</option>${mkOpts('D',x.p)}</select></td>
+    <td class="px-1 py-1 text-center"><select onchange="efUpdate('def',${i},'pk',parseInt(this.value))" class="bg-white border border-slate-200 rounded px-1 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-amber-400 w-12">${pOpts(x.pk)}</select></td>
+  </tr>`).join('');
+
+  return`<div class="space-y-4">
+    <div class="flex items-center justify-between">
+      <div><div class="text-sm font-semibold text-slate-900">Enter Your Team</div><div class="text-[10px] text-slate-400">Pick 10 forwards + 5 defense, allocate 50 pucks. Your picks are saved on this device.</div></div>
+      <button onclick="efReset()" class="text-[10px] text-slate-400 hover:text-red-500">Clear All</button>
+    </div>
+
+    <div class="card p-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div><label class="text-[10px] text-slate-500 font-medium block mb-0.5">Team Name</label><input type="text" value="${esc(EF.name)}" onchange="efUpdate('name',0,'',this.value)" placeholder="e.g. THE ROBFATHER" class="w-full bg-white border border-slate-200 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400"></div>
+        <div><label class="text-[10px] text-slate-500 font-medium block mb-0.5">Your Name</label><input type="text" value="${esc(EF.owner)}" onchange="efUpdate('owner',0,'',this.value)" placeholder="e.g. Rob Kunka" class="w-full bg-white border border-slate-200 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="flex justify-between items-center px-3 py-1.5 bg-slate-50 border-b border-slate-200">
+        <span class="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Forwards (10)</span>
+        <span class="text-[10px] text-slate-500">${EF.fwd.filter(x=>x.p).length}/10 selected</span>
+      </div>
+      <div class="overflow-x-auto"><table class="w-full"><thead><tr class="border-b border-slate-100"><th class="text-center text-[9px] text-slate-400 uppercase px-2 py-1 w-8">#</th><th class="text-left text-[9px] text-slate-400 uppercase px-1 py-1">Player</th><th class="text-center text-[9px] text-slate-400 uppercase px-1 py-1 w-14">Pucks</th></tr></thead><tbody>${fwdRows}</tbody></table></div>
+    </div>
+
+    <div class="card">
+      <div class="flex justify-between items-center px-3 py-1.5 bg-slate-50 border-b border-slate-200">
+        <span class="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Defense (5)</span>
+        <span class="text-[10px] text-slate-500">${EF.def.filter(x=>x.p).length}/5 selected</span>
+      </div>
+      <div class="overflow-x-auto"><table class="w-full"><thead><tr class="border-b border-slate-100"><th class="text-center text-[9px] text-slate-400 uppercase px-2 py-1 w-8">#</th><th class="text-left text-[9px] text-slate-400 uppercase px-1 py-1">Player</th><th class="text-center text-[9px] text-slate-400 uppercase px-1 py-1 w-14">Pucks</th></tr></thead><tbody>${defRows}</tbody></table></div>
+    </div>
+
+    <div class="card p-3">
+      <div class="flex items-center justify-between mb-2">
+        <div class="text-sm font-semibold text-slate-900">Puck Allocation</div>
+        <div class="text-lg font-bold num ${t===50?'text-emerald-600':t>50?'text-red-500':'text-amber-500'}">${t}<span class="text-slate-300 text-sm font-normal">/50</span></div>
+      </div>
+      <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+        <div class="h-full rounded-full transition-all" style="width:${Math.min(t/50*100,100)}%;background:${t===50?'#10b981':t>50?'#ef4444':'#d4a843'}"></div>
+      </div>
+      <div class="mt-2 text-xs ${v.ok?'text-emerald-600':'text-amber-600'}">${v.msg}</div>
+    </div>
+
+    <div class="flex gap-2">
+      ${EF.submitted?`
+        <div class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-sm font-semibold text-white bg-emerald-600">
+          ✓ Entry Submitted
+        </div>
+      `:EF._status==='sending'?`
+        <div class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-sm font-semibold text-white bg-slate-400">
+          Submitting...
+        </div>
+      `:EF._status==='error'?`
+        <button onclick="efMailtoFallback()" class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-sm font-semibold text-white bg-amber-600">
+          ✉ Submit via Email (fallback)
+        </button>
+      `:`
+        <button onclick="efSubmit()" ${v.ok?'':'disabled'} class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-sm font-semibold text-white ${v.ok?'cursor-pointer':'opacity-40 cursor-not-allowed'}" style="background:#0f1729">
+          Submit Entry
+        </button>
+      `}
+    </div>
+    ${EF.submitted?'<p class="text-[10px] text-emerald-600 text-center font-medium">Your entry has been received. Good luck!</p>':EF._status==='error'?'<p class="text-[10px] text-amber-600 text-center">Auto-submit failed. Click above to send via email instead.</p>':v.ok?'<p class="text-[10px] text-slate-400 text-center">Your entry will be sent directly to the pool host.</p>':''}
+
+    <div class="card p-3">
+      <div class="text-[10px] text-slate-500 font-medium mb-1">RULES</div>
+      <div class="text-[10px] text-slate-400 space-y-0.5">
+        <div>• 10 forwards + 5 defense from playoff teams only</div>
+        <div>• Allocate exactly 50 pucks total (1–6 per player)</div>
+        <div>• Score = Playoff Points × Pucks × Team Multiplier</div>
+        <div>• $${sn().fee} ${CFG.cur} entry fee via e-transfer</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// BOOT
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',loadData);}else{loadData();}
+</script>
+
 </body>
 </html>
