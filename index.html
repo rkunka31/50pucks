@@ -1550,9 +1550,14 @@ async function efSubmit(){
   if(APPS_SCRIPT_URL){
     EF._status='sending';saveEF();render();
     try{
-      const r=await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({rows})});
-      // no-cors means we can't read the response, but if it didn't throw, it likely succeeded
-      EF.submitted=true;EF._status='sent';saveEF();render();
+      const players=rows.map(r=>({name:r.player_name,team:r.player_team,position:r.position,pucks:r.pucks}));
+      const payload={action:'submit_entry',teamName:EF.name,ownerName:EF.owner,players,timestamp:new Date().toISOString()};
+      const r=await fetch(APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      if(r.ok){
+        EF.submitted=true;EF._status='sent';saveEF();alert('✓ Entry submitted to pool');render();
+      }else{
+        EF._status='error';saveEF();render();
+      }
       // Allow resubmission for testing - don't lock the form
       setTimeout(()=>{EF.submitted=false;render();},3000);
       return;
