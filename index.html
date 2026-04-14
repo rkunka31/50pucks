@@ -86,6 +86,30 @@ function getAliveTeams(){
 let rostersData=null; // Locked roster from uploaded CSV
 let playoffStats=null; // Live playoff stats from API
 
+// Load persisted roster on init
+function loadPersistedRoster(){
+  try{
+    const saved=localStorage.getItem('50pucks_roster');
+    if(saved){
+      rostersData=JSON.parse(saved);
+      console.log('✓ Loaded persisted roster:',rostersData.length,'players');
+    }
+  }catch(e){
+    console.error('Error loading persisted roster:',e);
+  }
+}
+
+// Save roster to localStorage
+function saveRoster(){
+  if(rostersData){
+    try{
+      localStorage.setItem('50pucks_roster',JSON.stringify(rostersData));
+    }catch(e){
+      console.error('Error saving roster:',e);
+    }
+  }
+}
+
 function parseRosterCSV(csv){
   // Parse Hockey-Reference CSV with multi-team player handling
   // Format: Rk,Player,Age,Team,Pos,GP,G,A,PTS,...
@@ -694,7 +718,7 @@ function AD(){
       <div class="text-xs font-semibold text-slate-900 mb-2">📋 STEP 1: Upload Roster (One-Time)</div>
       <div class="text-xs text-slate-700 mb-2">Download CSV from <a href="https://www.hockey-reference.com/leagues/NHL_2026_skaters.html" target="_blank" class="text-blue-600 underline">Hockey-Reference</a> and paste below. This locks in player rosters and regular season stats.</div>
       <textarea placeholder="Paste Hockey-Reference CSV here..." id="rosterInput" class="w-full bg-white border border-slate-300 rounded px-2 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-400 h-20 mb-2"></textarea>
-      <button onclick="const csv=document.getElementById('rosterInput').value;const r=parseRosterCSV(csv);if(r&&r.length>100){rostersData=r;alert('✓ Roster locked: '+r.length+' players');S._nhlStats=null;loadData();document.getElementById('rosterInput').value='';}else{alert('❌ Need at least 100 players')}" class="w-full px-2 py-1 rounded text-xs text-white bg-blue-600 hover:bg-blue-700 mb-2">Lock Roster</button>
+      <button onclick="const csv=document.getElementById('rosterInput').value;const r=parseRosterCSV(csv);if(r&&r.length>100){rostersData=r;saveRoster();alert('✓ Roster locked: '+r.length+' players');S._nhlStats=null;loadData();document.getElementById('rosterInput').value='';}else{alert('❌ Need at least 100 players')}" class="w-full px-2 py-1 rounded text-xs text-white bg-blue-600 hover:bg-blue-700 mb-2">Lock Roster</button>
       ${rosterStatus}
     </div>
     
@@ -721,7 +745,7 @@ function AD(){
     </div>
     <div class="card p-3">
       <div class="text-xs font-semibold text-slate-900 mb-2">Settings</div>
-      <button onclick="if(confirm('Clear all data and reset app?')){rostersData=null;playoffStats=null;S.hiddenTabs=new Set();S.adminAuth=false;S._nhlStats=null;localStorage.clear();location.reload()}" class="w-full px-2 py-1 rounded text-xs text-slate-600 bg-slate-50 hover:bg-slate-100">Reset Everything</button>
+      <button onclick="if(confirm('Clear all data and reset app?')){rostersData=null;playoffStats=null;S.hiddenTabs=new Set();S.adminAuth=false;S._nhlStats=null;localStorage.removeItem('50pucks_roster');localStorage.clear();location.reload()}" class="w-full px-2 py-1 rounded text-xs text-slate-600 bg-slate-50 hover:bg-slate-100">Reset Everything</button>
     </div>
   </div>`;
 }
@@ -992,7 +1016,8 @@ function EN(){
 }
 
 // BOOT
-if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',loadData);}else{loadData();}
+function initApp(){loadPersistedRoster();loadData();}
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',initApp);}else{initApp();}
 </script>
 
 </body>
