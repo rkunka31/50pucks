@@ -1484,20 +1484,9 @@ function efBuildRows(){
 
 function efSubmit(){
   const v=efValid();if(!v.ok)return;
-  EF.submitted=true;EF._status='submitted';saveEF();
+  EF.submitted=true;saveEF();
   alert('✓ Entry saved locally. Your team is ready to go!');
   render();
-  // Allow resubmission for testing - don't lock the form
-      setTimeout(()=>{EF.submitted=false;render();},3000);
-      return;
-    }catch(e){
-      console.error('Sheet submit failed:',e);
-      EF._status='error';saveEF();render();
-      // Fall through to email
-    }
-  }
-  // Fallback: email
-  efMailtoFallback();
 }
 
 function efMailtoFallback(){
