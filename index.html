@@ -290,16 +290,27 @@ function mergeRosterWithStats(){
 
 async function fetchStats(sid){
   // If custom CSV was imported, use it for 2026
-  if(customCSVData&&sid==='20252026')return customCSVData;
-  
+  if(rostersData&&sid==='20252026'){console.log('Using locked roster data');return rostersData;}
+
   const gameType = sid === '20252026' ? 2 : 3; // 2 = regular season, 3 = playoffs
-  
+  const timeout=5000; // 5 second timeout for API calls
+
+  // Helper to add timeout to fetch
+  const fetchWithTimeout=(url,opts={})=>{
+    const controller=new AbortController();
+    const id=setTimeout(()=>controller.abort(),timeout);
+    return fetch(url,{...opts,signal:controller.signal}).finally(()=>clearTimeout(id));
+  };
+
   // Fallback to NHL APIs
-  try{const r=await fetch(`https://api.nhle.com/stats/rest/en/skater/summary?isAggregate=false&isGame=false&sort=[{"property":"points","direction":"DESC"},{"property":"goals","direction":"DESC"}]&start=0&limit=500&cayenneExp=gameTypeId=${gameType} and seasonId<=${sid} and seasonId>=${sid}`);if(r.ok){const d=await r.json();if(d.data?.length>0)return d.data.map(p=>({id:p.playerId,name:p.skaterFullName,team:nm(p.teamAbbrevs),pos:p.positionCode,gp:p.gamesPlayed||0,g:p.goals||0,a:p.assists||0,pts:p.points||0,_s:'NHL API'}));}}catch(e){console.warn('API1:',e);}
-  try{const r=await fetch(`https://api-web.nhle.com/v1/skater-stats-leaders/${sid}/${gameType}?categories=points,goals,assists&limit=-1`);if(r.ok){const d=await r.json();const m=new Map();const pr=(l,c)=>{if(!l)return;for(const p of l){const id=p.id;if(!m.has(id))m.set(id,{id,name:`${p.firstName?.default||''} ${p.lastName?.default||''}`.trim(),team:nm(p.teamAbbrev?.default||''),pos:p.positionCode||'',gp:0,g:0,a:0,pts:0,_s:'NHL API'});const o=m.get(id);if(c==='points')o.pts=p.value||0;if(c==='goals')o.g=p.value||0;if(c==='assists')o.a=p.value||0;}};pr(d.points,'points');pr(d.goals,'goals');pr(d.assists,'assists');const res=[...m.values()];if(res.length>0)return res;}}catch(e){console.warn('API2:',e);}
-  
-  // Final fallback
-  if(sid==='20242025')return fallback2025();if(sid==='20252026')return fallback2026();return [];
+  try{const r=await fetchWithTimeout(`https://api.nhle.com/stats/rest/en/skater/summary?isAggregate=false&isGame=false&sort=[{"property":"points","direction":"DESC"},{"property":"goals","direction":"DESC"}]&start=0&limit=500&cayenneExp=gameTypeId=${gameType} and seasonId<=${sid} and seasonId>=${sid}`);if(r.ok){const d=await r.json();if(d.data?.length>0){console.log('Got data from API1');return d.data.map(p=>({id:p.playerId,name:p.skaterFullName,team:nm(p.teamAbbrevs),pos:p.positionCode,gp:p.gamesPlayed||0,g:p.goals||0,a:p.assists||0,pts:p.points||0,_s:'NHL API'}));}}}catch(e){console.warn('API1 timeout/error:',e);}
+  try{const r=await fetchWithTimeout(`https://api-web.nhle.com/v1/skater-stats-leaders/${sid}/${gameType}?categories=points,goals,assists&limit=-1`);if(r.ok){const d=await r.json();const m=new Map();const pr=(l,c)=>{if(!l)return;for(const p of l){const id=p.id;if(!m.has(id))m.set(id,{id,name:`${p.firstName?.default||''} ${p.lastName?.default||''}`.trim(),team:nm(p.teamAbbrev?.default||''),pos:p.positionCode||'',gp:0,g:0,a:0,pts:0,_s:'NHL API'});const o=m.get(id);if(c==='points')o.pts=p.value||0;if(c==='goals')o.g=p.value||0;if(c==='assists')o.a=p.value||0;}};pr(d.points,'points');pr(d.goals,'goals');pr(d.assists,'assists');const res=[...m.values()];if(res.length>0){console.log('Got data from API2');return res;}}}catch(e){console.warn('API2 timeout/error:',e);}
+
+  // Final fallback - explicitly call and return fallback data
+  console.log('Using fallback data for season:',sid);
+  if(sid==='20242025'){return fallback2025();}
+  if(sid==='20252026'){return fallback2026();}
+  return [];
 }
 
 function fallback2025(){return[
