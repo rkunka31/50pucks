@@ -1484,9 +1484,38 @@ function efBuildRows(){
 
 function efSubmit(){
   const v=efValid();if(!v.ok)return;
+
+  // Save locally first (always)
   EF.submitted=true;saveEF();
-  alert('✓ Entry saved locally. Your team is ready to go!');
-  render();
+
+  // Build player array for Apps Script
+  const rows=efBuildRows();
+  const players=rows.map(r=>({name:r.player_name,team:r.player_team,position:r.position,pucks:r.pucks}));
+
+  const payload={
+    action:'submit_entry',
+    teamName:EF.name,
+    ownerName:EF.owner,
+    players:players,
+    timestamp:new Date().toISOString()
+  };
+
+  const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbxEBshWgbYw1b0cFIFteji_pXBgz2MfAlPtxRzQpeHdg8_xdD5Nj-tJYzZyVHG9J-O9/exec';
+
+  fetch(APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)})
+  .then(r=>r.json())
+  .then(data=>{
+    if(data.success){
+      alert('✓ Entry submitted to pool!');
+    }else{
+      alert('⚠ Saved locally (sheet submit failed)');
+    }
+    render();
+  })
+  .catch(err=>{
+    alert('⚠ Saved locally (network error)');
+    render();
+  });
 }
 
 function efMailtoFallback(){
