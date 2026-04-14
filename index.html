@@ -919,7 +919,7 @@ function render(){
     </div>
     <div class="flex items-center gap-1.5">
       <select onchange="switchYear(this.value)" class="bg-white/10 border border-white/20 rounded px-2 py-1 pr-5 text-[11px] text-white focus:outline-none cursor-pointer">${yrs}</select>
-      <button onclick="loadData()" class="w-7 h-7 flex items-center justify-center bg-white/10 hover:bg-white/15 rounded text-white/70 text-xs">↻</button>
+      <button onclick="let btn=this;btn.style.opacity='0.5';fetchEntriesFromSheet().then(()=>{btn.style.opacity='1';})" title="Refresh pool data from Google Sheet" class="w-7 h-7 flex items-center justify-center bg-white/10 hover:bg-white/15 rounded text-white/70 text-xs">↻</button>
       ${!S.adminAuth?`<button onclick="adminPrompt()" class="w-7 h-7 flex items-center justify-center bg-white/10 hover:bg-white/15 rounded text-white/70 text-xs" title="Admin">⚙</button>`:'<button onclick="S.adminAuth=false;render()" class="w-7 h-7 flex items-center justify-center bg-white/10 hover:bg-white/15 rounded text-white/70 text-xs" title="Logout">🔒</button>'}
     </div>
   </div>
