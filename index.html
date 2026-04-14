@@ -1308,7 +1308,7 @@ function doSim(){S.simRun=true;render();setTimeout(()=>{S.simRes=runSim(S.entrie
 // ENTRY FORM — player database + form + mailto submit
 // ============================================================
 const POOL_EMAIL='rkunka31@gmail.com'; // fallback email
-const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbxEBshWgbYw1b0cFIFteji_pXBgz2MfAlPtxRzQpeHdg8_xdD5Nj-tJYzZyVHG9J-O9/exec';
+const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbyCWJB2L23sbfCQTtPgo8aZ_83VxzJ5qkzrtGMrSph-1R0ThiRzEn9I_mvwD0BJ0U5B/exec';
 
 const ROSTER_F=[
 ['Nathan MacKinnon','COL'],['Mikko Rantanen','COL'],['Artturi Lehkonen','COL'],['Casey Mittelstadt','COL'],['Ross Colton','COL'],['Jonathan Drouin','COL'],['Nazem Kadri','COL'],['Gabe Landeskog','COL'],['Devon Toews','COL'],['Matt Calvert','COL'],
@@ -1408,8 +1408,15 @@ function efSubmit(){
     timestamp:new Date().toISOString()
   };
 
-  // no-cors avoids CORS preflight; GAS receives e.postData.contents as text/plain JSON
-  fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',body:JSON.stringify(payload)})
+  // Use GET with URL params — GAS handles GET reliably (POST body is lost on GAS redirect)
+  const params=new URLSearchParams({
+    action:'submit_entry',
+    teamName:EF.name,
+    ownerName:EF.owner,
+    players:JSON.stringify(players),
+    timestamp:new Date().toISOString()
+  });
+  fetch(`${APPS_SCRIPT_URL}?${params.toString()}`,{mode:'no-cors'})
   .then(()=>{
     alert('✓ Entry submitted to pool!');
     render();
