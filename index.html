@@ -225,6 +225,75 @@ function parseRosterCSV(csv){
 }
 
 
+function validateHockeyRefCSV(csv,players){
+  const issues=[];
+  
+  // Check player count
+  if(players.length<DATA_VALIDATION.minPlayers){
+    issues.push(`❌ Only ${players.length} players (need ≥${DATA_VALIDATION.minPlayers})`);
+  }
+  
+  // Check for invalid teams
+  const invalidTeams=new Set();
+  for(const p of players){
+    if(!DATA_VALIDATION.validTeams.includes(p.team)){
+      invalidTeams.add(p.team);
+    }
+  }
+  if(invalidTeams.size>0){
+    issues.push(`❌ Invalid teams: ${Array.from(invalidTeams).join(', ')}`);
+  }
+  
+  // Check team roster sizes
+  const teamCounts={};
+  for(const p of players){
+    teamCounts[p.team]=(teamCounts[p.team]||0)+1;
+  }
+  const oversizedTeams=Object.entries(teamCounts).filter(([t,c])=>c>DATA_VALIDATION.maxPlayersPerTeam);
+  if(oversizedTeams.length>0){
+    issues.push(`❌ Teams with too many players: ${oversizedTeams.map(([t,c])=>`${t}(${c})`).join(', ')}`);
+  }
+  
+  // Check top scorer
+  const topScorer=players[0];
+  if(!topScorer || topScorer.pts<DATA_VALIDATION.minPointsLeader){
+    issues.push(`❌ Top scorer has only ${topScorer?.pts||0} points (need ≥${DATA_VALIDATION.minPointsLeader})`);
+  }
+  
+  // Check for duplicate names
+  const names=new Map();
+  const dups=[];
+  for(const p of players){
+    if(names.has(p.name)){dups.push(p.name);}
+    names.set(p.name,true);
+  }
+  if(dups.length>0){
+    issues.push(`⚠️ ${dups.length} duplicate names (may be multi-team players)`);
+  }
+  
+  // Check for missing critical stats
+  const missingStats=players.filter(p=>!p.gp||p.gp<1||!p.pts).length;
+  if(missingStats>0){
+    issues.push(`⚠️ ${missingStats} players missing games played or points`);
+  }
+  
+  return {valid:issues.length===0,issues,warnings:issues.filter(i=>i.startsWith('⚠️')),errors:issues.filter(i=>i.startsWith('❌'))};
+}
+
+function logDataImport(source,playerCount,validation){
+  const entry={
+    timestamp:new Date().toISOString(),
+    source,
+    playerCount,
+    valid:validation.valid,
+    issues:validation.issues.length,
+    notes:validation.issues
+  };
+  dataImportLog.push(entry);
+  // Keep last 20 imports
+  if(dataImportLog.length>20)dataImportLog.shift();
+  localStorage.setItem('dataImportLog',JSON.stringify(dataImportLog));
+}
 
 async function fetchPlayoffStats(){
   // Fetch live playoff stats from NHL API (game_type=3)
@@ -288,7 +357,6 @@ async function fetchEntriesFromSheet(){
           S.sel=sc[0]?.teamName||null;
         }
         alert(`✓ Loaded ${entries.length} entries from Google Sheet`);
-        autoSyncPoolState();
         render();
         return true;
       }else{
@@ -364,6 +432,29 @@ function initializePlaceholderPlayoffStats(){
   }));
 }
 
+// Merge roster with playoff stats
+function mergeRosterWithStats(){
+  if(!rostersData)return null;
+  // Create map of playoff stats by player name
+  const statsMap=new Map();
+  if(playoffStats){
+    for(const p of playoffStats){
+      statsMap.set(p.name.toLowerCase(),p);
+    }
+  }
+  
+  // Merge: keep roster info, update with playoff stats where available
+  return rostersData.map(r=>{
+    const playoff=statsMap.get(r.name.toLowerCase());
+    return{
+      ...r,
+      playoff_pts:playoff?.pts||0,
+      playoff_g:playoff?.g||0,
+      playoff_a:playoff?.a||0,
+      playoff_fetched:!!playoff
+    };
+  });
+}
 
 async function fetchStats(sid){
   // If custom CSV was imported, use it for 2026
@@ -1122,7 +1213,7 @@ function AD(){
     <div class="card p-3 bg-amber-50 border border-amber-200">
       <div class="text-xs font-semibold text-slate-900 mb-2">⏳ Initialize Playoff Placeholder Stats</div>
       <div class="text-xs text-slate-700 mb-2">Before actual playoff stats are available, initialize all roster players with 0 playoff points. This enables scoring display and leaderboard.</div>
-      <button onclick="if(!S._nhlStats||S._nhlStats.length===0){alert('❌ Roster not loaded yet');return;}const placeholder=initializePlaceholderPlayoffStats();S._nhlStats=placeholder;saveStats();if(S.entries&&S.entries.length>0){const lu=buildLU(placeholder);const sc=calcScores(S.entries,lu);const ps=poolStats(sc);S.entries=sc;S.stats=ps;}alert('✓ Initialized '+placeholder.length+' players with 0 playoff pts');autoSyncPoolState();render()" class="w-full px-2 py-1 rounded text-xs text-white bg-amber-600 hover:bg-amber-700 mb-2">Init Placeholder Stats</button>
+      <button onclick="if(!S._nhlStats||S._nhlStats.length===0){alert('❌ Roster not loaded yet');return;}const placeholder=initializePlaceholderPlayoffStats();S._nhlStats=placeholder;saveStats();if(S.entries&&S.entries.length>0){const lu=buildLU(placeholder);const sc=calcScores(S.entries,lu);const ps=poolStats(sc);S.entries=sc;S.stats=ps;}alert('✓ Initialized '+placeholder.length+' players with 0 playoff pts');render()" class="w-full px-2 py-1 rounded text-xs text-white bg-amber-600 hover:bg-amber-700 mb-2">Init Placeholder Stats</button>
     </div>
 
     <div class="card p-3 bg-slate-50 border border-slate-200">
@@ -1139,31 +1230,12 @@ function AD(){
       <div class="text-xs font-semibold text-slate-900 mb-2">Visible Tabs</div>
       <div class="space-y-1">${(S.yr===2025?['leaderboard','team','chart','players','simulation','stats','info']:['stats']).map(id=>`<label class="flex items-center gap-2 text-xs cursor-pointer"><input type="checkbox" ${!S.hiddenTabs.has(id)?'checked':''} onchange="const h=new Set(S.hiddenTabs);${!S.hiddenTabs.has(id)?'h.add':'h.delete'}('${id}');S.hiddenTabs=h;render()" class="w-4 h-4 rounded border-slate-300"><span class="capitalize">${id}</span></label>`).join('')}</div>
     </div>
-    <div class="card p-3 bg-red-50 border border-red-200">
-      <div class="text-xs font-semibold text-slate-900 mb-2">🗑️ Manage Individual Entries</div>
-      <div class="text-xs text-slate-700 mb-2">Delete or rename team entries</div>
-      ${S.entries&&S.entries.length>0?`<div class="space-y-1 max-h-32 overflow-y-auto">${S.entries.map(e=>`<div class="flex items-center justify-between gap-1 bg-white p-1.5 rounded border border-red-100"><span class="text-[10px] text-slate-700 flex-1 truncate">${esc(e.teamName)}</span><button onclick="editEntry('${esc(e.teamName).replace(/'/g,"\\'")}')" class="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded hover:bg-blue-200">Edit</button><button onclick="deleteEntry('${esc(e.teamName).replace(/'/g,"\\'")}')" class="px-1.5 py-0.5 text-[10px] bg-red-100 text-red-700 rounded hover:bg-red-200">Delete</button></div>`).join('')}</div>`:`<div class="text-[10px] text-slate-500 italic">No entries loaded yet</div>`}
-    </div>
-
-    <div class="card p-3 bg-orange-50 border border-orange-200">
-      <div class="text-xs font-semibold text-slate-900 mb-2">⚙️ Player Data Overrides</div>
-      <div class="text-xs text-slate-700 mb-2">Manually fix player stats (pts, goals, assists)</div>
-      ${S._nhlStats&&S._nhlStats.length>0?`<div class="space-y-1"><input type="text" placeholder="Player name..." id="overrideName" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-orange-400 mb-1"><button onclick="const name=document.getElementById('overrideName').value;if(name)overridePlayerStats(name);else alert('Enter player name');" class="w-full px-2 py-1 rounded text-xs text-white bg-orange-600 hover:bg-orange-700">Override Stats</button></div>`:`<div class="text-[10px] text-slate-500 italic">Load roster to enable player overrides</div>`}
-    </div>
-
-
-    <div class="card p-3 bg-cyan-50 border border-cyan-200">
-      <div class="text-xs font-semibold text-slate-900 mb-2">📥 Load Backup Data</div>
-      <div class="text-xs text-slate-700 mb-2">Upload CSV/TXT file with entries (same format as Google Sheet)</div>
-      <input type="file" id="backupFileInput" accept=".csv,.txt" class="w-full text-xs mb-1" onchange="handleBackupUpload(this.files)"><div class="text-[10px] text-slate-500">Format: team_name, owner_name, player_name, player_team, position, pucks</div>
-    </div>
-
     <div class="card p-3">
       <div class="text-xs font-semibold text-slate-900 mb-2">⚙️ Data Management</div>
       <div class="space-y-1">
         <button onclick="if(S.entries&&S.entries.length>0){if(confirm('Delete ALL teams? This cannot be undone.')){S.entries=[];S.stats=null;saveEntries();alert('✓ All teams deleted');render();}}else{alert('No teams to delete');}" class="w-full px-2 py-1 rounded text-xs text-slate-600 bg-slate-50 hover:bg-slate-100 mb-1">Clear All Teams</button>
-        <button onclick="if(confirm('Reset all stats to regular season (0 playoff pts)?')){const reset=S._nhlStats.map(p=>({...p,pts:0,g:0,a:0,_s:'Regular Season'}));S._nhlStats=reset;saveStats();if(S.entries&&S.entries.length>0){const lu=buildLU(reset);const sc=calcScores(S.entries,lu);const ps=poolStats(sc);S.entries=sc;S.stats=ps;}alert('✓ Stats reset');autoSyncPoolState();render();}" class="w-full px-2 py-1 rounded text-xs text-slate-600 bg-slate-50 hover:bg-slate-100 mb-1">Reset Stats to Regular Season</button>
-        <button onclick="factoryResetYear()" class="w-full px-2 py-1 rounded text-xs text-white bg-red-600 hover:bg-red-700">Factory Reset (${S.yr} Only)</button>
+        <button onclick="if(confirm('Reset all stats to regular season (0 playoff pts)?')){const reset=S._nhlStats.map(p=>({...p,pts:0,g:0,a:0,_s:'Regular Season'}));S._nhlStats=reset;saveStats();if(S.entries&&S.entries.length>0){const lu=buildLU(reset);const sc=calcScores(S.entries,lu);const ps=poolStats(sc);S.entries=sc;S.stats=ps;}alert('✓ Stats reset');render();}" class="w-full px-2 py-1 rounded text-xs text-slate-600 bg-slate-50 hover:bg-slate-100 mb-1">Reset Stats to Regular Season</button>
+        <button onclick="if(confirm('Clear all data and reset app?')){rostersData=null;playoffStats=null;S.hiddenTabs=new Set();S.adminAuth=false;S._nhlStats=null;S.entries=[];localStorage.clear();location.reload()}" class="w-full px-2 py-1 rounded text-xs text-slate-600 bg-slate-50 hover:bg-slate-100">Factory Reset</button>
       </div>
     </div>
   </div>`;
@@ -1179,126 +1251,6 @@ function adminPrompt(){
 }
 
 // ============================================================
-// ADMIN HELPER FUNCTIONS
-// ============================================================
-function deleteEntry(teamName){
-  if(!teamName||!S.entries)return;
-  if(confirm(`Delete "${teamName}"? This cannot be undone.`)){
-    S.entries=S.entries.filter(e=>e.teamName!==teamName);
-    saveEntries();
-    if(S.entries.length>0){
-      const lu=buildLU(S._nhlStats||[]);
-      const sc=calcScores(S.entries,lu);
-      const ps=poolStats(sc);
-      S.entries=sc;
-      S.stats=ps;
-    }else{
-      S.stats=null;
-    }
-    S.sel=S.entries[0]?.teamName||null;
-    alert(`✓ Deleted "${teamName}"`);
-    render();
-  }
-}
-
-function editEntry(teamName){
-  const entry=S.entries.find(e=>e.teamName===teamName);
-  if(!entry)return;
-  const newName=prompt('Team name:',entry.teamName);
-  if(newName!==null&&newName.trim()){
-    const oldName=entry.teamName;
-    entry.teamName=newName.trim();
-    const idx=S.entries.findIndex(e=>e.teamName===oldName);
-    if(idx>=0){
-      S.entries[idx]=entry;
-      saveEntries();
-      S.sel=newName;
-      alert(`✓ Updated team name to "${newName}"`);
-      render();
-    }
-  }
-}
-
-function overridePlayerStats(playerName){
-  const stat=prompt(`Override stats for "${playerName}". Enter as: pts,goals,assists (e.g., 5,2,3)`);
-  if(stat===null)return;
-  const parts=stat.split(',').map(s=>parseInt(s.trim())||0);
-  if(parts.length!==3){alert('❌ Invalid format. Use: pts,goals,assists');return;}
-
-  const [pts,g,a]=parts;
-  if(S._nhlStats){
-    const player=S._nhlStats.find(p=>p.name===playerName);
-    if(player){
-      player.pts=pts;player.g=g;player.a=a;
-      player._s='Manual Override';
-      saveStats();
-      if(S.entries&&S.entries.length>0){
-        const lu=buildLU(S._nhlStats);
-        const sc=calcScores(S.entries,lu);
-        const ps=poolStats(sc);
-        S.entries=sc;
-        S.stats=ps;
-      }
-      alert(`✓ Updated ${playerName}: ${pts}pts, ${g}G, ${a}A`);
-      render();
-    }else{
-      alert(`❌ Player not found`);
-    }
-  }
-}
-
-function factoryResetYear(){
-  if(confirm(`Clear ALL ${S.yr} pool data? Teams, entries, and stats will be deleted. Cannot be undone.`)){
-    S.entries=[];
-    S.stats=null;
-    S._nhlStats=null;
-    rostersData=null;
-    saveEntries();
-    saveStats();
-    localStorage.removeItem('50pucks_roster');
-    alert(`✓ ${S.yr} pool data cleared`);
-    render();
-  }
-}
-
-function handleBackupUpload(files){
-  if(!files||files.length===0)return;
-  const file=files[0];
-  const reader=new FileReader();
-  reader.onload=function(e){
-    const csv=e.target.result;
-    const entries=parseEntriesCSV(csv);
-    if(entries&&entries.length>0){
-      S.entries=entries;
-      saveEntries();
-      if(S._nhlStats&&S._nhlStats.length>0){
-        const lu=buildLU(S._nhlStats);
-        const sc=calcScores(entries,lu);
-        const ps=poolStats(sc);
-        S.entries=sc;
-        S.stats=ps;
-        S.sel=sc[0]?.teamName||null;
-      }
-      alert(`✓ Loaded ${entries.length} entries from backup file`);
-      savePoolState();
-      render();
-    }else{
-      alert('❌ No valid entries found in file');
-    }
-  };
-  reader.readAsText(file);
-}
-
-// ============================================================
-// CLOUD SYNC - Pool State Persistence
-// ============================================================
-// Cloud sync disabled - use refresh button instead
-function savePoolState(){}
-
-async function loadPoolState(){return false;}
-function autoSyncPoolState(){}
-
-// ============================================================
 // ACTIONS
 // ============================================================
 function updSim(k,v){const f=parseFloat(v);if(k==='n')S.simCfg.n=Math.max(100,parseInt(v)||1000);else if(k==='v')S.simCfg.v=f;else if(k==='a1')S.simCfg.adv[1]=f;else if(k==='a15')S.simCfg.adv[1.5]=f;else if(k==='a2')S.simCfg.adv[2]=f;render();}
@@ -1308,7 +1260,7 @@ function doSim(){S.simRun=true;render();setTimeout(()=>{S.simRes=runSim(S.entrie
 // ENTRY FORM — player database + form + mailto submit
 // ============================================================
 const POOL_EMAIL='rkunka31@gmail.com'; // fallback email
-const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbyCWJB2L23sbfCQTtPgo8aZ_83VxzJ5qkzrtGMrSph-1R0ThiRzEn9I_mvwD0BJ0U5B/exec';
+const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbwugM_l1VEVQYYA7rD5uNdbU5YyXLZiwdrMwD2NAUU1N7k7J885AN9zUkx29KJhWalg/exec';
 
 const ROSTER_F=[
 ['Nathan MacKinnon','COL'],['Mikko Rantanen','COL'],['Artturi Lehkonen','COL'],['Casey Mittelstadt','COL'],['Ross Colton','COL'],['Jonathan Drouin','COL'],['Nazem Kadri','COL'],['Gabe Landeskog','COL'],['Devon Toews','COL'],['Matt Calvert','COL'],
@@ -1390,43 +1342,49 @@ function efBuildRows(){
   return rows;
 }
 
-function efSubmit(){
+async function efSubmit(){
   const v=efValid();if(!v.ok)return;
-
-  // Save locally first (always)
-  EF.submitted=true;saveEF();
-
-  // Build player array for Apps Script
   const rows=efBuildRows();
-  const players=rows.map(r=>({name:r.player_name,team:r.player_team,position:r.position,pucks:r.pucks}));
-
-  const payload={
-    action:'submit_entry',
-    teamName:EF.name,
-    ownerName:EF.owner,
-    players:players,
-    timestamp:new Date().toISOString()
-  };
-
-  // Use GET with URL params — GAS handles GET reliably (POST body is lost on GAS redirect)
-  const params=new URLSearchParams({
-    action:'submit_entry',
-    teamName:EF.name,
-    ownerName:EF.owner,
-    players:JSON.stringify(players),
-    timestamp:new Date().toISOString()
-  });
-  fetch(`${APPS_SCRIPT_URL}?${params.toString()}`,{mode:'no-cors'})
-  .then(()=>{
-    alert('✓ Entry submitted to pool!');
-    render();
-  })
-  .catch(()=>{
-    alert('⚠ Saved locally (network error — check your connection)');
-    render();
-  });
+  // Try direct-to-sheet first
+  if(APPS_SCRIPT_URL){
+    EF._status='sending';saveEF();render();
+    try{
+      const r=await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({rows})});
+      // no-cors means we can't read the response, but if it didn't throw, it likely succeeded
+      EF.submitted=true;EF._status='sent';saveEF();render();
+      // Allow resubmission for testing - don't lock the form
+      setTimeout(()=>{EF.submitted=false;render();},3000);
+      return;
+    }catch(e){
+      console.error('Sheet submit failed:',e);
+      EF._status='error';saveEF();render();
+      // Fall through to email
+    }
+  }
+  // Fallback: email
+  efMailtoFallback();
 }
 
+function efMailtoFallback(){
+  const lines=[];
+  lines.push(`50 PUCKS ENTRY — ${S.yr}`);
+  lines.push(`Team: ${EF.name}`);
+  lines.push(`Owner: ${EF.owner}`);
+  lines.push('');
+  lines.push('FORWARDS:');
+  EF.fwd.forEach((x,i)=>{if(x.p)lines.push(`  ${i+1}. ${x.p} — ${x.pk} pucks`);});
+  lines.push('');
+  lines.push('DEFENSE:');
+  EF.def.forEach((x,i)=>{if(x.p)lines.push(`  ${i+1}. ${x.p} — ${x.pk} pucks`);});
+  lines.push('');
+  lines.push(`Total Pucks: ${efPkTotal()}/50`);
+  lines.push('');
+  lines.push('--- CSV (for upload) ---');
+  efBuildRows().forEach(r=>lines.push(`${r.team_name},${r.owner_name},${r.player_name},${r.player_team},${r.position},${r.pucks}`));
+  const body=encodeURIComponent(lines.join('\n'));
+  const subj=encodeURIComponent(`50 Pucks Entry: ${EF.name}`);
+  window.location.href=`mailto:${POOL_EMAIL}?subject=${subj}&body=${body}`;
+}
 
 function efUpdate(type,idx,field,val){
   if(type==='name')EF.name=val;
@@ -1520,13 +1478,21 @@ function EN(){
         <div class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-sm font-semibold text-white bg-emerald-600">
           ✓ Entry Submitted
         </div>
+      `:EF._status==='sending'?`
+        <div class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-sm font-semibold text-white bg-slate-400">
+          Submitting...
+        </div>
+      `:EF._status==='error'?`
+        <button onclick="efMailtoFallback()" class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-sm font-semibold text-white bg-amber-600">
+          ✉ Submit via Email (fallback)
+        </button>
       `:`
         <button onclick="efSubmit()" ${v.ok?'':'disabled'} class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-sm font-semibold text-white ${v.ok?'cursor-pointer':'opacity-40 cursor-not-allowed'}" style="background:#0f1729">
           Submit Entry
         </button>
       `}
     </div>
-    ${EF.submitted?'<p class="text-[10px] text-emerald-600 text-center font-medium">Your entry has been saved. Good luck!</p>':v.ok?'<p class="text-[10px] text-slate-400 text-center">Fill in your team and submit.</p>':''}
+    ${EF.submitted?'<p class="text-[10px] text-emerald-600 text-center font-medium">Your entry has been received. Good luck!</p>':EF._status==='error'?'<p class="text-[10px] text-amber-600 text-center">Auto-submit failed. Click above to send via email instead.</p>':v.ok?'<p class="text-[10px] text-slate-400 text-center">Your entry will be sent directly to the pool host.</p>':''}
 
     <div class="card p-3">
       <div class="text-[10px] text-slate-500 font-medium mb-1">RULES</div>
@@ -1548,7 +1514,7 @@ function initApp(){
   if(!entriesLoaded||!statsLoaded){
     loadData();
   }else{
-    // Both entries and stats loaded from localStorage — recalculate scores
+    // Both loaded from localStorage — recalculate scores before rendering
     if(S._nhlStats&&S._nhlStats.length>0&&S.entries&&S.entries.length>0){
       const lu=buildLU(S._nhlStats);
       const sc=calcScores(S.entries,lu);
