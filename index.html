@@ -333,6 +333,7 @@ async function fetchPlayoffStats(){
 
 async function fetchEntriesFromSheet(){
   // Fetch entries from published Google Sheet (CSV format)
+  // The sheet is always authoritative — always replaces local/cached data
   const sheetUrl=sn().sheetUrl;
   if(!sheetUrl){
     alert('❌ No sheet URL configured for this season');
@@ -340,10 +341,14 @@ async function fetchEntriesFromSheet(){
   }
 
   try{
-    const r=await fetch(sheetUrl);
+    const r=await fetch(sheetUrl+'&t='+Date.now()); // cache-bust
     if(r.ok){
       const csv=await r.text();
       const entries=parseEntriesCSV(csv);
+
+      // Sheet is authoritative — always wipe local cache first
+      localStorage.removeItem('50pucks_entries_2026');
+
       if(entries&&entries.length>0){
         S.entries=entries;
         saveEntries();
@@ -355,14 +360,19 @@ async function fetchEntriesFromSheet(){
           S.entries=sc;
           S.stats=ps;
           S.sel=sc[0]?.teamName||null;
+        }else{
+          S.stats=null;S.sel=entries[0]?.teamName||null;
         }
         alert(`✓ Loaded ${entries.length} entries from Google Sheet`);
-        render();
-        return true;
       }else{
-        alert('❌ No valid entries found in sheet');
-        return false;
+        // Sheet fetched OK but no entries yet — clear everything
+        S.entries=[];S.stats=null;S.sel=null;
+        alert('ℹ Sheet loaded — no entries yet. Local cache cleared.');
       }
+      render();
+      return entries&&entries.length>0;
+    }else{
+      alert(`❌ Sheet fetch failed (HTTP ${r.status})`);
     }
   }catch(e){
     console.error('Sheet fetch error:',e);
