@@ -382,49 +382,39 @@ async function fetchEntriesFromSheet(){
 }
 
 function parseEntriesCSV(csv){
-  // Parse Google Sheet CSV format: team_name,owner_name,player_name,player_team,position,pucks,timestamp
-  const lines=csv.trim().split('\n');
-  const entries=new Map(); // Group by team_name
+  // Parse Google Sheet CSV: team_name,owner_name,player_name,player_team,position,pucks[,timestamp]
+  const lines=csv.trim().split('\n').filter(l=>l.trim());
+  if(lines.length<2)return[];
 
-  let i=0;
-  // Skip header
-  while(i<lines.length&&!lines[i].includes('team_name')){i++;}
-  i++;
+  // Find header row — look for 'team_name' in first 5 lines, otherwise assume row 0 is header
+  let headerIdx=0;
+  for(let j=0;j<Math.min(lines.length,5);j++){
+    if(lines[j].toLowerCase().includes('team_name')){headerIdx=j;break;}
+  }
 
-  while(i<lines.length){
+  const entries=new Map();
+  for(let i=headerIdx+1;i<lines.length;i++){
     const line=lines[i].trim();
-    if(!line)break;
+    if(!line)continue; // skip blank lines, don't stop
 
-    const cols=line.split(',').map(c=>c.trim());
+    const cols=csvL(line); // use proper quoted-CSV parser
     if(cols.length<6)continue;
 
-    const teamName=cols[0];
-    const owner=cols[1];
-    const playerName=cols[2];
-    const playerTeam=cols[3];
-    const position=cols[4];
+    const teamName=cols[0].trim();
+    const owner=cols[1].trim();
+    const playerName=cols[2].trim();
+    const playerTeam=cols[3].trim();
+    const position=cols[4].trim();
     const pucks=parseInt(cols[5])||1;
 
     if(!teamName||!playerName)continue;
 
-    // Initialize entry if not exists
     if(!entries.has(teamName)){
-      entries.set(teamName,{
-        teamName,
-        owner,
-        players:[],
-        total:0,
-        rank:0
-      });
+      entries.set(teamName,{teamName,owner,players:[],total:0,rank:0});
     }
-
     const entry=entries.get(teamName);
-    const player={name:playerName,team:playerTeam,position,pucks};
-
-    entry.players.push(player);
+    entry.players.push({name:playerName,team:playerTeam,position,pucks});
     entry.total+=pucks;
-
-    i++;
   }
 
   return Array.from(entries.values());
