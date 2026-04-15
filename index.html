@@ -332,26 +332,18 @@ async function fetchPlayoffStats(){
 }
 
 async function fetchEntriesFromSheet(){
-  // Uses JSONP (script tag) to bypass CORS — works in all browsers including incognito
-  if(!APPS_SCRIPT_URL){alert('❌ No Apps Script URL configured');return false;}
+  // Fetch the published CSV URL directly — Google CDN has proper CORS headers, no GAS needed for reads
+  const sheetUrl=sn().sheetUrl;
+  if(!sheetUrl){alert('❌ No sheet URL configured');return false;}
 
   try{
-    const json=await new Promise((resolve,reject)=>{
-      const cbName='_gas_cb_'+Date.now();
-      const script=document.createElement('script');
-      const cleanup=()=>{delete window[cbName];if(script.parentNode)script.parentNode.removeChild(script);};
-      window[cbName]=(data)=>{cleanup();resolve(data);};
-      script.onerror=()=>{cleanup();reject(new Error('Script load failed'));};
-      script.src=`${APPS_SCRIPT_URL}?action=get_entries&callback=${cbName}`;
-      document.head.appendChild(script);
-      // Timeout after 15s
-      setTimeout(()=>{cleanup();reject(new Error('Request timed out'));},15000);
-    });
+    const r=await fetch(sheetUrl);
+    if(!r.ok){alert(`❌ Sheet fetch failed (HTTP ${r.status})`);return false;}
 
-    if(!json.success){alert(`❌ ${json.error||'Unknown error'}`);return false;}
-    const entries=json.entries||[];
+    const csv=await r.text();
+    const entries=parseEntriesCSV(csv);
 
-    // GAS is authoritative — always wipe local cache
+    // Always wipe local cache — sheet is authoritative
     localStorage.removeItem('50pucks_entries_2026');
 
     if(entries.length>0){
@@ -365,16 +357,16 @@ async function fetchEntriesFromSheet(){
       }else{
         S.stats=null;S.sel=entries[0]?.teamName||null;
       }
-      alert(`✓ Loaded ${entries.length} entries from Google Sheet`);
+      alert(`✓ Loaded ${entries.length} entries from sheet`);
     }else{
       S.entries=[];S.stats=null;S.sel=null;
-      alert('ℹ Sheet is empty — no entries yet.');
+      alert('ℹ Sheet loaded — no entries yet.');
     }
     render();
     return entries.length>0;
   }catch(err){
-    console.error('Fetch entries error:',err);
-    alert(`❌ Failed to load entries: ${err.message}`);
+    console.error('Sheet fetch error:',err);
+    alert(`❌ Failed to fetch sheet: ${err.message}`);
   }
   return false;
 }
