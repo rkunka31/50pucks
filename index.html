@@ -1247,9 +1247,9 @@ function CH(){
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:14px">
         <div>
           <div style="font-size:13px;font-weight:700;color:#0f1e35">Points Over Time</div>
-          <div style="font-size:10px;color:#94a3b8;margin-top:2px">${days<2?'Showing Day 1 snapshot — lines appear as more days are tracked':'Click any team to view their detail · hover for all scores'}</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px">${days<2?'Day 1 — each team shown as a dot; lines grow as days are tracked':'Click any team line to view their detail · hover to compare all scores'}</div>
         </div>
-        ${days>1?`<div style="font-size:10px;color:#94a3b8;text-align:right;flex-shrink:0">${_history[0].l} → ${_history[days-1].l}</div>`:`<span style="font-size:9px;font-weight:700;color:#3b82f6;border:1px solid rgba(59,130,246,.2);border-radius:4px;padding:2px 6px">Day 1</span>`}
+        <div style="font-size:10px;color:#94a3b8;text-align:right;flex-shrink:0">${days>1?`${_history[0].l} → ${_history[days-1].l}`:`Day ${days||1}`}</div>
       </div>
       <div style="position:relative;height:300px"><canvas id="evoChart"></canvas></div>
     </div>
@@ -1331,28 +1331,25 @@ function drawDashboard(){
   // ── Evolution chart ──────────────────────────────────────────
   const evoEl=document.getElementById('evoChart');
   if(evoEl){
-    const onClickTeam=(evt,items)=>{if(!items.length)return;const team=e[items[0].datasetIndex??items[0].index];if(team)set({sel:team.teamName,tab:'team'});};
-    if(_history.length>=2){
-      // Multi-day: line chart per team
-      const labels=_history.map(h=>h.l);
-      const datasets=e.map((en,i)=>({
-        label:en.teamName.length>16?en.teamName.slice(0,16)+'…':en.teamName,
-        data:_history.map(h=>h.s[en.teamName]??null),
-        borderColor:pal[i%pal.length],
-        backgroundColor:'transparent',
-        borderWidth:i<3?2.5:1.5,
-        pointRadius:_history.length<=21?4:2,
-        pointHoverRadius:7,
-        pointBackgroundColor:pal[i%pal.length],
-        tension:0.3,
-        spanGaps:true,
-      }));
-      _charts.evo=new Chart(evoEl,{type:'line',data:{labels,datasets},options:{...anim,responsive:true,maintainAspectRatio:false,onClick:onClickTeam,interaction:{mode:'index',axis:'x',intersect:false},plugins:{legend:{display:e.length<=10,position:'bottom',labels:{...tx,boxWidth:8,padding:10,usePointStyle:true,pointStyleWidth:8}},tooltip:{mode:'index',intersect:false,callbacks:{afterBody:lines=>lines.sort((a,b)=>b.raw-a.raw).map(()=>''),footer:()=>'Click to view team'}}},scales:{x:{ticks:tx,grid:gr},y:{ticks:{...tx,callback:v=>Math.round(v)},grid:gr}}}});
-    } else {
-      // Day 1: bar chart snapshot
-      const snap=_history.length===1?_history[0].s:{};
-      _charts.evo=new Chart(evoEl,{type:'bar',data:{labels:e.map(x=>x.teamName.length>13?x.teamName.slice(0,13)+'…':x.teamName),datasets:[{label:'Score',data:e.map(en=>snap[en.teamName]??Math.round(en.total)),backgroundColor:e.map((_,i)=>pal[i%pal.length]+'aa'),borderColor:e.map((_,i)=>pal[i%pal.length]),borderWidth:1.5,borderRadius:5}]},options:{...anim,responsive:true,maintainAspectRatio:false,onClick:(evt,items)=>{if(!items.length)return;const t=e[items[0].index];if(t)set({sel:t.teamName,tab:'team'});},plugins:{legend:{display:false},tooltip:{callbacks:{footer:()=>'Click to view team'}}},scales:{x:{ticks:tx,grid:gr},y:{ticks:{...tx,callback:v=>Math.round(v)},grid:gr}}}});
-    }
+    const onClickTeam=(evt,items)=>{if(!items.length)return;const team=e[items[0].datasetIndex];if(team)set({sel:team.teamName,tab:'team'});};
+    // Always a line chart — single snapshot shows dots, grows into lines as days pass
+    const labels=_history.length?_history.map(h=>h.l):['Today'];
+    const singlePoint=_history.length<=1;
+    const datasets=e.map((en,i)=>({
+      label:en.teamName.length>16?en.teamName.slice(0,16)+'…':en.teamName,
+      data:_history.length?_history.map(h=>h.s[en.teamName]??null):[Math.round(en.total)],
+      borderColor:pal[i%pal.length],
+      backgroundColor:pal[i%pal.length]+'18',
+      borderWidth:i<3?2.5:1.5,
+      pointRadius:singlePoint?8:_history.length<=21?4:2,
+      pointHoverRadius:9,
+      pointBackgroundColor:pal[i%pal.length],
+      pointStyle:singlePoint?'circle':'circle',
+      tension:0.3,
+      spanGaps:true,
+      fill:false,
+    }));
+    _charts.evo=new Chart(evoEl,{type:'line',data:{labels,datasets},options:{...anim,responsive:true,maintainAspectRatio:false,onClick:onClickTeam,interaction:{mode:'index',axis:'x',intersect:false},plugins:{legend:{display:e.length<=10,position:'bottom',labels:{...tx,boxWidth:8,padding:10,usePointStyle:true,pointStyleWidth:8}},tooltip:{mode:'index',intersect:false,itemSort:(a,b)=>b.raw-a.raw,callbacks:{footer:()=>'Click to view team'}}},scales:{x:{ticks:tx,grid:gr},y:{ticks:{...tx,callback:v=>Math.round(v)},grid:gr,beginAtZero:false}}}});
     evoEl.style.cursor='pointer';
   }
 
