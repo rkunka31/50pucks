@@ -14,37 +14,48 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{overflow-x:hidden;max-width:100vw;width:100%}
-body{font-family:'Inter',system-ui,sans-serif;background:#f4f5f7;color:#1e293b;-webkit-font-smoothing:antialiased}
+body{font-family:'Inter',system-ui,sans-serif;background:#eef0f5;color:#1e293b;-webkit-font-smoothing:antialiased}
 #app{overflow-x:hidden;max-width:100vw;width:100%}
 ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:2px}
-.hdr{background:#0f1729;color:#fff;overflow-x:hidden}
+.hdr{background:linear-gradient(160deg,#0a1628 0%,#0f1e38 100%);color:#fff;overflow-x:hidden;border-bottom:1px solid rgba(212,168,67,.18)}
 .hdr select{color:#fff}
 .hdr select option{color:#1e293b;background:#fff}
-.card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden}
+.card{background:#fff;border:1px solid #e4e8f0;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06),0 0 0 0 transparent}
 .trow{transition:background .1s}.trow:hover{background:#f8fafc}
-.tab-on{color:#0f1729;font-weight:600;border-bottom:2px solid #d4a843}
-.tab-off{color:#94a3b8;border-bottom:2px solid transparent}.tab-off:hover{color:#64748b}
-.r1{background:linear-gradient(135deg,#d4a843,#c49530);color:#0f1729}
-.r2{background:linear-gradient(135deg,#cbd5e1,#94a3b8);color:#0f1729}
-.r3{background:linear-gradient(135deg,#b87333,#96652a);color:#fff}
-.pk{width:5px;height:5px;border-radius:50%;background:#d4a843;display:inline-block;margin:0 0.5px}
-.pk-dead{background:#e2e8f0}
-.dot{width:5px;height:5px;border-radius:50%;display:inline-block}
+.tab-on{color:#0f1729;font-weight:700;background:#fef9ec;border-radius:8px;border:1px solid rgba(212,168,67,.3)!important}
+.tab-off{color:#94a3b8;border:1px solid transparent}.tab-off:hover{color:#475569;background:#f1f5f9;border-radius:8px}
+.r1{background:linear-gradient(135deg,#f0bc3d,#d4960a);color:#0f1729;box-shadow:0 2px 6px rgba(212,168,67,.35)}
+.r2{background:linear-gradient(135deg,#94a3b8,#64748b);color:#fff}
+.r3{background:linear-gradient(135deg,#c49b6e,#9e7a50);color:#fff}
+.pk{width:6px;height:6px;border-radius:50%;background:#d4a843;display:inline-block;margin:0 0.5px;flex-shrink:0}
+.pk-dead{background:#dde1e9}
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
 .num{font-variant-numeric:tabular-nums}
 select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2394a3b8'%3e%3cpath d='M6 8l4 4 4-4'/%3e%3c/svg%3e");background-position:right 6px center;background-repeat:no-repeat;background-size:14px}
 .bar-bg{background:#f1f5f9;border-radius:4px;overflow:hidden;height:18px}
 .bar-f{height:100%;border-radius:4px;display:flex;align-items:center;padding:0 6px;transition:width .3s}
-@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-.fade-in{animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes ld{0%{transform:translateX(-150%)}100%{transform:translateX(350%)}}
+.fade-in{animation:fadeIn .25s ease}
 nav div::-webkit-scrollbar{display:none}
 header,nav,main,footer{max-width:100vw;overflow-x:hidden}
 .hidden-tab{display:none}
+.stat-card{border-radius:12px;padding:12px 14px;border:1px solid #e4e8f0;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.score-bar-track{height:4px;background:#eef0f5;border-radius:2px;overflow:hidden;margin:4px 0}
+.score-bar-fill{height:100%;border-radius:2px;transition:width .4s ease}
 </style>
 </head>
 <body>
 <!-- Loading screen (standalone, not inside #app) -->
-<div id="loader" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f4f5f7">
-  <div style="text-align:center"><div style="width:44px;height:44px;border-radius:10px;background:#0f1729;display:flex;align-items:center;justify-content:center;color:#d4a843;font-weight:800;font-size:16px;margin:0 auto 10px">50</div><p style="color:#94a3b8;font-size:12px">Loading playoff stats...</p></div>
+<div id="loader" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(160deg,#0a1628 0%,#0f1e38 100%)">
+  <div style="text-align:center">
+    <div style="width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#f0bc3d,#d4a843);display:flex;align-items:center;justify-content:center;color:#0f1729;font-weight:900;font-size:22px;margin:0 auto 14px;box-shadow:0 8px 24px rgba(212,168,67,.4)">50</div>
+    <div style="color:#fff;font-weight:700;font-size:16px;margin-bottom:4px;letter-spacing:-.01em">50 Pucks</div>
+    <p style="color:rgba(255,255,255,.35);font-size:11px;margin-bottom:20px">Loading playoff stats...</p>
+    <div style="width:48px;height:2px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;margin:0 auto">
+      <div style="width:45%;height:100%;background:#d4a843;border-radius:2px;animation:ld 1.4s ease-in-out infinite"></div>
+    </div>
+  </div>
 </div>
 <div id="app" style="display:none"></div>
 
@@ -902,24 +913,27 @@ function render(){
   a.innerHTML=`
 <header class="hdr">
   <div class="max-w-5xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between">
-    <div class="flex items-center gap-2">
-      <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-white font-extrabold text-xs sm:text-sm" style="background:#d4a843">50</div>
-      <div class="leading-tight"><div class="text-xs sm:text-sm font-bold">${CFG.title}</div><div class="text-slate-400 text-[10px] sm:text-[11px]">${S.entries.length} entries · ${S.yr}</div></div>
+    <div class="flex items-center gap-2.5">
+      <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#f0bc3d,#d4a843);display:flex;align-items:center;justify-content:center;color:#0f1729;font-weight:900;font-size:15px;flex-shrink:0;box-shadow:0 4px 12px rgba(212,168,67,.35)">50</div>
+      <div class="leading-tight">
+        <div style="font-size:14px;font-weight:700;color:#fff;letter-spacing:-.01em">${CFG.title}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.42)">${S.entries.length} entries · ${S.yr} NHL Playoffs</div>
+      </div>
     </div>
     <div class="flex items-center gap-1.5">
-      <select onchange="switchYear(this.value)" class="bg-white/10 border border-white/20 rounded px-2 py-1 pr-5 text-[11px] text-white focus:outline-none cursor-pointer">${yrs}</select>
-      <button onclick="let btn=this;btn.style.opacity='0.5';fetchEntriesFromSheet().then(()=>{btn.style.opacity='1';})" title="Refresh pool data from Google Sheet" class="w-7 h-7 flex items-center justify-center bg-white/10 hover:bg-white/15 rounded text-white/70 text-xs">↻</button>
-      ${!S.adminAuth?`<button onclick="adminPrompt()" class="w-7 h-7 flex items-center justify-center bg-white/10 hover:bg-white/15 rounded text-white/70 text-xs" title="Admin">⚙</button>`:'<button onclick="S.adminAuth=false;render()" class="w-7 h-7 flex items-center justify-center bg-white/10 hover:bg-white/15 rounded text-white/70 text-xs" title="Logout">🔒</button>'}
+      <select onchange="switchYear(this.value)" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:7px;color:#fff;padding:5px 22px 5px 8px;font-size:11px;cursor:pointer;font-family:inherit" class="focus:outline-none">${yrs}</select>
+      <button onclick="let btn=this;btn.style.opacity='0.4';fetchEntriesFromSheet().then(()=>{btn.style.opacity='1';})" title="Refresh pool data" style="width:30px;height:30px;border-radius:7px;background:rgba(255,255,255,.1);border:none;color:rgba(255,255,255,.65);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0">↻</button>
+      ${!S.adminAuth?`<button onclick="adminPrompt()" style="width:30px;height:30px;border-radius:7px;background:rgba(255,255,255,.1);border:none;color:rgba(255,255,255,.65);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0" title="Admin">⚙</button>`:`<button onclick="S.adminAuth=false;render()" style="width:30px;height:30px;border-radius:7px;background:rgba(255,255,255,.1);border:none;color:rgba(255,255,255,.65);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0" title="Logout">🔒</button>`}
     </div>
   </div>
 </header>
-<nav class="bg-white border-b border-slate-200 sticky top-0 z-40">
-  <div class="max-w-5xl mx-auto px-3 sm:px-4 flex gap-0 overflow-x-auto" style="-ms-overflow-style:none;scrollbar-width:none;-webkit-overflow-scrolling:touch">
-    ${tabs.map(([id,l])=>`<button onclick="set({tab:'${id}'})" class="px-2.5 sm:px-3 py-2 text-[11px] sm:text-xs whitespace-nowrap ${S.tab===id?'tab-on':'tab-off'}">${l}</button>`).join('')}
+<nav style="background:#fff;border-bottom:1px solid #e4e8f0;position:sticky;top:0;z-index:40;box-shadow:0 2px 8px rgba(0,0,0,.05)">
+  <div class="max-w-5xl mx-auto px-2 sm:px-4 flex gap-1 overflow-x-auto py-1.5" style="-ms-overflow-style:none;scrollbar-width:none;-webkit-overflow-scrolling:touch">
+    ${tabs.map(([id,l])=>`<button onclick="set({tab:'${id}'})" style="padding:6px 10px;font-size:11px;white-space:nowrap;cursor:pointer;font-family:inherit;transition:all .12s;border:none;background:none" class="${S.tab===id?'tab-on':'tab-off'}">${l}</button>`).join('')}
   </div>
 </nav>
 <main class="max-w-5xl mx-auto px-3 sm:px-4 py-4 fade-in w-full min-w-0">${tabC()}</main>
-<footer class="border-t border-slate-200 py-3 mt-4"><p class="text-center text-slate-400 text-[10px]">${CFG.title} · ${S.yr}${_src?' · '+_src:''}</p></footer>`;
+<footer style="border-top:1px solid #e4e8f0;padding:12px 0;margin-top:16px"><p style="text-align:center;color:#94a3b8;font-size:10px">${CFG.title} · ${S.yr}${_src?' · '+_src:''}</p></footer>`;
   if(S._chart){try{S._chart.destroy();}catch{}}S._chart=null;
   setTimeout(drawChart,20);
 }
@@ -932,65 +946,101 @@ function tabC(){switch(S.tab){case'leaderboard':return LB();case'team':return TD
 function LB(){
   const e=S.entries,s=S.stats,pool=s?.pool||0;
   const pay=CFG.pay.map(p=>({...p,a:Math.round(pool*p.r)}));
-  // Stat cards: 1) Prize Pool+Payouts merged, 2) Best Pick, 3) Concentration, 4) Dead Puck Rate
+  const maxScore=e.length>0?e[0].total||1:1;
+
   const cards=`<div class="grid grid-cols-2 gap-2 sm:gap-3 mb-4">
-    <div class="rounded-lg p-2.5 sm:p-3" style="background:#0f172908;border:1px solid #0f172915">
-      <div class="text-[10px] text-slate-500 font-medium">Prize Pool</div>
-      <div class="text-lg sm:text-xl font-bold text-slate-900 num">$${pool}</div>
-      <div class="flex gap-2 mt-1">${pay.map(p=>`<span class="text-[10px] text-slate-400"><span class="font-semibold text-slate-600 num">$${p.a}</span> ${p.l}</span>`).join(' · ')}</div>
+    <div class="stat-card" style="background:#fff">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <div style="width:26px;height:26px;border-radius:7px;background:#f0f4f8;display:flex;align-items:center;justify-content:center;font-size:13px">💰</div>
+        <span style="font-size:10px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Prize Pool</span>
+      </div>
+      <div style="font-size:22px;font-weight:800;color:#0f1729;font-variant-numeric:tabular-nums;letter-spacing:-.02em">$${pool}</div>
+      <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">${pay.map(p=>`<span style="font-size:10px;color:#94a3b8"><span style="font-weight:700;color:#475569;font-variant-numeric:tabular-nums">$${p.a}</span> ${p.l}</span>`).join(' · ')}</div>
     </div>
-    <div class="rounded-lg p-2.5 sm:p-3" style="background:#d4a84308;border:1px solid #d4a84320">
-      <div class="text-[10px] font-medium" style="color:#96792f">Best Pick</div>
-      <div class="text-lg sm:text-xl font-bold text-slate-900 num">${fmt(s?.gB?.score||0)}</div>
-      <div class="text-[10px] text-slate-500 truncate">${esc(s?.gB?.name||'')} <span class="text-slate-400">· ${esc(s?.gB?.tn||'')}</span></div>
+    <div class="stat-card" style="background:#fffcf0;border-color:#f0e6b8">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <div style="width:26px;height:26px;border-radius:7px;background:#d4a84322;display:flex;align-items:center;justify-content:center;font-size:13px">🏆</div>
+        <span style="font-size:10px;color:#96792f;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Best Pick</span>
+      </div>
+      <div style="font-size:22px;font-weight:800;color:#0f1729;font-variant-numeric:tabular-nums;letter-spacing:-.02em">${fmt(s?.gB?.score||0)}</div>
+      <div style="font-size:10px;color:#94a3b8;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s?.gB?.name||'')} <span style="color:#c0c8d4">· ${esc(s?.gB?.tn||'')}</span></div>
     </div>
-    <div class="rounded-lg p-2.5 sm:p-3" style="background:#3b82f608;border:1px solid #3b82f615">
-      <div class="text-[10px] text-blue-600 font-medium">Pool Concentration</div>
-      <div class="text-lg sm:text-xl font-bold text-slate-900 num">${s?.concentration||0}%</div>
-      <div class="text-[10px] text-slate-400 truncate">Top 5: ${esc(s?.top5names||'')}</div>
+    <div class="stat-card" style="background:#f2f7ff;border-color:#c8daf8">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <div style="width:26px;height:26px;border-radius:7px;background:#3b82f622;display:flex;align-items:center;justify-content:center;font-size:13px">📊</div>
+        <span style="font-size:10px;color:#2563eb;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Concentration</span>
+      </div>
+      <div style="font-size:22px;font-weight:800;color:#0f1729;font-variant-numeric:tabular-nums;letter-spacing:-.02em">${s?.concentration||0}%</div>
+      <div style="font-size:10px;color:#94a3b8;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Top 5: ${esc(s?.top5names||'')}</div>
     </div>
-    <div class="rounded-lg p-2.5 sm:p-3" style="background:#ef444408;border:1px solid #ef444415">
-      <div class="text-[10px] text-red-500 font-medium">Dead Puck Rate</div>
-      <div class="text-lg sm:text-xl font-bold text-slate-900 num">${s?.deadRate||0}%</div>
-      <div class="text-[10px] text-slate-400">${s?.deadPucks||0} of ${s?.totalPucks||0} pucks eliminated</div>
+    <div class="stat-card" style="background:#fff4f4;border-color:#f8c8c8">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <div style="width:26px;height:26px;border-radius:7px;background:#ef444422;display:flex;align-items:center;justify-content:center;font-size:13px">💀</div>
+        <span style="font-size:10px;color:#dc2626;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Dead Pucks</span>
+      </div>
+      <div style="font-size:22px;font-weight:800;color:#0f1729;font-variant-numeric:tabular-nums;letter-spacing:-.02em">${s?.deadRate||0}%</div>
+      <div style="font-size:10px;color:#94a3b8;margin-top:6px">${s?.deadPucks||0} of ${s?.totalPucks||0} pucks eliminated</div>
     </div>
   </div>`;
 
-  // Mobile: card layout. Desktop: table.
-  const mobileRows=e.map(en=>`
-    <div onclick="set({sel:'${esc(en.teamName)}',tab:'team'})" class="flex items-center gap-2 p-2.5 border-b border-slate-100 trow cursor-pointer active:bg-slate-50">
-      <div class="flex-shrink-0 w-6">${rb(en.rank)}</div>
-      <div class="flex-1 min-w-0">
-        <div class="font-semibold text-slate-900 text-xs leading-tight truncate">${esc(en.teamName)}</div>
-        <div class="text-slate-400 text-[10px]">${esc(en.owner)} · ${en.alive}/${en.cnt} alive · ${en.pkR}pk left</div>
+  const mobileRows=e.map(en=>{
+    const pct=maxScore>0?Math.round(en.total/maxScore*100):0;
+    const rowBg=en.rank===1?'linear-gradient(90deg,#fffbeb,#fff)':en.rank===2?'linear-gradient(90deg,#f8fafc,#fff)':en.rank===3?'linear-gradient(90deg,#fdf8f3,#fff)':'#fff';
+    return`<div onclick="set({sel:'${esc(en.teamName)}',tab:'team'})" class="trow cursor-pointer border-b border-slate-100 last:border-0" style="background:${rowBg}">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px">
+        <div style="flex-shrink:0;width:26px;display:flex;justify-content:center">${rb(en.rank)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <div style="font-weight:600;color:#0f1729;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(en.teamName)}</div>
+            <div style="font-weight:800;color:#0f1729;font-size:14px;font-variant-numeric:tabular-nums;flex-shrink:0">${fmt(en.total)}</div>
+          </div>
+          <div class="score-bar-track"><div class="score-bar-fill" style="width:${pct}%;background:${en.rank===1?'#d4a843':'#0f1729'}"></div></div>
+          <div style="font-size:10px;color:#94a3b8">${esc(en.owner)} · ${en.alive}/${en.cnt} alive · ${en.pkR} pucks left</div>
+        </div>
+        <div style="color:#d0d7e2;font-size:11px;flex-shrink:0">›</div>
       </div>
-      <div class="flex-shrink-0 text-right">
-        <div class="font-bold text-slate-900 text-sm num">${fmt(en.total)}</div>
-      </div>
-      <div class="flex-shrink-0 text-slate-300 text-[10px]">›</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
-  const desktopRows=e.map(en=>`<tr onclick="set({sel:'${esc(en.teamName)}',tab:'team'})" class="border-b border-slate-100 trow cursor-pointer">
-    <td class="px-3 py-2.5">${rb(en.rank)}</td>
-    <td class="px-3 py-2.5"><div class="font-semibold text-slate-900 text-sm leading-tight">${esc(en.teamName)}</div><div class="text-slate-400 text-[10px]">${esc(en.owner)}</div></td>
-    <td class="px-3 py-2.5 text-right font-bold text-slate-900 num">${fmt(en.total)}</td>
-    <td class="px-3 py-2.5 text-center"><span class="font-semibold ${ac(en.alive,en.cnt)}">${en.alive}<span class="text-slate-300">/${en.cnt}</span></span></td>
-    <td class="px-3 py-2.5 text-center"><span class="font-semibold ${pc(en.pkR,50)} num">${en.pkR}<span class="text-slate-300">/${en.pkU}</span></span></td>
-    <td class="px-3 py-2.5 text-right"><div class="text-[10px] font-medium" style="color:#96792f">${esc(en.bp)}</div><div class="text-[10px] text-slate-400 num">${fmt(en.bs)}</div></td>
-    <td class="px-1 text-slate-300 text-[10px]">›</td>
-  </tr>`).join('');
+  const desktopRows=e.map(en=>{
+    const pct=maxScore>0?Math.round(en.total/maxScore*100):0;
+    const rowBg=en.rank===1?'linear-gradient(90deg,#fffbeb,transparent)':en.rank===2?'linear-gradient(90deg,#f8fafc,transparent)':en.rank===3?'linear-gradient(90deg,#fdf8f3,transparent)':'';
+    return`<tr onclick="set({sel:'${esc(en.teamName)}',tab:'team'})" class="border-b border-slate-100 trow cursor-pointer" style="background:${rowBg}">
+      <td style="padding:10px 12px">${rb(en.rank)}</td>
+      <td style="padding:10px 12px">
+        <div style="font-weight:600;color:#0f1729;font-size:13px;line-height:1.3">${esc(en.teamName)}</div>
+        <div style="font-size:10px;color:#94a3b8">${esc(en.owner)}</div>
+      </td>
+      <td style="padding:10px 12px">
+        <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end">
+          <div style="width:64px;height:4px;background:#eef0f5;border-radius:2px;overflow:hidden;flex-shrink:0">
+            <div style="height:100%;width:${pct}%;background:${en.rank===1?'#d4a843':'#1e3a5f'};border-radius:2px"></div>
+          </div>
+          <div style="font-weight:800;color:#0f1729;font-size:14px;font-variant-numeric:tabular-nums;min-width:44px;text-align:right">${fmt(en.total)}</div>
+        </div>
+      </td>
+      <td style="padding:10px 12px;text-align:center"><span class="font-semibold ${ac(en.alive,en.cnt)}">${en.alive}<span style="color:#d0d7e2">/${en.cnt}</span></span></td>
+      <td style="padding:10px 12px;text-align:center"><span class="font-semibold ${pc(en.pkR,50)} num">${en.pkR}<span style="color:#d0d7e2">/${en.pkU}</span></span></td>
+      <td style="padding:10px 12px;text-align:right">
+        <div style="font-size:11px;font-weight:600;color:#96792f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px">${esc(en.bp)}</div>
+        <div style="font-size:10px;color:#94a3b8;font-variant-numeric:tabular-nums">${fmt(en.bs)}</div>
+      </td>
+      <td style="padding:10px 4px;color:#d0d7e2;font-size:11px">›</td>
+    </tr>`;
+  }).join('');
 
+  const thStyle='font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;padding:10px 12px';
   return`${cards}
   <div class="card sm:hidden">${mobileRows}</div>
   <div class="card hidden sm:block"><div class="overflow-x-auto">
-    <table class="w-full text-sm"><thead><tr class="bg-slate-50 border-b border-slate-200">
-      <th class="text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2 w-8">#</th>
-      <th class="text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">Team</th>
-      <th class="text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">Score</th>
-      <th class="text-center text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">Alive</th>
-      <th class="text-center text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">Pucks Left</th>
-      <th class="text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">Best Pick</th>
-      <th class="w-4"></th>
+    <table class="w-full"><thead><tr style="background:#f8fafc;border-bottom:1px solid #e4e8f0">
+      <th style="${thStyle};width:36px;text-align:left">#</th>
+      <th style="${thStyle};text-align:left">Team</th>
+      <th style="${thStyle};text-align:right">Score</th>
+      <th style="${thStyle};text-align:center">Alive</th>
+      <th style="${thStyle};text-align:center">Pucks Left</th>
+      <th style="${thStyle};text-align:right">Best Pick</th>
+      <th style="width:20px"></th>
     </tr></thead><tbody>${desktopRows}</tbody></table>
   </div></div>`;
 }
@@ -1001,21 +1051,78 @@ function LB(){
 function TD(){
   const e=S.entries.find(x=>x.teamName===S.sel)||S.entries[0];if(!e)return'';
   const opts=S.entries.map(x=>`<option value="${esc(x.teamName)}" ${x.teamName===e.teamName?'selected':''}>#${x.rank} ${esc(x.teamName)}</option>`).join('');
-  const bar=e.players.map(p=>{const w=(p.pucks/50)*100;return`<div style="width:${w}%;background:${p.alive?(TM[p.team]||'#3b82f6'):'#e2e8f0'};opacity:${p.alive?1:.5}" title="${esc(p.name)}: ${p.pucks}"></div>`;}).join('');
-  const sec=(t,pl)=>{const tot=pl.reduce((s,p)=>s+p.score,0);return`<div class="card"><div class="flex justify-between items-center px-3 py-1.5 bg-slate-50 border-b border-slate-200"><span class="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">${t}</span><span class="text-[11px] text-slate-500 num">${fmt(Math.round(tot))}</span></div><div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="border-b border-slate-100"><th class="text-left text-[9px] text-slate-400 uppercase px-2 sm:px-3 py-1">Player</th><th class="text-center text-[9px] text-slate-400 uppercase px-1 py-1">Tm</th><th class="text-center text-[9px] text-slate-400 uppercase px-1 py-1">GP</th><th class="text-center text-[9px] text-slate-400 uppercase px-1 py-1">G</th><th class="text-center text-[9px] text-slate-400 uppercase px-1 py-1">A</th><th class="text-center text-[9px] text-slate-400 uppercase px-1 py-1">PTS</th><th class="text-center text-[9px] text-slate-400 uppercase px-1 py-1">×</th><th class="text-center text-[9px] text-slate-400 uppercase px-1 py-1">Pk</th><th class="text-right text-[9px] text-slate-400 uppercase px-2 sm:px-3 py-1">Score</th></tr></thead><tbody>${pl.map(p=>`<tr class="border-b border-slate-50 trow"><td class="px-2 sm:px-3 py-1.5"><div class="flex items-center gap-1"><span class="dot" style="background:${p.alive?'#10b981':'#e2e8f0'}"></span><span class="${p.alive?'text-slate-900':'text-slate-400'} text-[11px] sm:text-xs">${esc(p.name)}</span></div></td><td class="px-1 py-1.5 text-center">${tb(p.team)}</td><td class="px-1 py-1.5 text-center text-slate-500 num">${p.gp}</td><td class="px-1 py-1.5 text-center text-slate-500 num">${p.g}</td><td class="px-1 py-1.5 text-center text-slate-500 num">${p.a}</td><td class="px-1 py-1.5 text-center text-slate-900 font-semibold num">${p.pts}</td><td class="px-1 py-1.5 text-center font-semibold ${p.mult===2?'text-amber-500':p.mult===1.5?'text-blue-500':'text-slate-400'}">${p.mult}x</td><td class="px-1 py-1.5 text-center">${pkD(p.pucks,p.alive)}</td><td class="px-2 sm:px-3 py-1.5 text-right font-bold text-slate-900 num">${fmt(p.score)}</td></tr>`).join('')}</tbody></table></div></div>`;};
+  const bar=e.players.map(p=>{const w=(p.pucks/50)*100;return`<div style="width:${w}%;background:${p.alive?(TM[p.team]||'#3b82f6'):'#dde1e9'};opacity:${p.alive?1:.6};transition:width .3s" title="${esc(p.name)}: ${p.pucks}pk"></div>`;}).join('');
+  const multCl=m=>m===2?'color:#d97706;font-weight:700':m===1.5?'color:#2563eb;font-weight:700':'color:#94a3b8';
+  const sec=(t,pl)=>{
+    const tot=pl.reduce((s,p)=>s+p.score,0);
+    const thS='font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;padding:6px 8px';
+    return`<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#f8fafc;border-bottom:1px solid #e4e8f0">
+        <span style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em">${t}</span>
+        <span style="font-size:12px;font-weight:700;color:#0f1729;font-variant-numeric:tabular-nums">${fmt(Math.round(tot))}</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full"><thead><tr style="border-bottom:1px solid #eef0f5">
+          <th style="${thS};text-align:left;padding-left:12px">Player</th>
+          <th style="${thS};text-align:center">Tm</th>
+          <th style="${thS};text-align:center">GP</th>
+          <th style="${thS};text-align:center">G</th>
+          <th style="${thS};text-align:center">A</th>
+          <th style="${thS};text-align:center">PTS</th>
+          <th style="${thS};text-align:center">×</th>
+          <th style="${thS};text-align:center">Pk</th>
+          <th style="${thS};text-align:right;padding-right:12px">Score</th>
+        </tr></thead><tbody>${pl.map(p=>`<tr style="border-bottom:1px solid #f4f6f9" class="trow">
+          <td style="padding:8px 8px 8px 12px">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span class="dot" style="background:${p.alive?'#10b981':'#dde1e9'}"></span>
+              <span style="font-weight:${p.alive?600:400};color:${p.alive?'#0f1729':'#94a3b8'};font-size:12px">${esc(p.name)}</span>
+            </div>
+          </td>
+          <td style="padding:8px 4px;text-align:center">${tb(p.team)}</td>
+          <td style="padding:8px 4px;text-align:center;color:#64748b;font-size:11px;font-variant-numeric:tabular-nums">${p.gp}</td>
+          <td style="padding:8px 4px;text-align:center;color:#64748b;font-size:11px;font-variant-numeric:tabular-nums">${p.g}</td>
+          <td style="padding:8px 4px;text-align:center;color:#64748b;font-size:11px;font-variant-numeric:tabular-nums">${p.a}</td>
+          <td style="padding:8px 4px;text-align:center;font-weight:700;color:#0f1729;font-size:12px;font-variant-numeric:tabular-nums">${p.pts}</td>
+          <td style="padding:8px 4px;text-align:center;font-size:11px;${multCl(p.mult)}">${p.mult}x</td>
+          <td style="padding:8px 4px;text-align:center">${pkD(p.pucks,p.alive)}</td>
+          <td style="padding:8px 12px 8px 4px;text-align:right;font-weight:800;color:#0f1729;font-size:13px;font-variant-numeric:tabular-nums">${fmt(p.score)}</td>
+        </tr>`).join('')}</tbody></table>
+      </div>
+    </div>`;
+  };
+  const rankLabel=e.rank===1?'🥇':e.rank===2?'🥈':e.rank===3?'🥉':`#${e.rank}`;
   return`<div class="space-y-3">
-    <select onchange="set({sel:this.value})" class="w-full sm:w-auto bg-white border border-slate-300 rounded px-2.5 py-1.5 pr-7 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-400">${opts}</select>
-    <div class="card p-3 sm:p-4">
-      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <div><div class="text-sm sm:text-base font-bold text-slate-900">${esc(e.teamName)}</div><div class="text-slate-400 text-[11px]">${esc(e.owner)}</div></div>
-        <div class="flex gap-4 text-center">
-          <div><div class="text-lg font-bold text-slate-900 num">${fmt(e.total)}</div><div class="text-[9px] text-slate-400 uppercase">Score</div></div>
-          <div><div class="text-lg font-bold ${ac(e.alive,e.cnt)} num">${e.alive}/${e.cnt}</div><div class="text-[9px] text-slate-400 uppercase">Alive</div></div>
-          <div><div class="text-lg font-bold ${pc(e.pkR,50)} num">${e.pkR}</div><div class="text-[9px] text-slate-400 uppercase">Pucks Left</div></div>
+    <select onchange="set({sel:this.value})" style="width:100%;max-width:320px;background:#fff;border:1px solid #e4e8f0;border-radius:8px;padding:8px 28px 8px 10px;font-size:13px;font-weight:600;color:#1e293b;cursor:pointer;font-family:inherit;box-shadow:0 1px 3px rgba(0,0,0,.06)" class="focus:outline-none">${opts}</select>
+    <div class="card" style="padding:16px">
+      <div style="display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px">
+        <div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+            <span style="font-size:15px;font-weight:800;color:#0f1729">${esc(e.teamName)}</span>
+            <span style="font-size:12px">${rankLabel}</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8">${esc(e.owner)}</div>
+        </div>
+        <div style="display:flex;gap:16px">
+          <div style="text-align:center">
+            <div style="font-size:20px;font-weight:800;color:#0f1729;font-variant-numeric:tabular-nums;letter-spacing:-.02em">${fmt(e.total)}</div>
+            <div style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;font-weight:600">Score</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em" class="${ac(e.alive,e.cnt)}">${e.alive}<span style="color:#d0d7e2;font-weight:400">/${e.cnt}</span></div>
+            <div style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;font-weight:600">Alive</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em" class="${pc(e.pkR,50)}">${e.pkR}</div>
+            <div style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;font-weight:600">Pucks Left</div>
+          </div>
         </div>
       </div>
-      <div class="flex gap-px rounded overflow-hidden h-2">${bar}</div>
-      <div class="flex justify-between mt-1"><span class="text-[9px] text-slate-400">colored = alive, gray = eliminated</span><span class="text-[9px] text-slate-400 num">${e.pkU}/50</span></div>
+      <div style="display:flex;gap:1px;border-radius:6px;overflow:hidden;height:10px;background:#eef0f5">${bar}</div>
+      <div style="display:flex;justify-content:space-between;margin-top:5px">
+        <span style="font-size:9px;color:#94a3b8">colored = alive team · gray = eliminated</span>
+        <span style="font-size:9px;color:#94a3b8;font-variant-numeric:tabular-nums">${e.pkU}/50 pucks</span>
+      </div>
     </div>
     ${sec('Forwards',e.players.filter(p=>p.position==='F'))}
     ${sec('Defense',e.players.filter(p=>p.position==='D'))}
@@ -1068,28 +1175,42 @@ function PL(){
   if(!S.stats)return'';let pl=S.stats.pl.slice();
   if(S.pPos!=='all')pl=pl.filter(p=>p.pos===S.pPos);
   if(S.pSort==='avgScore')pl.sort((a,b)=>b.as-a.as);else if(S.pSort==='pts')pl.sort((a,b)=>b.pts-a.pts);
-  const btn=(v,k,l)=>`<button onclick="set({${k}:'${v}'})" class="px-2 py-1 rounded text-[10px] sm:text-[11px] font-medium ${S[k]===v?'bg-navy-900 text-white':'text-slate-500 hover:text-slate-700'}">${l}</button>`;
+  const btn=(v,k,l)=>`<button onclick="set({${k}:'${v}'})" style="padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;border:none;transition:all .1s;${S[k]===v?'background:#0f1729;color:#fff':'background:transparent;color:#64748b'}">${l}</button>`;
+  const thS='font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;padding:8px 6px';
   return`<div class="space-y-3">
-    <div class="flex flex-wrap gap-1.5">
-      <div class="flex gap-px bg-slate-100 rounded p-px">${btn('all','pPos','All')}${btn('F','pPos','Fwd')}${btn('D','pPos','Def')}</div>
-      <div class="flex gap-px bg-slate-100 rounded p-px">${btn('ownership','pSort','Ownership')}${btn('avgScore','pSort','Avg Score')}${btn('pts','pSort','Playoff Pts')}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;gap:2px;background:#f1f5f9;border-radius:8px;padding:3px">${btn('all','pPos','All')}${btn('F','pPos','Fwd')}${btn('D','pPos','Def')}</div>
+      <div style="display:flex;gap:2px;background:#f1f5f9;border-radius:8px;padding:3px">${btn('ownership','pSort','Ownership')}${btn('avgScore','pSort','Avg Score')}${btn('pts','pSort','Playoff Pts')}</div>
     </div>
-    <div class="card"><div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="bg-slate-50 border-b border-slate-200">
-      <th class="text-left text-[9px] font-semibold text-slate-400 uppercase px-2 sm:px-3 py-1.5">Player</th>
-      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">Tm</th>
-      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">PTS</th>
-      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">Own</th>
-      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">Avg Pk</th>
-      <th class="text-right text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">Avg Sc</th>
-      <th class="text-right text-[9px] font-semibold text-slate-400 uppercase px-2 sm:px-3 py-1.5">Best</th>
-    </tr></thead><tbody>${pl.map(p=>`<tr class="border-b border-slate-50 trow">
-      <td class="px-2 sm:px-3 py-1.5"><div class="flex items-center gap-1"><span class="dot" style="background:${p.alive?'#10b981':'#e2e8f0'}"></span><span class="font-medium text-slate-900 text-[11px]">${esc(p.name)}</span><span class="text-[9px] ${p.pos==='D'?'text-amber-500':'text-blue-500'} font-semibold">${p.pos}</span></div></td>
-      <td class="px-1 py-1.5 text-center">${tb(p.team)}</td>
-      <td class="px-1 py-1.5 text-center text-slate-900 font-semibold num">${p.pts}</td>
-      <td class="px-1 py-1.5 text-center"><div class="flex items-center gap-1 justify-center"><div class="w-8 h-1 bg-slate-100 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${p.own}%;background:${p.own===100?'#d4a843':'#0f1729'}"></div></div><span class="text-[10px] text-slate-400 num">${p.own}%</span></div></td>
-      <td class="px-1 py-1.5 text-center num" style="color:#d4a843">${p.ap}</td>
-      <td class="px-1 py-1.5 text-right text-slate-600 num">${fmt(p.as)}</td>
-      <td class="px-2 sm:px-3 py-1.5 text-right font-bold text-slate-900 num">${fmt(p.ms)}</td>
+    <div class="card"><div class="overflow-x-auto"><table class="w-full"><thead><tr style="background:#f8fafc;border-bottom:1px solid #e4e8f0">
+      <th style="${thS};text-align:left;padding-left:12px">Player</th>
+      <th style="${thS};text-align:center">Tm</th>
+      <th style="${thS};text-align:center">PTS</th>
+      <th style="${thS};text-align:center">Owned By</th>
+      <th style="${thS};text-align:center">Avg Pk</th>
+      <th style="${thS};text-align:right">Avg Score</th>
+      <th style="${thS};text-align:right;padding-right:12px">Best Score</th>
+    </tr></thead><tbody>${pl.map(p=>`<tr style="border-bottom:1px solid #f4f6f9" class="trow">
+      <td style="padding:9px 8px 9px 12px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="dot" style="background:${p.alive?'#10b981':'#dde1e9'}"></span>
+          <span style="font-weight:600;color:#0f1729;font-size:12px">${esc(p.name)}</span>
+          <span style="font-size:9px;font-weight:700;padding:1px 4px;border-radius:4px;${p.pos==='D'?'background:#fef3c7;color:#d97706':'background:#eff6ff;color:#2563eb'}">${p.pos}</span>
+        </div>
+      </td>
+      <td style="padding:9px 4px;text-align:center">${tb(p.team)}</td>
+      <td style="padding:9px 4px;text-align:center;font-weight:700;color:#0f1729;font-size:13px;font-variant-numeric:tabular-nums">${p.pts}</td>
+      <td style="padding:9px 6px;text-align:center">
+        <div style="display:flex;align-items:center;gap:5px;justify-content:center">
+          <div style="width:36px;height:4px;background:#eef0f5;border-radius:2px;overflow:hidden">
+            <div style="height:100%;width:${p.own}%;background:${p.own===100?'#d4a843':'#0f1729'};border-radius:2px"></div>
+          </div>
+          <span style="font-size:10px;color:#64748b;font-variant-numeric:tabular-nums;font-weight:500">${p.own}%</span>
+        </div>
+      </td>
+      <td style="padding:9px 4px;text-align:center;color:#d4a843;font-weight:700;font-size:12px;font-variant-numeric:tabular-nums">${p.ap}</td>
+      <td style="padding:9px 4px;text-align:right;color:#475569;font-size:12px;font-variant-numeric:tabular-nums">${fmt(p.as)}</td>
+      <td style="padding:9px 12px 9px 4px;text-align:right;font-weight:800;color:#0f1729;font-size:13px;font-variant-numeric:tabular-nums">${fmt(p.ms)}</td>
     </tr>`).join('')}</tbody></table></div></div>
   </div>`;
 }
@@ -1106,27 +1227,28 @@ function ST(){
   // Show top 100
   stats=stats.slice(0,100);
   const seasonNote=S.yr===2026?'<div class="text-xs text-amber-600 mb-3">📊 Regular season stats (will update to playoff stats once playoffs begin)</div>':'';
+  const thS='font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;padding:8px 6px';
   return`<div class="space-y-3">
     ${seasonNote}
-    <div class="text-xs text-slate-600"><span class="font-semibold">${stats.length}</span> skaters from playoff teams (top 100 shown)</div>
-    <div class="card"><div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="bg-slate-50 border-b border-slate-200">
-      <th class="text-left text-[9px] font-semibold text-slate-400 uppercase px-2 sm:px-3 py-1.5">#</th>
-      <th class="text-left text-[9px] font-semibold text-slate-400 uppercase px-2 sm:px-3 py-1.5">Player</th>
-      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">Tm</th>
-      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">Pos</th>
-      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">GP</th>
-      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">G</th>
-      <th class="text-center text-[9px] font-semibold text-slate-400 uppercase px-1 py-1.5">A</th>
-      <th class="text-right text-[9px] font-semibold text-slate-400 uppercase px-2 sm:px-3 py-1.5">PTS</th>
-    </tr></thead><tbody>${stats.map((p,i)=>`<tr class="border-b border-slate-50 trow">
-      <td class="px-2 sm:px-3 py-1.5 text-slate-400 text-[10px] num">${i+1}</td>
-      <td class="px-2 sm:px-3 py-1.5 font-medium text-slate-900 text-[11px]">${esc(p.name)}</td>
-      <td class="px-1 py-1.5 text-center">${tb(p.team)}</td>
-      <td class="px-1 py-1.5 text-center text-slate-500 text-[10px]">${esc(p.pos)}</td>
-      <td class="px-1 py-1.5 text-center text-slate-500 num">${p.gp}</td>
-      <td class="px-1 py-1.5 text-center text-slate-500 num">${p.g}</td>
-      <td class="px-1 py-1.5 text-center text-slate-500 num">${p.a}</td>
-      <td class="px-2 sm:px-3 py-1.5 text-right font-bold text-slate-900 num">${p.pts}</td>
+    <div style="font-size:12px;color:#475569"><span style="font-weight:700">${stats.length}</span> skaters from playoff teams (top 100 shown)</div>
+    <div class="card"><div class="overflow-x-auto"><table class="w-full"><thead><tr style="background:#f8fafc;border-bottom:1px solid #e4e8f0">
+      <th style="${thS};text-align:left;padding-left:12px">#</th>
+      <th style="${thS};text-align:left">Player</th>
+      <th style="${thS};text-align:center">Tm</th>
+      <th style="${thS};text-align:center">Pos</th>
+      <th style="${thS};text-align:center">GP</th>
+      <th style="${thS};text-align:center">G</th>
+      <th style="${thS};text-align:center">A</th>
+      <th style="${thS};text-align:right;padding-right:12px">PTS</th>
+    </tr></thead><tbody>${stats.map((p,i)=>`<tr style="border-bottom:1px solid #f4f6f9" class="trow">
+      <td style="padding:8px 6px 8px 12px;color:#94a3b8;font-size:10px;font-variant-numeric:tabular-nums">${i+1}</td>
+      <td style="padding:8px 6px;font-weight:600;color:#0f1729;font-size:12px">${esc(p.name)}</td>
+      <td style="padding:8px 4px;text-align:center">${tb(p.team)}</td>
+      <td style="padding:8px 4px;text-align:center;color:#64748b;font-size:10px">${esc(p.pos)}</td>
+      <td style="padding:8px 4px;text-align:center;color:#64748b;font-size:11px;font-variant-numeric:tabular-nums">${p.gp}</td>
+      <td style="padding:8px 4px;text-align:center;color:#64748b;font-size:11px;font-variant-numeric:tabular-nums">${p.g}</td>
+      <td style="padding:8px 4px;text-align:center;color:#64748b;font-size:11px;font-variant-numeric:tabular-nums">${p.a}</td>
+      <td style="padding:8px 12px 8px 4px;text-align:right;font-weight:800;color:#0f1729;font-size:13px;font-variant-numeric:tabular-nums">${p.pts}</td>
     </tr>`).join('')}</tbody></table></div></div>
   </div>`;
 }
@@ -1427,86 +1549,106 @@ function EN(){
     return opts.join('');
   };
 
-  const fwdRows=EF.fwd.map((x,i)=>`<tr class="border-b border-slate-50">
-    <td class="px-2 py-1.5 text-slate-400 text-xs text-center">${i+1}</td>
-    <td class="px-1 py-1"><select onchange="efUpdate('fwd',${i},'p',this.value)" class="w-full bg-white border border-slate-200 rounded px-1.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400"><option value="">Select forward...</option>${mkOpts('F',x.p)}</select></td>
-    <td class="px-1 py-1 text-center"><select onchange="efUpdate('fwd',${i},'pk',parseInt(this.value))" class="bg-white border border-slate-200 rounded px-1 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-amber-400 w-12">${pOpts(x.pk)}</select></td>
+  const selStyle='width:100%;background:#fff;border:1px solid #e4e8f0;border-radius:7px;padding:6px 24px 6px 8px;font-size:12px;font-family:inherit;color:#0f1729;cursor:pointer;outline:none';
+  const pkSelStyle='background:#fff;border:1px solid #e4e8f0;border-radius:7px;padding:6px 20px 6px 6px;font-size:12px;font-family:inherit;color:#0f1729;cursor:pointer;outline:none;width:52px;text-align:center';
+  const fwdRows=EF.fwd.map((x,i)=>`<tr style="border-bottom:1px solid #f4f6f9">
+    <td style="padding:6px 8px 6px 12px;color:#94a3b8;font-size:11px;text-align:center;width:32px">${i+1}</td>
+    <td style="padding:5px 4px"><select onchange="efUpdate('fwd',${i},'p',this.value)" style="${selStyle}"><option value="">Select forward...</option>${mkOpts('F',x.p)}</select></td>
+    <td style="padding:5px 12px 5px 4px;text-align:center"><select onchange="efUpdate('fwd',${i},'pk',parseInt(this.value))" style="${pkSelStyle}">${pOpts(x.pk)}</select></td>
   </tr>`).join('');
 
-  const defRows=EF.def.map((x,i)=>`<tr class="border-b border-slate-50">
-    <td class="px-2 py-1.5 text-slate-400 text-xs text-center">${i+11}</td>
-    <td class="px-1 py-1"><select onchange="efUpdate('def',${i},'p',this.value)" class="w-full bg-white border border-slate-200 rounded px-1.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400"><option value="">Select defenseman...</option>${mkOpts('D',x.p)}</select></td>
-    <td class="px-1 py-1 text-center"><select onchange="efUpdate('def',${i},'pk',parseInt(this.value))" class="bg-white border border-slate-200 rounded px-1 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-amber-400 w-12">${pOpts(x.pk)}</select></td>
+  const defRows=EF.def.map((x,i)=>`<tr style="border-bottom:1px solid #f4f6f9">
+    <td style="padding:6px 8px 6px 12px;color:#94a3b8;font-size:11px;text-align:center;width:32px">${i+11}</td>
+    <td style="padding:5px 4px"><select onchange="efUpdate('def',${i},'p',this.value)" style="${selStyle}"><option value="">Select defenseman...</option>${mkOpts('D',x.p)}</select></td>
+    <td style="padding:5px 12px 5px 4px;text-align:center"><select onchange="efUpdate('def',${i},'pk',parseInt(this.value))" style="${pkSelStyle}">${pOpts(x.pk)}</select></td>
   </tr>`).join('');
 
-  return`<div class="space-y-4">
-    <div class="flex items-center justify-between">
-      <div><div class="text-sm font-semibold text-slate-900">Enter Your Team</div><div class="text-[10px] text-slate-400">Pick 10 forwards + 5 defense, allocate 50 pucks. Your picks are saved on this device.</div></div>
-      <button onclick="efReset()" class="text-[10px] text-slate-400 hover:text-red-500">Clear All</button>
+  const puckColor=t===50?'#10b981':t>50?'#ef4444':'#d4a843';
+  const puckPct=Math.min(t/50*100,100);
+  const sectionHdr=(title,filled,total)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-bottom:1px solid #e4e8f0">
+    <span style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em">${title}</span>
+    <span style="font-size:11px;font-weight:600;color:${filled===total?'#10b981':'#94a3b8'};font-variant-numeric:tabular-nums">${filled}/${total}</span>
+  </div>`;
+  return`<div class="space-y-3">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+      <div>
+        <div style="font-size:15px;font-weight:800;color:#0f1729;letter-spacing:-.01em">Enter Your Team</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:2px">Pick 10 forwards + 5 defense · Allocate 50 pucks · 1–6 per player</div>
+      </div>
+      <button onclick="efReset()" style="font-size:10px;color:#94a3b8;background:none;border:none;cursor:pointer;padding:4px;white-space:nowrap;font-family:inherit">Clear All</button>
     </div>
 
-    <div class="card p-3">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div><label class="text-[10px] text-slate-500 font-medium block mb-0.5">Team Name</label><input type="text" value="${esc(EF.name)}" onchange="efUpdate('name',0,'',this.value)" placeholder="e.g. THE ROBFATHER" class="w-full bg-white border border-slate-200 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400"></div>
-        <div><label class="text-[10px] text-slate-500 font-medium block mb-0.5">Your Name</label><input type="text" value="${esc(EF.owner)}" onchange="efUpdate('owner',0,'',this.value)" placeholder="e.g. Rob Kunka" class="w-full bg-white border border-slate-200 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400"></div>
+    <div class="card" style="padding:14px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <label style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:5px">Team Name</label>
+          <input type="text" value="${esc(EF.name)}" onchange="efUpdate('name',0,'',this.value)" placeholder="e.g. THE ROBFATHER" style="width:100%;background:#fff;border:1px solid #e4e8f0;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;color:#0f1729;outline:none;box-shadow:0 1px 2px rgba(0,0,0,.04)" class="focus:ring-1 focus:ring-amber-400">
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:5px">Your Name</label>
+          <input type="text" value="${esc(EF.owner)}" onchange="efUpdate('owner',0,'',this.value)" placeholder="e.g. Rob Kunka" style="width:100%;background:#fff;border:1px solid #e4e8f0;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;color:#0f1729;outline:none;box-shadow:0 1px 2px rgba(0,0,0,.04)" class="focus:ring-1 focus:ring-amber-400">
+        </div>
       </div>
+    </div>
+
+    <div class="card" style="padding:12px 14px;display:flex;align-items:center;gap:12px;position:sticky;top:50px;z-index:30;box-shadow:0 4px 12px rgba(0,0,0,.1)">
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <span style="font-size:11px;font-weight:600;color:#64748b">Puck Allocation</span>
+          <span style="font-size:16px;font-weight:800;color:${puckColor};font-variant-numeric:tabular-nums">${t}<span style="color:#d0d7e2;font-size:12px;font-weight:400">/50</span></span>
+        </div>
+        <div style="height:6px;background:#eef0f5;border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${puckPct}%;background:${puckColor};border-radius:3px;transition:width .2s,background .2s"></div>
+        </div>
+      </div>
+      <div style="font-size:11px;font-weight:600;color:${v.ok?'#10b981':t>50?'#ef4444':'#d97706'};white-space:nowrap">${v.ok?'✓ Ready':'⚠ '+v.msg}</div>
     </div>
 
     <div class="card">
-      <div class="flex justify-between items-center px-3 py-1.5 bg-slate-50 border-b border-slate-200">
-        <span class="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Forwards (10)</span>
-        <span class="text-[10px] text-slate-500">${EF.fwd.filter(x=>x.p).length}/10 selected</span>
-      </div>
-      <div class="overflow-x-auto"><table class="w-full"><thead><tr class="border-b border-slate-100"><th class="text-center text-[9px] text-slate-400 uppercase px-2 py-1 w-8">#</th><th class="text-left text-[9px] text-slate-400 uppercase px-1 py-1">Player</th><th class="text-center text-[9px] text-slate-400 uppercase px-1 py-1 w-14">Pucks</th></tr></thead><tbody>${fwdRows}</tbody></table></div>
+      ${sectionHdr('Forwards (10)',EF.fwd.filter(x=>x.p).length,10)}
+      <div class="overflow-x-auto"><table class="w-full"><thead><tr style="border-bottom:1px solid #eef0f5">
+        <th style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;padding:6px 8px 6px 12px;text-align:center;width:32px">#</th>
+        <th style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;padding:6px 4px;text-align:left">Player</th>
+        <th style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;padding:6px 12px 6px 4px;text-align:center;width:56px">Pucks</th>
+      </tr></thead><tbody>${fwdRows}</tbody></table></div>
     </div>
 
     <div class="card">
-      <div class="flex justify-between items-center px-3 py-1.5 bg-slate-50 border-b border-slate-200">
-        <span class="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Defense (5)</span>
-        <span class="text-[10px] text-slate-500">${EF.def.filter(x=>x.p).length}/5 selected</span>
-      </div>
-      <div class="overflow-x-auto"><table class="w-full"><thead><tr class="border-b border-slate-100"><th class="text-center text-[9px] text-slate-400 uppercase px-2 py-1 w-8">#</th><th class="text-left text-[9px] text-slate-400 uppercase px-1 py-1">Player</th><th class="text-center text-[9px] text-slate-400 uppercase px-1 py-1 w-14">Pucks</th></tr></thead><tbody>${defRows}</tbody></table></div>
+      ${sectionHdr('Defense (5)',EF.def.filter(x=>x.p).length,5)}
+      <div class="overflow-x-auto"><table class="w-full"><thead><tr style="border-bottom:1px solid #eef0f5">
+        <th style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;padding:6px 8px 6px 12px;text-align:center;width:32px">#</th>
+        <th style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;padding:6px 4px;text-align:left">Player</th>
+        <th style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;padding:6px 12px 6px 4px;text-align:center;width:56px">Pucks</th>
+      </tr></thead><tbody>${defRows}</tbody></table></div>
     </div>
 
-    <div class="card p-3">
-      <div class="flex items-center justify-between mb-2">
-        <div class="text-sm font-semibold text-slate-900">Puck Allocation</div>
-        <div class="text-lg font-bold num ${t===50?'text-emerald-600':t>50?'text-red-500':'text-amber-500'}">${t}<span class="text-slate-300 text-sm font-normal">/50</span></div>
+    ${EF.submitted?`
+      <div style="background:#10b981;border-radius:10px;padding:14px;text-align:center;color:#fff;font-weight:700;font-size:14px">
+        ✓ Entry Submitted — Good luck!
       </div>
-      <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-        <div class="h-full rounded-full transition-all" style="width:${Math.min(t/50*100,100)}%;background:${t===50?'#10b981':t>50?'#ef4444':'#d4a843'}"></div>
+    `:EF._status==='sending'?`
+      <div style="background:#94a3b8;border-radius:10px;padding:14px;text-align:center;color:#fff;font-weight:700;font-size:14px">
+        Submitting your entry...
       </div>
-      <div class="mt-2 text-xs ${v.ok?'text-emerald-600':'text-amber-600'}">${v.msg}</div>
-    </div>
+    `:EF._status==='error'?`
+      <button onclick="efMailtoFallback()" style="width:100%;background:#d97706;border:none;border-radius:10px;padding:14px;text-align:center;color:#fff;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit">
+        ✉ Submit via Email (fallback)
+      </button>
+      <p style="font-size:10px;color:#d97706;text-align:center">Auto-submit failed. Click above to send via email instead.</p>
+    `:`
+      <button onclick="efSubmit()" ${v.ok?'':'disabled'} style="width:100%;background:${v.ok?'#0f1729':'#94a3b8'};border:none;border-radius:10px;padding:14px;text-align:center;color:#fff;font-weight:700;font-size:14px;cursor:${v.ok?'pointer':'not-allowed'};font-family:inherit;transition:background .15s">
+        ${v.ok?'Submit Entry →':'Complete your picks to submit'}
+      </button>
+      ${v.ok?`<p style="font-size:10px;color:#94a3b8;text-align:center">Your entry will be sent directly to the pool host.</p>`:''}
+    `}
 
-    <div class="flex gap-2">
-      ${EF.submitted?`
-        <div class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-sm font-semibold text-white bg-emerald-600">
-          ✓ Entry Submitted
-        </div>
-      `:EF._status==='sending'?`
-        <div class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-sm font-semibold text-white bg-slate-400">
-          Submitting...
-        </div>
-      `:EF._status==='error'?`
-        <button onclick="efMailtoFallback()" class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-sm font-semibold text-white bg-amber-600">
-          ✉ Submit via Email (fallback)
-        </button>
-      `:`
-        <button onclick="efSubmit()" ${v.ok?'':'disabled'} class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-sm font-semibold text-white ${v.ok?'cursor-pointer':'opacity-40 cursor-not-allowed'}" style="background:#0f1729">
-          Submit Entry
-        </button>
-      `}
-    </div>
-    ${EF.submitted?'<p class="text-[10px] text-emerald-600 text-center font-medium">Your entry has been received. Good luck!</p>':EF._status==='error'?'<p class="text-[10px] text-amber-600 text-center">Auto-submit failed. Click above to send via email instead.</p>':v.ok?'<p class="text-[10px] text-slate-400 text-center">Your entry will be sent directly to the pool host.</p>':''}
-
-    <div class="card p-3">
-      <div class="text-[10px] text-slate-500 font-medium mb-1">RULES</div>
-      <div class="text-[10px] text-slate-400 space-y-0.5">
-        <div>• 10 forwards + 5 defense from playoff teams only</div>
-        <div>• Allocate exactly 50 pucks total (1–6 per player)</div>
-        <div>• Score = Playoff Points × Pucks × Team Multiplier</div>
-        <div>• $${sn().fee} ${CFG.cur} entry fee via e-transfer</div>
+    <div class="card" style="padding:14px">
+      <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Pool Rules</div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <div style="font-size:11px;color:#64748b;display:flex;gap:6px"><span style="color:#d4a843;font-weight:700">•</span>10 forwards + 5 defense from playoff teams only</div>
+        <div style="font-size:11px;color:#64748b;display:flex;gap:6px"><span style="color:#d4a843;font-weight:700">•</span>Allocate exactly 50 pucks total (min 1, max 6 per player)</div>
+        <div style="font-size:11px;color:#64748b;display:flex;gap:6px"><span style="color:#d4a843;font-weight:700">•</span>Score = Playoff Points × Pucks × Team Multiplier</div>
+        <div style="font-size:11px;color:#64748b;display:flex;gap:6px"><span style="color:#d4a843;font-weight:700">•</span>$${sn().fee} ${CFG.cur} entry fee via e-transfer</div>
       </div>
     </div>
   </div>`;
