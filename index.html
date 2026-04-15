@@ -844,8 +844,31 @@ function poi(l){if(l<=0)return 0;const L=Math.exp(-l);let k=0,p=1;do{k++;p*=Math
 // STATE
 // ============================================================
 let S={loading:true,entries:[],stats:null,yr:2026,tab:'entry',sel:null,simRes:null,simRun:false,simCfg:{n:1000,v:.5,adv:{1:.6,1.5:.5,2:.35}},showSim:false,pSort:'ownership',pPos:'all',chartView:'score',_chart:null,adminAuth:false,hiddenTabs:new Set(),_nhlStats:null};
-let _src='',_ld=false;
+let _src='',_ld=false,_lastUpdated=0,_refreshTimer=null;
+function timeSince(ts){if(!ts)return'';const m=Math.round((Date.now()-ts)/60000);return m<1?'just now':m===1?'1m ago':m<60?m+'m ago':Math.round(m/60)+'h ago';}
 function set(u){Object.assign(S,u);render();}
+
+async function silentRefresh(){
+  if(_ld)return;
+  try{
+    const stProm=fetchStats(sn().id).catch(()=>null);
+    const url=sn().sheetUrl;
+    const entProm=url?fetch(url).then(r=>r.ok?r.text():null).catch(()=>null):Promise.resolve(null);
+    const[rawSt,rawCsv]=await Promise.all([stProm,entProm]);
+    let changed=false;
+    if(rawSt&&rawSt.length){S._nhlStats=rawSt;saveStats();changed=true;}
+    if(rawCsv){const ents=parseEntriesCSV(rawCsv);if(ents.length){S.entries=ents;changed=true;}}
+    if(changed&&S._nhlStats&&S._nhlStats.length&&S.entries&&S.entries.length){
+      const lu=buildLU(S._nhlStats);
+      const sc=calcScores(S.entries,lu);
+      S.entries=sc;S.stats=poolStats(sc);
+      if(!S.sel&&sc.length)S.sel=sc[0].teamName;
+      saveEntries();
+    }
+    _lastUpdated=Date.now();
+    render();
+  }catch(e){console.warn('Silent refresh failed:',e);}
+}
 async function loadData(){if(_ld)return;_ld=true;
   document.getElementById('loader').style.display='flex';document.getElementById('app').style.display='none';
   try{
@@ -869,6 +892,9 @@ async function loadData(){if(_ld)return;_ld=true;
     S.loading=false;
     S.simRes=null;
     S._nhlStats=st;
+    _lastUpdated=Date.now();
+    // Smart default tab: if we have entries, show leaderboard
+    if(sc.length>0&&S.tab==='entry')S.tab='leaderboard';
   }catch(e){console.error(e);S.loading=false;}
   document.getElementById('loader').style.display='none';document.getElementById('app').style.display='block';
   render();_ld=false;
@@ -920,12 +946,12 @@ function render(){
           <span style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-.02em;line-height:1">${CFG.title}</span>
           <span style="font-size:9px;font-weight:700;background:rgba(212,168,67,.18);color:#d4a843;border:1px solid rgba(212,168,67,.35);border-radius:4px;padding:2px 5px;letter-spacing:.06em">PLAYOFFS</span>
         </div>
-        <div style="font-size:10px;color:rgba(255,255,255,.32);letter-spacing:.04em;margin-top:2px">${S.entries.length} ENTRIES · ${S.yr}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.32);letter-spacing:.04em;margin-top:2px">${S.entries.length} ENTRIES · ${S.yr}${_lastUpdated?` · <span style="color:rgba(255,255,255,.22)">updated ${timeSince(_lastUpdated)}</span>`:''}</div>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <select onchange="switchYear(this.value)" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:7px;color:rgba(255,255,255,.8);padding:6px 24px 6px 9px;font-size:11px;cursor:pointer;font-family:inherit;outline:none">${yrs}</select>
-      <button onclick="let btn=this;btn.style.opacity='.35';fetchEntriesFromSheet().then(()=>{btn.style.opacity='1';})" title="Refresh data" style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0">↻</button>
+      <button onclick="let btn=this;btn.style.opacity='.35';btn.style.transform='rotate(180deg)';silentRefresh().then(()=>{btn.style.opacity='1';btn.style.transform='';}).catch(()=>{btn.style.opacity='1';btn.style.transform='';})" title="Refresh data" style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .4s">↻</button>
       ${!S.adminAuth?`<button onclick="adminPrompt()" title="Admin" style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">⚙</button>`:`<button onclick="S.adminAuth=false;render()" title="Logout" style="width:32px;height:32px;border-radius:8px;background:rgba(212,168,67,.15);border:1px solid rgba(212,168,67,.3);color:#d4a843;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0">🔒</button>`}
     </div>
   </div>
@@ -949,9 +975,18 @@ function tabC(){switch(S.tab){case'leaderboard':return LB();case'team':return TD
 function LB(){
   const e=S.entries,s=S.stats,pool=s?.pool||0;
   const pay=CFG.pay.map(p=>({...p,a:Math.round(pool*p.r)}));
-  const maxScore=e.length>0?e[0].total||1:1;
-  const avgScore=e.length>0?Math.round(e.reduce((sum,en)=>sum+en.total,0)/e.length):0;
+  if(e.length===0){
+    return`<div class="card" style="padding:48px 24px;text-align:center">
+      <div style="font-size:40px;margin-bottom:12px">🏒</div>
+      <div style="font-size:16px;font-weight:700;color:#0f1e35;margin-bottom:6px">No entries yet</div>
+      <div style="font-size:13px;color:#94a3b8;margin-bottom:20px">Submit your team to see the standings here.</div>
+      <button onclick="set({tab:'entry'})" style="background:#0f1e35;color:#fff;border:none;border-radius:8px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Enter a Team →</button>
+    </div>`;
+  }
+  const maxScore=e[0].total||1;
+  const avgScore=Math.round(e.reduce((sum,en)=>sum+en.total,0)/e.length);
   const leader=e[0];
+  const leaderScore=leader?.total||0;
 
   const cards=`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px">
     <div class="stat-card">
@@ -979,13 +1014,18 @@ function LB(){
   const mobileRows=e.map(en=>{
     const pct=maxScore>0?Math.round(en.total/maxScore*100):0;
     const accentL=en.rank===1?'#d4a843':en.rank===2?'#94a3b8':en.rank===3?'#c49b6e':'transparent';
+    const gap=leaderScore-en.total;
+    const gapStr=en.rank===1?'—':`-${fmt(gap)}`;
     return`<div onclick="set({sel:'${esc(en.teamName)}',tab:'team'})" class="trow cursor-pointer" style="border-bottom:1px solid rgba(0,0,0,.06);border-left:3px solid ${accentL}">
       <div style="display:flex;align-items:center;gap:10px;padding:11px 12px 11px 10px">
         <div style="flex-shrink:0;width:28px;display:flex;justify-content:center">${rb(en.rank)}</div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
             <div style="font-weight:700;color:#0f1e35;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(en.teamName)}</div>
-            <div style="font-weight:800;color:#0f1e35;font-size:15px;font-variant-numeric:tabular-nums;flex-shrink:0">${fmt(en.total)}</div>
+            <div style="display:flex;align-items:baseline;gap:6px;flex-shrink:0">
+              <div style="font-weight:800;color:#0f1e35;font-size:15px;font-variant-numeric:tabular-nums">${fmt(en.total)}</div>
+              ${en.rank>1?`<div style="font-size:10px;color:#ef4444;font-weight:600;font-variant-numeric:tabular-nums">${gapStr}</div>`:''}
+            </div>
           </div>
           <div class="score-bar-track"><div class="score-bar-fill" style="width:${pct}%;background:${en.rank===1?'#d4a843':'#3b82f6'}"></div></div>
           <div style="font-size:10px;color:#94a3b8">${esc(en.owner)} · ${en.alive}/${en.cnt} alive · ${en.pkR} pucks left</div>
@@ -1000,6 +1040,7 @@ function LB(){
     const accentL=en.rank===1?'#d4a843':en.rank===2?'#94a3b8':en.rank===3?'#c49b6e':'transparent';
     const aliveRatio=en.cnt>0?en.alive/en.cnt:0;
     const aliveColor=aliveRatio>.66?'#22c55e':aliveRatio>.33?'#f59e0b':'#ef4444';
+    const gap=leaderScore-en.total;
     return`<tr onclick="set({sel:'${esc(en.teamName)}',tab:'team'})" class="trow cursor-pointer" style="border-bottom:1px solid rgba(0,0,0,.05);border-left:3px solid ${accentL}">
       <td style="padding:12px 10px">${rb(en.rank)}</td>
       <td style="padding:12px 14px">
@@ -1014,6 +1055,7 @@ function LB(){
           <div style="font-weight:800;color:#0f1e35;font-size:15px;font-variant-numeric:tabular-nums;min-width:46px;text-align:right">${fmt(en.total)}</div>
         </div>
       </td>
+      <td style="padding:12px 8px;text-align:center;font-variant-numeric:tabular-nums;font-size:12px;font-weight:600;color:${en.rank===1?'#94a3b8':'#ef4444'}">${en.rank===1?'—':'-'+fmt(gap)}</td>
       <td style="padding:12px 14px;text-align:center">
         <span style="font-size:11px;font-weight:700;color:#fff;background:${aliveColor};padding:2px 8px;border-radius:20px;white-space:nowrap">${en.alive}/${en.cnt}</span>
       </td>
@@ -1027,19 +1069,30 @@ function LB(){
   }).join('');
 
   const thS='font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;padding:10px 14px';
+  const formulaLegend=`<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 14px;background:#f8fafc;border-top:1px solid rgba(0,0,0,.06)">
+    <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;font-weight:700">Scoring:</span>
+    <span style="font-size:10px;color:#475569;font-weight:600">Pts × Multiplier × Pucks</span>
+    <span style="font-size:9px;color:#cbd5e1">·</span>
+    <span style="font-size:10px;color:#475569">1st/2nd rd = <span style="color:rgba(0,0,0,.38);font-weight:700">1.0×</span></span>
+    <span style="font-size:9px;color:#cbd5e1">·</span>
+    <span style="font-size:10px;color:#475569">3rd rd = <span style="color:#60a5fa;font-weight:700">1.5×</span></span>
+    <span style="font-size:9px;color:#cbd5e1">·</span>
+    <span style="font-size:10px;color:#475569">Finals = <span style="color:#d4a843;font-weight:700">2.0×</span></span>
+  </div>`;
   return`${cards}
-  <div class="card sm:hidden">${mobileRows}</div>
+  <div class="card sm:hidden">${mobileRows}${formulaLegend}</div>
   <div class="card hidden sm:block"><div class="overflow-x-auto">
     <table class="w-full"><thead><tr style="background:#f8fafc;border-bottom:1px solid rgba(0,0,0,.07)">
       <th style="${thS};width:36px;text-align:left;padding-left:10px">#</th>
       <th style="${thS};text-align:left">Team</th>
       <th style="${thS};text-align:right">Score</th>
+      <th style="${thS};text-align:center">Gap</th>
       <th style="${thS};text-align:center">Alive</th>
       <th style="${thS};text-align:center">Pucks Left</th>
       <th style="${thS};text-align:right">Best Pick</th>
       <th style="width:20px"></th>
     </tr></thead><tbody>${desktopRows}</tbody></table>
-  </div></div>`;
+  </div>${formulaLegend}</div>`;
 }
 
 // ============================================================
@@ -1047,6 +1100,10 @@ function LB(){
 // ============================================================
 function TD(){
   const e=S.entries.find(x=>x.teamName===S.sel)||S.entries[0];if(!e)return'';
+  const idx=S.entries.findIndex(x=>x.teamName===e.teamName);
+  const prev=idx>0?S.entries[idx-1]:null;
+  const next=idx<S.entries.length-1?S.entries[idx+1]:null;
+  const navBtn=(en,dir)=>en?`<button onclick="set({sel:'${esc(en.teamName)}'})" title="${dir}: ${esc(en.teamName)}" style="height:36px;padding:0 12px;border-radius:8px;background:#f1f5f9;border:1px solid rgba(0,0,0,.1);color:#475569;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;display:flex;align-items:center;gap:5px">${dir==='Prev'?'‹':''}<span style="font-size:10px;max-width:80px;overflow:hidden;text-overflow:ellipsis">${esc(en.teamName)}</span>${dir==='Next'?'›':''}</button>`:`<span style="width:36px"></span>`;
   const opts=S.entries.map(x=>`<option value="${esc(x.teamName)}" ${x.teamName===e.teamName?'selected':''}>#${x.rank} ${esc(x.teamName)}</option>`).join('');
   const bar=e.players.map(p=>{const w=(p.pucks/50)*100;return`<div style="width:${w}%;background:${p.alive?(TM[p.team]||'#3b82f6'):'rgba(0,0,0,.12)'};opacity:${p.alive?1:.7};transition:width .3s" title="${esc(p.name)}: ${p.pucks}pk"></div>`;}).join('');
   const multCl=m=>m===2?'color:#f59e0b;font-weight:700':m===1.5?'color:#60a5fa;font-weight:700':'color:rgba(0,0,0,.22)';
@@ -1090,7 +1147,11 @@ function TD(){
   };
   const rankLabel=e.rank===1?'🥇':e.rank===2?'🥈':e.rank===3?'🥉':`#${e.rank}`;
   return`<div class="space-y-3">
-    <select onchange="set({sel:this.value})" style="width:100%;max-width:320px;background:#f8fafc;border:1px solid rgba(0,0,0,.12);border-radius:8px;padding:9px 28px 9px 11px;font-size:13px;font-weight:600;color:#0f1e35;cursor:pointer;font-family:inherit;outline:none">${opts}</select>
+    <div style="display:flex;align-items:center;gap:8px">
+      ${navBtn(prev,'Prev')}
+      <select onchange="set({sel:this.value})" style="flex:1;min-width:0;background:#f8fafc;border:1px solid rgba(0,0,0,.12);border-radius:8px;padding:9px 28px 9px 11px;font-size:13px;font-weight:600;color:#0f1e35;cursor:pointer;font-family:inherit;outline:none">${opts}</select>
+      ${navBtn(next,'Next')}
+    </div>
     <div class="card" style="padding:16px 18px">
       <div style="display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px">
         <div>
@@ -1157,16 +1218,19 @@ function drawChart(){
   const e=S.entries,lb=e.map(x=>x.teamName.length>14?x.teamName.slice(0,14)+'…':x.teamName);
   const tx={color:'rgba(0,0,0,.44)',font:{family:'Inter',size:10}};const gr={color:'rgba(0,0,0,.05)'};
   Chart.defaults.color='rgba(0,0,0,.44)';
+  const anim={animation:{duration:600,easing:'easeInOutQuart'}};
   const v=S.chartView;
+  // onClick for bar charts: navigate to that team's detail
+  const onClickTeam=(evt,items)=>{if(!items.length)return;const i=items[0].index;const team=e[i];if(team)set({sel:team.teamName,tab:'team'});};
   let cfg;
-  if(v==='score'){cfg={type:'bar',data:{labels:lb,datasets:[{label:'Forwards',data:e.map(x=>Math.round(x.players.filter(p=>p.position==='F').reduce((s,p)=>s+p.score,0))),backgroundColor:'#3b82f6',borderRadius:4},{label:'Defense',data:e.map(x=>Math.round(x.players.filter(p=>p.position==='D').reduce((s,p)=>s+p.score,0))),backgroundColor:'#d4a843',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{...tx,boxWidth:10,color:'rgba(0,0,0,.55)'}}},scales:{x:{stacked:true,ticks:tx,grid:gr},y:{stacked:true,ticks:tx,grid:gr}}}};}
-  else if(v==='mult'){cfg={type:'bar',data:{labels:lb,datasets:[{label:'1.0x',data:e.map(x=>Math.round(x.players.filter(p=>p.mult===1).reduce((s,p)=>s+p.score,0))),backgroundColor:'rgba(0,0,0,.18)',borderRadius:4},{label:'1.5x',data:e.map(x=>Math.round(x.players.filter(p=>p.mult===1.5).reduce((s,p)=>s+p.score,0))),backgroundColor:'#60a5fa',borderRadius:4},{label:'2.0x',data:e.map(x=>Math.round(x.players.filter(p=>p.mult===2).reduce((s,p)=>s+p.score,0))),backgroundColor:'#d4a843',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{...tx,boxWidth:10}}},scales:{x:{stacked:true,ticks:tx,grid:gr},y:{stacked:true,ticks:tx,grid:gr}}}};}
-  else if(v==='alive'){cfg={type:'bar',data:{labels:lb,datasets:[{label:'Alive',data:e.map(x=>Math.round(x.players.filter(p=>p.alive).reduce((s,p)=>s+p.score,0))),backgroundColor:'#22c55e',borderRadius:4},{label:'Eliminated',data:e.map(x=>Math.round(x.players.filter(p=>!p.alive).reduce((s,p)=>s+p.score,0))),backgroundColor:'rgba(0,0,0,.12)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{...tx,boxWidth:10}}},scales:{x:{stacked:true,ticks:tx,grid:gr},y:{stacked:true,ticks:tx,grid:gr}}}};}
-  else if(v==='eff'){const eff=e.map(x=>({n:x.teamName.length>14?x.teamName.slice(0,14)+'…':x.teamName,v:x.pkU>0?Math.round(x.total/x.pkU*10)/10:0})).sort((a,b)=>b.v-a.v);cfg={type:'bar',data:{labels:eff.map(x=>x.n),datasets:[{data:eff.map(x=>x.v),backgroundColor:eff.map((_,i)=>i===0?'#d4a843':'rgba(0,0,0,.22)'),borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+' pts/puck'}}},scales:{x:{ticks:{...tx,callback:v=>v+' p/pk'},grid:gr},y:{ticks:{...tx,color:'rgba(0,0,0,.58)',font:{size:11,weight:'500'}},grid:{display:false}}}}};}
-  else if(v==='scatter'){cfg={type:'bubble',data:{datasets:[{data:e.map((x,i)=>({x:x.pkR,y:x.total,r:Math.max(x.alive*2,5)})),backgroundColor:e.map((_,i)=>CL[i%CL.length]+'55'),borderColor:e.map((_,i)=>CL[i%CL.length]),borderWidth:1.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${e[c.dataIndex].teamName}: ${fmt(e[c.dataIndex].total)} pts, ${e[c.dataIndex].pkR} pucks left`}}},scales:{x:{title:{display:true,text:'Pucks Remaining',font:{size:11},color:'rgba(0,0,0,.44)'},ticks:tx,grid:gr},y:{title:{display:true,text:'Total Score',font:{size:11},color:'rgba(0,0,0,.44)'},ticks:tx,grid:gr}}}};}
-  else if(v==='team'){const tp=new Map();for(const en of e)for(const p of en.players)tp.set(p.team,(tp.get(p.team)||0)+p.pucks);const sorted=[...tp.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);cfg={type:'doughnut',data:{labels:sorted.map(x=>x[0]),datasets:[{data:sorted.map(x=>x[1]),backgroundColor:sorted.map(x=>(TM[x[0]]||'#666')+'cc'),borderWidth:2,borderColor:'#f8fafc'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{...tx,boxWidth:10,padding:8,color:'rgba(0,0,0,.55)'}},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw} pucks`}}}}};}
-  else if(v==='own'){const top=S.stats?.pl?.slice(0,12)||[];cfg={type:'bar',data:{labels:top.map(p=>p.name.split(' ').pop()),datasets:[{label:'Ownership %',data:top.map(p=>p.own),backgroundColor:'rgba(0,0,0,.22)',borderRadius:4},{label:'Avg Score',data:top.map(p=>p.as),backgroundColor:'#d4a843',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{...tx,boxWidth:10}},tooltip:{mode:'index',intersect:false}},scales:{x:{ticks:tx,grid:gr},y:{ticks:tx,grid:gr}}}};}
-  if(cfg){el.parentElement.style.background='transparent';el.parentElement.style.height='360px';S._chart=new Chart(el,cfg);}
+  if(v==='score'){cfg={type:'bar',data:{labels:lb,datasets:[{label:'Forwards',data:e.map(x=>Math.round(x.players.filter(p=>p.position==='F').reduce((s,p)=>s+p.score,0))),backgroundColor:'#3b82f6',borderRadius:4},{label:'Defense',data:e.map(x=>Math.round(x.players.filter(p=>p.position==='D').reduce((s,p)=>s+p.score,0))),backgroundColor:'#d4a843',borderRadius:4}]},options:{...anim,responsive:true,maintainAspectRatio:false,onClick:onClickTeam,plugins:{legend:{labels:{...tx,boxWidth:10,color:'rgba(0,0,0,.55)'}},tooltip:{callbacks:{footer:([c])=>'Click to view team'}}},scales:{x:{stacked:true,ticks:tx,grid:gr},y:{stacked:true,ticks:tx,grid:gr}}}};}
+  else if(v==='mult'){cfg={type:'bar',data:{labels:lb,datasets:[{label:'1.0x',data:e.map(x=>Math.round(x.players.filter(p=>p.mult===1).reduce((s,p)=>s+p.score,0))),backgroundColor:'rgba(0,0,0,.18)',borderRadius:4},{label:'1.5x',data:e.map(x=>Math.round(x.players.filter(p=>p.mult===1.5).reduce((s,p)=>s+p.score,0))),backgroundColor:'#60a5fa',borderRadius:4},{label:'2.0x',data:e.map(x=>Math.round(x.players.filter(p=>p.mult===2).reduce((s,p)=>s+p.score,0))),backgroundColor:'#d4a843',borderRadius:4}]},options:{...anim,responsive:true,maintainAspectRatio:false,onClick:onClickTeam,plugins:{legend:{labels:{...tx,boxWidth:10}},tooltip:{callbacks:{footer:([c])=>'Click to view team'}}},scales:{x:{stacked:true,ticks:tx,grid:gr},y:{stacked:true,ticks:tx,grid:gr}}}};}
+  else if(v==='alive'){cfg={type:'bar',data:{labels:lb,datasets:[{label:'Alive',data:e.map(x=>Math.round(x.players.filter(p=>p.alive).reduce((s,p)=>s+p.score,0))),backgroundColor:'#22c55e',borderRadius:4},{label:'Eliminated',data:e.map(x=>Math.round(x.players.filter(p=>!p.alive).reduce((s,p)=>s+p.score,0))),backgroundColor:'rgba(0,0,0,.12)',borderRadius:4}]},options:{...anim,responsive:true,maintainAspectRatio:false,onClick:onClickTeam,plugins:{legend:{labels:{...tx,boxWidth:10}},tooltip:{callbacks:{footer:([c])=>'Click to view team'}}},scales:{x:{stacked:true,ticks:tx,grid:gr},y:{stacked:true,ticks:tx,grid:gr}}}};}
+  else if(v==='eff'){const eff=e.map((x,i)=>({n:x.teamName.length>14?x.teamName.slice(0,14)+'…':x.teamName,v:x.pkU>0?Math.round(x.total/x.pkU*10)/10:0,i})).sort((a,b)=>b.v-a.v);const onClickEff=(evt,items)=>{if(!items.length)return;const team=e[eff[items[0].index].i];if(team)set({sel:team.teamName,tab:'team'});};cfg={type:'bar',data:{labels:eff.map(x=>x.n),datasets:[{data:eff.map(x=>x.v),backgroundColor:eff.map((_,i)=>i===0?'#d4a843':'rgba(0,0,0,.22)'),borderRadius:4}]},options:{...anim,indexAxis:'y',responsive:true,maintainAspectRatio:false,onClick:onClickEff,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+' pts/puck',footer:()=>'Click to view team'}}},scales:{x:{ticks:{...tx,callback:v=>v+' p/pk'},grid:gr},y:{ticks:{...tx,color:'rgba(0,0,0,.58)',font:{size:11,weight:'500'}},grid:{display:false}}}}};}
+  else if(v==='scatter'){const onClickBubble=(evt,items)=>{if(!items.length)return;const team=e[items[0].index];if(team)set({sel:team.teamName,tab:'team'});};cfg={type:'bubble',data:{datasets:[{data:e.map((x,i)=>({x:x.pkR,y:x.total,r:Math.max(x.alive*2,5)})),backgroundColor:e.map((_,i)=>CL[i%CL.length]+'55'),borderColor:e.map((_,i)=>CL[i%CL.length]),borderWidth:1.5}]},options:{...anim,responsive:true,maintainAspectRatio:false,onClick:onClickBubble,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${e[c.dataIndex].teamName}: ${fmt(e[c.dataIndex].total)} pts, ${e[c.dataIndex].pkR} pucks left`,footer:()=>'Click to view team'}}},scales:{x:{title:{display:true,text:'Pucks Remaining',font:{size:11},color:'rgba(0,0,0,.44)'},ticks:tx,grid:gr},y:{title:{display:true,text:'Total Score',font:{size:11},color:'rgba(0,0,0,.44)'},ticks:tx,grid:gr}}}};}
+  else if(v==='team'){const tp=new Map();for(const en of e)for(const p of en.players)tp.set(p.team,(tp.get(p.team)||0)+p.pucks);const sorted=[...tp.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);cfg={type:'doughnut',data:{labels:sorted.map(x=>x[0]),datasets:[{data:sorted.map(x=>x[1]),backgroundColor:sorted.map(x=>(TM[x[0]]||'#666')+'cc'),borderWidth:2,borderColor:'#f8fafc'}]},options:{...anim,responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{...tx,boxWidth:10,padding:8,color:'rgba(0,0,0,.55)'}},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw} pucks`}}}}};}
+  else if(v==='own'){const top=S.stats?.pl?.slice(0,12)||[];cfg={type:'bar',data:{labels:top.map(p=>p.name.split(' ').pop()),datasets:[{label:'Ownership %',data:top.map(p=>p.own),backgroundColor:'rgba(0,0,0,.22)',borderRadius:4},{label:'Avg Score',data:top.map(p=>p.as),backgroundColor:'#d4a843',borderRadius:4}]},options:{...anim,responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{...tx,boxWidth:10}},tooltip:{mode:'index',intersect:false}},scales:{x:{ticks:tx,grid:gr},y:{ticks:tx,grid:gr}}}};}
+  if(cfg){el.parentElement.style.background='transparent';el.parentElement.style.height='360px';el.style.cursor='pointer';S._chart=new Chart(el,cfg);}
 }
 
 // ============================================================
@@ -1736,10 +1800,19 @@ function initApp(){
       S.entries=sc;S.stats=ps;S.sel=sc[0]?.teamName||null;
     }
     S.loading=false;
+    _lastUpdated=Date.now();
+    // Smart default tab: if we have entries, show leaderboard
+    if(S.entries.length>0&&S.tab==='entry')S.tab='leaderboard';
     document.getElementById('loader').style.display='none';
     document.getElementById('app').style.display='block';
     render();
   }
+  // Auto-refresh every 15 minutes; also refresh on tab focus if stale (>5 min)
+  if(_refreshTimer)clearInterval(_refreshTimer);
+  _refreshTimer=setInterval(silentRefresh,15*60*1000);
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden&&_lastUpdated&&Date.now()-_lastUpdated>5*60*1000)silentRefresh();
+  },{once:false});
 }
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',initApp);}else{initApp();}
 </script>
