@@ -332,19 +332,23 @@ async function fetchPlayoffStats(){
 }
 
 async function fetchEntriesFromSheet(){
-  // Fetch entries directly from GAS (fresh JSON, no CSV caching issues)
-  if(!APPS_SCRIPT_URL){
-    alert('❌ No Apps Script URL configured');
-    return false;
-  }
+  // Uses JSONP (script tag) to bypass CORS — works in all browsers including incognito
+  if(!APPS_SCRIPT_URL){alert('❌ No Apps Script URL configured');return false;}
 
   try{
-    const r=await fetch(`${APPS_SCRIPT_URL}?action=get_entries`);
-    if(!r.ok){alert(`❌ Fetch failed (HTTP ${r.status})`);return false;}
+    const json=await new Promise((resolve,reject)=>{
+      const cbName='_gas_cb_'+Date.now();
+      const script=document.createElement('script');
+      const cleanup=()=>{delete window[cbName];if(script.parentNode)script.parentNode.removeChild(script);};
+      window[cbName]=(data)=>{cleanup();resolve(data);};
+      script.onerror=()=>{cleanup();reject(new Error('Script load failed'));};
+      script.src=`${APPS_SCRIPT_URL}?action=get_entries&callback=${cbName}`;
+      document.head.appendChild(script);
+      // Timeout after 15s
+      setTimeout(()=>{cleanup();reject(new Error('Request timed out'));},15000);
+    });
 
-    const json=await r.json();
     if(!json.success){alert(`❌ ${json.error||'Unknown error'}`);return false;}
-
     const entries=json.entries||[];
 
     // GAS is authoritative — always wipe local cache
@@ -1254,7 +1258,7 @@ function doSim(){S.simRun=true;render();setTimeout(()=>{S.simRes=runSim(S.entrie
 // ENTRY FORM — player database + form + mailto submit
 // ============================================================
 const POOL_EMAIL='rkunka31@gmail.com'; // fallback email
-const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbxJWZVJj7Y5Bap_TmIC2Oy6WpDHJFeA_3-dSeJmooW9OotfZUnYqbXJclqWkLwFuzym/exec';
+const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbwpEqG11nlCP4VhxRZRmhn1o4xMLHY_g0_hbwCpUQ9XVrdIqK_o6XWRuDK-QeKvLViE/exec';
 
 const ROSTER_F=[
 ['Nathan MacKinnon','COL'],['Mikko Rantanen','COL'],['Artturi Lehkonen','COL'],['Casey Mittelstadt','COL'],['Ross Colton','COL'],['Jonathan Drouin','COL'],['Nazem Kadri','COL'],['Gabe Landeskog','COL'],['Devon Toews','COL'],['Matt Calvert','COL'],
