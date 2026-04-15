@@ -332,51 +332,45 @@ async function fetchPlayoffStats(){
 }
 
 async function fetchEntriesFromSheet(){
-  // Fetch entries from published Google Sheet (CSV format)
-  // The sheet is always authoritative — always replaces local/cached data
-  const sheetUrl=sn().sheetUrl;
-  if(!sheetUrl){
-    alert('❌ No sheet URL configured for this season');
+  // Fetch entries directly from GAS (fresh JSON, no CSV caching issues)
+  if(!APPS_SCRIPT_URL){
+    alert('❌ No Apps Script URL configured');
     return false;
   }
 
   try{
-    const r=await fetch(sheetUrl+'&t='+Date.now()); // cache-bust
-    if(r.ok){
-      const csv=await r.text();
-      const entries=parseEntriesCSV(csv);
+    const r=await fetch(`${APPS_SCRIPT_URL}?action=get_entries`);
+    if(!r.ok){alert(`❌ Fetch failed (HTTP ${r.status})`);return false;}
 
-      // Sheet is authoritative — always wipe local cache first
-      localStorage.removeItem('50pucks_entries_2026');
+    const json=await r.json();
+    if(!json.success){alert(`❌ ${json.error||'Unknown error'}`);return false;}
 
-      if(entries&&entries.length>0){
-        S.entries=entries;
-        saveEntries();
-        // Recalculate scores with latest stats
-        if(S._nhlStats&&S._nhlStats.length>0){
-          const lu=buildLU(S._nhlStats);
-          const sc=calcScores(entries,lu);
-          const ps=poolStats(sc);
-          S.entries=sc;
-          S.stats=ps;
-          S.sel=sc[0]?.teamName||null;
-        }else{
-          S.stats=null;S.sel=entries[0]?.teamName||null;
-        }
-        alert(`✓ Loaded ${entries.length} entries from Google Sheet`);
+    const entries=json.entries||[];
+
+    // GAS is authoritative — always wipe local cache
+    localStorage.removeItem('50pucks_entries_2026');
+
+    if(entries.length>0){
+      S.entries=entries;
+      saveEntries();
+      if(S._nhlStats&&S._nhlStats.length>0){
+        const lu=buildLU(S._nhlStats);
+        const sc=calcScores(entries,lu);
+        const ps=poolStats(sc);
+        S.entries=sc;S.stats=ps;S.sel=sc[0]?.teamName||null;
       }else{
-        // Sheet fetched OK but no entries yet — clear everything
-        S.entries=[];S.stats=null;S.sel=null;
-        alert('ℹ Sheet loaded — no entries yet. Local cache cleared.');
+        S.stats=null;S.sel=entries[0]?.teamName||null;
       }
-      render();
-      return entries&&entries.length>0;
+      alert(`✓ Loaded ${entries.length} entries from Google Sheet`);
     }else{
-      alert(`❌ Sheet fetch failed (HTTP ${r.status})`);
+      S.entries=[];S.stats=null;S.sel=null;
+      alert('ℹ Sheet is empty — no entries yet.');
     }
-  }catch(e){
-    console.error('Sheet fetch error:',e);
-    alert(`❌ Failed to fetch sheet: ${e.message}`);
+    render();
+    return entries.length>0;
+  }catch(err){
+    console.error('Fetch entries error:',err);
+    alert(`❌ Failed to load entries: ${err.message}`);
   }
   return false;
 }
@@ -1260,7 +1254,7 @@ function doSim(){S.simRun=true;render();setTimeout(()=>{S.simRes=runSim(S.entrie
 // ENTRY FORM — player database + form + mailto submit
 // ============================================================
 const POOL_EMAIL='rkunka31@gmail.com'; // fallback email
-const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbzkXBcPrU4anCCdhYEGvAZTAAwxvm2wPe6ZHOuIF1Mcex2EbW42uuHYBE4Q9Ozgwic8/exec';
+const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbxJWZVJj7Y5Bap_TmIC2Oy6WpDHJFeA_3-dSeJmooW9OotfZUnYqbXJclqWkLwFuzym/exec';
 
 const ROSTER_F=[
 ['Nathan MacKinnon','COL'],['Mikko Rantanen','COL'],['Artturi Lehkonen','COL'],['Casey Mittelstadt','COL'],['Ross Colton','COL'],['Jonathan Drouin','COL'],['Nazem Kadri','COL'],['Gabe Landeskog','COL'],['Devon Toews','COL'],['Matt Calvert','COL'],
