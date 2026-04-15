@@ -178,6 +178,18 @@ function saveStats(){
     console.error('Error saving stats:',e);
   }
 }
+function loadHistory(){try{const r=localStorage.getItem('50pucks_history_2026');if(r)_history=JSON.parse(r);}catch{_history=[];}}
+function saveHistory(){try{localStorage.setItem('50pucks_history_2026',JSON.stringify(_history));}catch(e){console.warn('History save failed',e);}}
+function snapshotScores(){
+  if(!S.entries||!S.entries.length)return;
+  const today=new Date().toISOString().slice(0,10);
+  const label=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const snap={};S.entries.forEach(en=>{snap[en.teamName]=Math.round(en.total);});
+  const idx=_history.findIndex(h=>h.d===today);
+  if(idx>=0)_history[idx]={d:today,l:label,s:snap};
+  else _history.push({d:today,l:label,s:snap});
+  saveHistory();
+}
 
 function parseRosterCSV(csv){
   // Parse Hockey-Reference CSV with multi-team player handling
@@ -844,7 +856,7 @@ function poi(l){if(l<=0)return 0;const L=Math.exp(-l);let k=0,p=1;do{k++;p*=Math
 // STATE
 // ============================================================
 let S={loading:true,entries:[],stats:null,yr:2026,tab:'entry',sel:null,simRes:null,simRun:false,simCfg:{n:1000,v:.5,adv:{1:.6,1.5:.5,2:.35}},showSim:false,pSort:'ownership',pPos:'all',chartView:'score',_chart:null,adminAuth:false,hiddenTabs:new Set(),_nhlStats:null};
-let _src='',_ld=false,_lastUpdated=0,_refreshTimer=null;
+let _src='',_ld=false,_lastUpdated=0,_refreshTimer=null,_history=[],_charts={};
 function timeSince(ts){if(!ts)return'';const m=Math.round((Date.now()-ts)/60000);return m<1?'just now':m===1?'1m ago':m<60?m+'m ago':Math.round(m/60)+'h ago';}
 function set(u){Object.assign(S,u);render();}
 
@@ -866,6 +878,7 @@ async function silentRefresh(){
       saveEntries();
     }
     _lastUpdated=Date.now();
+    snapshotScores();
     render();
   }catch(e){console.warn('Silent refresh failed:',e);}
 }
@@ -893,6 +906,7 @@ async function loadData(){if(_ld)return;_ld=true;
     S.simRes=null;
     S._nhlStats=st;
     _lastUpdated=Date.now();
+    snapshotScores();
     // Smart default tab: if we have entries, show leaderboard
     if(sc.length>0&&S.tab==='entry')S.tab='leaderboard';
   }catch(e){console.error(e);S.loading=false;}
@@ -963,8 +977,8 @@ function render(){
 </nav>
 <main class="max-w-5xl mx-auto px-3 sm:px-4 py-4 fade-in w-full min-w-0">${tabC()}</main>
 <footer style="border-top:1px solid rgba(0,0,0,.07);padding:14px 0;margin-top:20px"><p style="text-align:center;font-size:10px;color:#94a3b8;letter-spacing:.04em">${CFG.title} · ${S.yr}${_src?' · '+_src:''}</p></footer>`;
-  if(S._chart){try{S._chart.destroy();}catch{}}S._chart=null;
-  setTimeout(drawChart,20);
+  Object.values(_charts).forEach(c=>{try{c.destroy();}catch{}});_charts={};
+  setTimeout(drawDashboard,20);
 }
 
 function tabC(){switch(S.tab){case'leaderboard':return LB();case'team':return TD();case'chart':return CH();case'players':return PL();case'simulation':return SM();case'stats':return ST();case'info':return NF();case'entry':return EN();case'admin':return AD();default:return'';}}
@@ -1182,52 +1196,173 @@ function TD(){
 }
 
 // ============================================================
-// ANALYTICS — single chart with dropdown selector
+// ANALYTICS DASHBOARD
 // ============================================================
 function CH(){
-  const views=[
-    {id:'score',l:'Score by Position'},
-    {id:'mult',l:'Score by Multiplier'},
-    {id:'alive',l:'Alive vs Eliminated'},
-    {id:'eff',l:'Points per Puck'},
-    {id:'scatter',l:'Pucks Left vs Score'},
-    {id:'team',l:'NHL Team Exposure'},
-    {id:'own',l:'Player Ownership'},
-  ];
-  const opts=views.map(v=>`<option value="${v.id}" ${S.chartView===v.id?'selected':''}>${v.l}</option>`).join('');
+  const e=S.entries,s=S.stats;
+  if(!e.length)return`<div class="card" style="padding:48px 24px;text-align:center"><div style="font-size:32px;margin-bottom:10px">📊</div><div style="font-size:16px;font-weight:700;color:#0f1e35;margin-bottom:6px">No data yet</div><div style="font-size:12px;color:#94a3b8">Analytics will appear once entries are loaded.</div></div>`;
+  const days=_history.length;
+
+  // Biggest mover — compare last 2 history snapshots
+  let moverHtml=`<div style="font-size:11px;color:#94a3b8;line-height:1.5">Not enough history yet.<br>Check back after the next day's refresh.</div>`;
+  if(days>=2){
+    const cur=_history[days-1].s,prev=_history[days-2].s;
+    let best=null,bestGain=-Infinity;
+    for(const[name,score] of Object.entries(cur)){const gain=score-(prev[name]||0);if(gain>bestGain){bestGain=gain;best=name;}}
+    if(best&&bestGain>=0){
+      moverHtml=`<button onclick="set({sel:'${esc(best)}',tab:'team'})" style="background:none;border:none;cursor:pointer;text-align:left;padding:0;font-family:inherit;width:100%">
+        <div style="font-size:12px;font-weight:700;color:#0f1e35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(best)}</div>
+        <div style="font-size:26px;font-weight:900;color:#22c55e;font-variant-numeric:tabular-nums;line-height:1.1;margin:4px 0">+${fmt(bestGain)}</div>
+        <div style="font-size:10px;color:#94a3b8">pts since ${_history[days-2].l} → ${_history[days-1].l}</div>
+      </button>`;
+    }
+  }
+
+  // Pool health
+  const totalP=e.reduce((t,en)=>t+en.cnt,0),aliveP=e.reduce((t,en)=>t+en.alive,0);
+  const alivePct=totalP>0?Math.round(aliveP/totalP*100):0;
+  const deadPks=s?.deadPucks||0,totalPks=s?.totalPucks||0;
+
+  // Podium (top 3)
+  const medalBg=['linear-gradient(135deg,rgba(212,168,67,.14),rgba(212,168,67,.04))','linear-gradient(135deg,rgba(148,163,184,.1),rgba(148,163,184,.03))','linear-gradient(135deg,rgba(196,155,110,.1),rgba(196,155,110,.03))'];
+  const medalBd=['rgba(212,168,67,.28)','rgba(148,163,184,.22)','rgba(196,155,110,.22)'];
+  const medals=['🥇','🥈','🥉'];
+  const podium=e.slice(0,Math.min(3,e.length)).map((en,i)=>`<button onclick="set({sel:'${esc(en.teamName)}',tab:'team'})" style="flex:1;min-width:0;padding:12px 10px;background:${medalBg[i]};border:1px solid ${medalBd[i]};border-radius:10px;cursor:pointer;text-align:left;font-family:inherit">
+    <div style="font-size:18px;margin-bottom:5px">${medals[i]}</div>
+    <div style="font-size:11px;font-weight:700;color:#0f1e35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(en.teamName)}</div>
+    <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(en.owner)}</div>
+    <div style="font-size:20px;font-weight:800;color:#0f1e35;font-variant-numeric:tabular-nums;letter-spacing:-.02em;margin-top:8px;line-height:1">${fmt(en.total)}</div>
+    <div style="font-size:9px;color:#94a3b8;margin-top:2px">${en.pkR} pucks left</div>
+  </button>`).join('');
+
   return`<div class="space-y-3">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:3px;height:16px;background:#d4a843;border-radius:2px;flex-shrink:0"></div>
-        <span style="font-size:14px;font-weight:700;color:#0f1e35;letter-spacing:-.01em">Analytics</span>
-      </div>
-      <select onchange="S.chartView=this.value;render()" style="background:#fff;border:1px solid rgba(0,0,0,.12);border-radius:8px;padding:7px 26px 7px 10px;font-size:12px;font-weight:600;color:#0f1e35;cursor:pointer;font-family:inherit;outline:none">${opts}</select>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:18px;font-weight:800;color:#0f1e35;letter-spacing:-.02em">Analytics</span>
+      <span style="font-size:11px;color:#94a3b8">${e.length} entries · ${days} day${days!==1?'s':''} tracked</span>
+      <span style="margin-left:auto;font-size:9px;font-weight:700;background:rgba(212,168,67,.12);color:#b8922a;border:1px solid rgba(212,168,67,.25);border-radius:5px;padding:3px 7px;letter-spacing:.06em">LIVE</span>
     </div>
-    <div class="card" style="padding:14px 16px"><canvas id="mainChart" style="max-height:380px"></canvas></div>
+
+    <!-- ① Points evolution — main chart -->
+    <div class="card" style="padding:16px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:14px">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#0f1e35">Points Over Time</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px">${days<2?'Showing Day 1 snapshot — lines appear as more days are tracked':'Click any team to view their detail · hover for all scores'}</div>
+        </div>
+        ${days>1?`<div style="font-size:10px;color:#94a3b8;text-align:right;flex-shrink:0">${_history[0].l} → ${_history[days-1].l}</div>`:`<span style="font-size:9px;font-weight:700;color:#3b82f6;border:1px solid rgba(59,130,246,.2);border-radius:4px;padding:2px 6px">Day 1</span>`}
+      </div>
+      <div style="position:relative;height:300px"><canvas id="evoChart"></canvas></div>
+    </div>
+
+    <!-- ② Podium -->
+    <div style="display:flex;gap:8px">${podium}</div>
+
+    <!-- ③ Metric cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="stat-card">
+        <div style="font-size:9px;font-weight:700;color:#22c55e;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Biggest Mover</div>
+        ${moverHtml}
+      </div>
+      <div class="stat-card">
+        <div style="font-size:9px;font-weight:700;color:#3b82f6;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Pool Health</div>
+        <div style="font-size:24px;font-weight:800;color:#0f1e35;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1">${alivePct}<span style="font-size:13px;font-weight:400;color:#94a3b8">%</span></div>
+        <div style="height:4px;background:rgba(0,0,0,.08);border-radius:2px;overflow:hidden;margin:7px 0"><div style="height:100%;width:${alivePct}%;background:${alivePct>50?'#22c55e':'#f59e0b'};border-radius:2px;transition:width .4s"></div></div>
+        <div style="font-size:10px;color:#94a3b8">${aliveP}/${totalP} players alive · ${deadPks}/${totalPks} pucks dead</div>
+      </div>
+      ${s?.pl?.[0]?`<div class="stat-card" style="grid-column:span 2">
+        <div style="font-size:9px;font-weight:700;color:#d4a843;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Best Pick in the Pool</div>
+        <button onclick="set({tab:'players'})" style="background:none;border:none;cursor:pointer;text-align:left;padding:0;font-family:inherit;width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div style="min-width:0">
+            <div style="font-size:15px;font-weight:800;color:#0f1e35">${esc(s.pl[0].name)}</div>
+            <div style="display:flex;gap:8px;margin-top:4px;align-items:center;flex-wrap:wrap">${tb(s.pl[0].team)}<span style="font-size:10px;color:#94a3b8">${s.pl[0].pts} playoff pts · ${s.pl[0].own}% owned</span></div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:22px;font-weight:900;color:#d4a843;font-variant-numeric:tabular-nums;line-height:1">${fmt(s.pl[0].ms)}</div>
+            <div style="font-size:9px;color:#94a3b8">best pool score</div>
+          </div>
+        </button>
+      </div>`:''}
+    </div>
+
+    <!-- ④ Efficiency chart -->
+    <div class="card" style="padding:16px">
+      <div style="font-size:13px;font-weight:700;color:#0f1e35;margin-bottom:2px">Points per Puck</div>
+      <div style="font-size:10px;color:#94a3b8;margin-bottom:12px">Efficiency ranking — click any bar to view that team</div>
+      <div style="position:relative;height:${Math.max(e.length*30,120)}px"><canvas id="effChart"></canvas></div>
+    </div>
+
+    <!-- ⑤ Mini standings with link -->
+    <div class="card">
+      <div style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(0,0,0,.06)">
+        <span style="font-size:13px;font-weight:700;color:#0f1e35">Current Standings</span>
+        <button onclick="set({tab:'leaderboard'})" style="font-size:11px;color:#3b82f6;font-weight:600;background:none;border:none;cursor:pointer;font-family:inherit">View full →</button>
+      </div>
+      ${e.slice(0,5).map(en=>{
+        const pct=e[0].total>0?Math.round(en.total/e[0].total*100):0;
+        const gap=e[0].total-en.total;
+        return`<div onclick="set({sel:'${esc(en.teamName)}',tab:'team'})" class="trow cursor-pointer" style="padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(0,0,0,.04)">
+          <div style="flex-shrink:0;width:24px;display:flex;justify-content:center">${rb(en.rank)}</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
+              <span style="font-size:12px;font-weight:700;color:#0f1e35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(en.teamName)}</span>
+              <div style="display:flex;align-items:baseline;gap:5px;flex-shrink:0">
+                <span style="font-size:13px;font-weight:800;color:#0f1e35;font-variant-numeric:tabular-nums">${fmt(en.total)}</span>
+                ${en.rank>1?`<span style="font-size:10px;color:#ef4444;font-weight:600;font-variant-numeric:tabular-nums">-${fmt(gap)}</span>`:''}
+              </div>
+            </div>
+            <div style="height:3px;background:rgba(0,0,0,.07);border-radius:2px;overflow:hidden;margin-top:4px"><div style="height:100%;width:${pct}%;background:${en.rank===1?'#d4a843':'#3b82f6'};border-radius:2px"></div></div>
+          </div>
+        </div>`;
+      }).join('')}
+      ${e.length>5?`<div style="padding:10px 14px;text-align:center"><button onclick="set({tab:'leaderboard'})" style="font-size:11px;color:#94a3b8;background:none;border:none;cursor:pointer;font-family:inherit">+${e.length-5} more entries → view all</button></div>`:''}
+    </div>
   </div>`;
 }
 
-function drawChart(){
-  const el=document.getElementById('mainChart');if(!el)return;
-  const e=S.entries,lb=e.map(x=>x.teamName.length>14?x.teamName.slice(0,14)+'…':x.teamName);
-  const tx={color:'rgba(0,0,0,.44)',font:{family:'Inter',size:10}};const gr={color:'rgba(0,0,0,.05)'};
+function drawDashboard(){
+  if(S.tab!=='chart')return;
+  const e=S.entries;if(!e.length)return;
   Chart.defaults.color='rgba(0,0,0,.44)';
-  // Consistent palette: blue=forwards/medium, gold=defense/premium/top, green=alive, slate=neutral/eliminated
-  const C={fwd:'#3b82f6',def:'#d4a843',alive:'#22c55e',elim:'#94a3b8',m1:'#94a3b8',m15:'#3b82f6',m2:'#d4a843',own:'#3b82f6',avgScore:'#d4a843'};
+  const tx={color:'rgba(0,0,0,.44)',font:{family:'Inter',size:10}};
+  const gr={color:'rgba(0,0,0,.05)'};
   const anim={animation:{duration:600,easing:'easeInOutQuart'}};
-  const legTx={...tx,boxWidth:10,color:'rgba(0,0,0,.55)'};
-  const tip=(footer)=>({callbacks:{footer:()=>footer}});
-  const v=S.chartView;
-  const onClickTeam=(evt,items)=>{if(!items.length)return;const team=e[items[0].index];if(team)set({sel:team.teamName,tab:'team'});};
-  let cfg;
-  if(v==='score'){cfg={type:'bar',data:{labels:lb,datasets:[{label:'Forwards',data:e.map(x=>Math.round(x.players.filter(p=>p.position==='F').reduce((s,p)=>s+p.score,0))),backgroundColor:C.fwd,borderRadius:4},{label:'Defense',data:e.map(x=>Math.round(x.players.filter(p=>p.position==='D').reduce((s,p)=>s+p.score,0))),backgroundColor:C.def,borderRadius:4}]},options:{...anim,responsive:true,maintainAspectRatio:false,onClick:onClickTeam,plugins:{legend:{labels:legTx},...tip('Click to view team')},scales:{x:{stacked:true,ticks:tx,grid:gr},y:{stacked:true,ticks:tx,grid:gr}}}};}
-  else if(v==='mult'){cfg={type:'bar',data:{labels:lb,datasets:[{label:'1.0× (Top seed)',data:e.map(x=>Math.round(x.players.filter(p=>p.mult===1).reduce((s,p)=>s+p.score,0))),backgroundColor:C.m1,borderRadius:4},{label:'1.5× (2–3 seed)',data:e.map(x=>Math.round(x.players.filter(p=>p.mult===1.5).reduce((s,p)=>s+p.score,0))),backgroundColor:C.m15,borderRadius:4},{label:'2.0× (Wildcard)',data:e.map(x=>Math.round(x.players.filter(p=>p.mult===2).reduce((s,p)=>s+p.score,0))),backgroundColor:C.m2,borderRadius:4}]},options:{...anim,responsive:true,maintainAspectRatio:false,onClick:onClickTeam,plugins:{legend:{labels:legTx},...tip('Click to view team')},scales:{x:{stacked:true,ticks:tx,grid:gr},y:{stacked:true,ticks:tx,grid:gr}}}};}
-  else if(v==='alive'){cfg={type:'bar',data:{labels:lb,datasets:[{label:'Alive',data:e.map(x=>Math.round(x.players.filter(p=>p.alive).reduce((s,p)=>s+p.score,0))),backgroundColor:C.alive,borderRadius:4},{label:'Eliminated',data:e.map(x=>Math.round(x.players.filter(p=>!p.alive).reduce((s,p)=>s+p.score,0))),backgroundColor:C.elim,borderRadius:4}]},options:{...anim,responsive:true,maintainAspectRatio:false,onClick:onClickTeam,plugins:{legend:{labels:legTx},...tip('Click to view team')},scales:{x:{stacked:true,ticks:tx,grid:gr},y:{stacked:true,ticks:tx,grid:gr}}}};}
-  else if(v==='eff'){const eff=e.map((x,i)=>({n:x.teamName.length>14?x.teamName.slice(0,14)+'…':x.teamName,v:x.pkU>0?Math.round(x.total/x.pkU*10)/10:0,i})).sort((a,b)=>b.v-a.v);const onClickEff=(evt,items)=>{if(!items.length)return;const team=e[eff[items[0].index].i];if(team)set({sel:team.teamName,tab:'team'});};cfg={type:'bar',data:{labels:eff.map(x=>x.n),datasets:[{data:eff.map(x=>x.v),backgroundColor:eff.map((_,i)=>i===0?C.def:C.fwd+'99'),borderRadius:4}]},options:{...anim,indexAxis:'y',responsive:true,maintainAspectRatio:false,onClick:onClickEff,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+' pts/puck',footer:()=>'Click to view team'}}},scales:{x:{ticks:{...tx,callback:v=>v+' p/pk'},grid:gr},y:{ticks:{...tx,color:'rgba(0,0,0,.58)',font:{size:11,weight:'500'}},grid:{display:false}}}}};}
-  else if(v==='scatter'){const onClickBubble=(evt,items)=>{if(!items.length)return;const team=e[items[0].index];if(team)set({sel:team.teamName,tab:'team'});};const bColors=[C.fwd,C.def,'#818cf8','#f97316','#06b6d4','#ec4899','#84cc16','#f59e0b','#10b981','#6366f1'];cfg={type:'bubble',data:{datasets:[{data:e.map((x,i)=>({x:x.pkR,y:x.total,r:Math.max(x.alive*2,5)})),backgroundColor:e.map((_,i)=>bColors[i%bColors.length]+'55'),borderColor:e.map((_,i)=>bColors[i%bColors.length]),borderWidth:1.5}]},options:{...anim,responsive:true,maintainAspectRatio:false,onClick:onClickBubble,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${e[c.dataIndex].teamName}: ${fmt(e[c.dataIndex].total)} pts, ${e[c.dataIndex].pkR} pucks left`,footer:()=>'Click to view team'}}},scales:{x:{title:{display:true,text:'Pucks Remaining',font:{size:11},color:'rgba(0,0,0,.44)'},ticks:tx,grid:gr},y:{title:{display:true,text:'Total Score',font:{size:11},color:'rgba(0,0,0,.44)'},ticks:tx,grid:gr}}}};}
-  else if(v==='team'){const tp=new Map();for(const en of e)for(const p of en.players)tp.set(p.team,(tp.get(p.team)||0)+p.pucks);const sorted=[...tp.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);cfg={type:'doughnut',data:{labels:sorted.map(x=>x[0]),datasets:[{data:sorted.map(x=>x[1]),backgroundColor:sorted.map(x=>(TM[x[0]]||'#3b82f6')+'cc'),borderWidth:2,borderColor:'#f8fafc'}]},options:{...anim,responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{...legTx,padding:8}},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw} pucks`}}}}};}
-  else if(v==='own'){const top=S.stats?.pl?.slice(0,12)||[];cfg={type:'bar',data:{labels:top.map(p=>p.name.split(' ').pop()),datasets:[{label:'Ownership %',data:top.map(p=>p.own),backgroundColor:C.own+'88',borderRadius:4},{label:'Avg Score',data:top.map(p=>p.as),backgroundColor:C.avgScore,borderRadius:4}]},options:{...anim,responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:legTx},tooltip:{mode:'index',intersect:false}},scales:{x:{ticks:tx,grid:gr},y:{ticks:tx,grid:gr}}}};}
-  if(cfg){el.parentElement.style.background='transparent';el.parentElement.style.height='360px';el.style.cursor='pointer';S._chart=new Chart(el,cfg);}
+  const pal=['#3b82f6','#d4a843','#22c55e','#f59e0b','#a78bfa','#f97316','#06b6d4','#ec4899','#84cc16','#ef4444'];
+
+  // ── Evolution chart ──────────────────────────────────────────
+  const evoEl=document.getElementById('evoChart');
+  if(evoEl){
+    const onClickTeam=(evt,items)=>{if(!items.length)return;const team=e[items[0].datasetIndex??items[0].index];if(team)set({sel:team.teamName,tab:'team'});};
+    if(_history.length>=2){
+      // Multi-day: line chart per team
+      const labels=_history.map(h=>h.l);
+      const datasets=e.map((en,i)=>({
+        label:en.teamName.length>16?en.teamName.slice(0,16)+'…':en.teamName,
+        data:_history.map(h=>h.s[en.teamName]??null),
+        borderColor:pal[i%pal.length],
+        backgroundColor:'transparent',
+        borderWidth:i<3?2.5:1.5,
+        pointRadius:_history.length<=21?4:2,
+        pointHoverRadius:7,
+        pointBackgroundColor:pal[i%pal.length],
+        tension:0.3,
+        spanGaps:true,
+      }));
+      _charts.evo=new Chart(evoEl,{type:'line',data:{labels,datasets},options:{...anim,responsive:true,maintainAspectRatio:false,onClick:onClickTeam,interaction:{mode:'index',axis:'x',intersect:false},plugins:{legend:{display:e.length<=10,position:'bottom',labels:{...tx,boxWidth:8,padding:10,usePointStyle:true,pointStyleWidth:8}},tooltip:{mode:'index',intersect:false,callbacks:{afterBody:lines=>lines.sort((a,b)=>b.raw-a.raw).map(()=>''),footer:()=>'Click to view team'}}},scales:{x:{ticks:tx,grid:gr},y:{ticks:{...tx,callback:v=>Math.round(v)},grid:gr}}}});
+    } else {
+      // Day 1: bar chart snapshot
+      const snap=_history.length===1?_history[0].s:{};
+      _charts.evo=new Chart(evoEl,{type:'bar',data:{labels:e.map(x=>x.teamName.length>13?x.teamName.slice(0,13)+'…':x.teamName),datasets:[{label:'Score',data:e.map(en=>snap[en.teamName]??Math.round(en.total)),backgroundColor:e.map((_,i)=>pal[i%pal.length]+'aa'),borderColor:e.map((_,i)=>pal[i%pal.length]),borderWidth:1.5,borderRadius:5}]},options:{...anim,responsive:true,maintainAspectRatio:false,onClick:(evt,items)=>{if(!items.length)return;const t=e[items[0].index];if(t)set({sel:t.teamName,tab:'team'});},plugins:{legend:{display:false},tooltip:{callbacks:{footer:()=>'Click to view team'}}},scales:{x:{ticks:tx,grid:gr},y:{ticks:{...tx,callback:v=>Math.round(v)},grid:gr}}}});
+    }
+    evoEl.style.cursor='pointer';
+  }
+
+  // ── Efficiency chart (pts per puck) ──────────────────────────
+  const effEl=document.getElementById('effChart');
+  if(effEl){
+    const eff=e.map(x=>({n:x.teamName.length>16?x.teamName.slice(0,16)+'…':x.teamName,v:x.pkU>0?+(x.total/x.pkU).toFixed(1):0,tn:x.teamName})).sort((a,b)=>b.v-a.v);
+    _charts.eff=new Chart(effEl,{type:'bar',data:{labels:eff.map(x=>x.n),datasets:[{data:eff.map(x=>x.v),backgroundColor:eff.map((_,i)=>i===0?'#d4a843':i<3?'#d4a84366':'#3b82f644'),borderColor:eff.map((_,i)=>i===0?'#d4a843':i<3?'#d4a843aa':'#3b82f6aa'),borderWidth:1.5,borderRadius:4}]},options:{...anim,indexAxis:'y',responsive:true,maintainAspectRatio:false,onClick:(evt,items)=>{if(!items.length)return;const t=e.find(x=>x.teamName===eff[items[0].index].tn);if(t)set({sel:t.teamName,tab:'team'});},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+' pts/puck',footer:()=>'Click to view team'}}},scales:{x:{ticks:{...tx,callback:v=>v+' p/pk'},grid:gr},y:{ticks:{...tx,font:{size:10}},grid:{display:false}}}}});
+    effEl.style.cursor='pointer';
+  }
 }
 
 // ============================================================
@@ -1783,6 +1918,7 @@ function EN(){
 
 // BOOT
 function initApp(){
+  loadHistory();
   loadPersistedRoster();
   const entriesLoaded=loadPersistedEntries();
   const statsLoaded=loadPersistedStats();
