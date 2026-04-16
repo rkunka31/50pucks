@@ -10,19 +10,20 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','system-ui','sans-serif']},colors:{navy:{900:'#0f1729',800:'#172035',700:'#1e2a45'},accent:'#d4a843',accentLight:'#e8c36a'}}}}</script>
+<script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','system-ui','sans-serif']},colors:{navy:{900:'#0f1729',800:'#172035',700:'#1e2a45'},accent:'#d97706',accentLight:'#e8c36a'}}}}</script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{overflow-x:hidden;max-width:100vw;width:100%}
-body{font-family:'Inter',system-ui,sans-serif;background:#f0f4f9;color:#0f1e35;-webkit-font-smoothing:antialiased}
+body{font-family:'Inter',system-ui,sans-serif;background:#f0f4f8;color:#0d1b2e;-webkit-font-smoothing:antialiased}
 #app{overflow-x:hidden;max-width:100vw;width:100%}
 ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:2px}
-.hdr{background:linear-gradient(180deg,#02060f 0%,#0f1e35 100%);color:#fff;overflow-x:hidden;border-bottom:1px solid rgba(255,255,255,.06)}
-.card{background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:12px;overflow:hidden;box-shadow:0 1px 8px rgba(0,0,0,.06)}
-.trow{transition:background .1s}.trow:hover{background:rgba(0,0,0,.028)}
-.tab-on{color:#fff!important;font-weight:700;background:#0f1e35;border-radius:8px;border:1px solid #0f1e35!important}
-.tab-off{color:#64748b;border:1px solid transparent}.tab-off:hover{color:#0f1e35;background:rgba(15,30,53,.07);border-radius:8px}
-.r1{background:linear-gradient(135deg,#f0bc3d,#d4960a);color:#07080a;box-shadow:0 2px 8px rgba(212,168,67,.4)}
+.hdr{background:linear-gradient(180deg,#02060f 0%,#0d1b2e 100%);color:#fff;overflow-x:hidden;border-bottom:1px solid rgba(255,255,255,.06)}
+.card{background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:12px;overflow:hidden;box-shadow:0 1px 8px rgba(0,0,0,.06);transition:box-shadow .2s ease,transform .2s ease}
+.card-lift:hover{box-shadow:0 6px 20px rgba(0,0,0,.1);transform:translateY(-2px)}
+.trow{transition:background .12s}.trow:hover{background:rgba(8,145,178,.04)}
+.tab-on{color:#fff!important;font-weight:700;background:#0d1b2e;border-radius:8px;border:1px solid #0d1b2e!important}
+.tab-off{color:#64748b;border:1px solid transparent}.tab-off:hover{color:#0d1b2e;background:rgba(8,145,178,.08);border-radius:8px}
+.r1{background:linear-gradient(135deg,#fbbf24,#d97706);color:#07080a;box-shadow:0 2px 8px rgba(217,119,6,.4)}
 .r2{background:linear-gradient(135deg,#cbd5e1,#94a3b8);color:#1e293b}
 .r3{background:linear-gradient(135deg,#c49b6e,#9e7a50);color:#fff}
 .pk{width:10px;height:6px;border-radius:50%;background:linear-gradient(180deg,#3a3a3a 0%,#111 100%);display:inline-block;margin:0 1px;flex-shrink:0;box-shadow:0 1.5px 3px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.07)}
@@ -32,28 +33,37 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f0f4f9;color:#0f1e35;-
 select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2364748b'%3e%3cpath d='M6 8l4 4 4-4'/%3e%3c/svg%3e");background-position:right 6px center;background-repeat:no-repeat;background-size:14px}
 .bar-bg{background:rgba(0,0,0,.09);border-radius:4px;overflow:hidden;height:18px}
 .bar-f{height:100%;border-radius:4px;display:flex;align-items:center;padding:0 6px;transition:width .3s}
-@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 @keyframes ld{0%{transform:translateX(-150%)}100%{transform:translateX(350%)}}
-.fade-in{animation:fadeIn .25s ease}
+@keyframes pulse-glow{0%,100%{box-shadow:0 0 0 0 rgba(217,119,6,.4)}50%{box-shadow:0 0 0 5px rgba(217,119,6,0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.fade-in{animation:fadeIn .3s ease}
+.slide-up{animation:slideUp .35s ease both}
+.pulse-live{animation:pulse-glow 2s ease-in-out infinite}
 nav div::-webkit-scrollbar{display:none}
 header,nav,main,footer{max-width:100vw;overflow-x:hidden}
 .hidden-tab{display:none}
-.stat-card{border-radius:12px;padding:14px 16px;border:1px solid rgba(0,0,0,.07);background:#fff;box-shadow:0 1px 8px rgba(0,0,0,.06)}
+.stat-card{border-radius:12px;padding:14px 16px;border:1px solid rgba(0,0,0,.07);background:#fff;box-shadow:0 1px 8px rgba(0,0,0,.06);transition:box-shadow .2s ease,transform .2s ease}
+.stat-card-lift:hover{box-shadow:0 6px 20px rgba(0,0,0,.1);transform:translateY(-2px)}
 .score-bar-track{height:4px;background:rgba(0,0,0,.08);border-radius:2px;overflow:hidden;margin:5px 0}
-.score-bar-fill{height:100%;border-radius:2px;transition:width .4s ease}
+.score-bar-fill{height:100%;border-radius:2px;transition:width .5s cubic-bezier(.4,0,.2,1)}
 .section-heading{display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(0,0,0,.025);border-bottom:1px solid rgba(0,0,0,.06)}
-.section-heading::before{content:'';width:3px;height:14px;background:#d4a843;border-radius:2px;flex-shrink:0}
+.section-heading::before{content:'';width:3px;height:14px;background:#d97706;border-radius:2px;flex-shrink:0}
+.reveal{opacity:0;transform:translateY(12px)}.reveal.visible{opacity:1;transform:none;transition:opacity .45s ease,transform .45s ease}
+.hdr-inner{transition:padding .25s ease}
+@media(prefers-reduced-motion:reduce){.fade-in,.slide-up{animation:none}.score-bar-fill,.card,.stat-card,.reveal.visible{transition:none}}
 </style>
 </head>
 <body>
 <!-- Loading screen (standalone, not inside #app) -->
 <div id="loader" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(160deg,#0a1628 0%,#0f1e38 100%)">
   <div style="text-align:center">
-    <div style="width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#f0bc3d,#d4a843);display:flex;align-items:center;justify-content:center;color:#0f1729;font-weight:900;font-size:22px;margin:0 auto 14px;box-shadow:0 8px 24px rgba(212,168,67,.4)">50</div>
+    <div style="width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#f0bc3d,#d97706);display:flex;align-items:center;justify-content:center;color:#0f1729;font-weight:900;font-size:22px;margin:0 auto 14px;box-shadow:0 8px 24px rgba(217,119,6,.4)">50</div>
     <div style="color:#fff;font-weight:700;font-size:16px;margin-bottom:4px;letter-spacing:-.01em">50 Pucks</div>
     <p style="color:rgba(255,255,255,.35);font-size:11px;margin-bottom:20px">Loading playoff stats...</p>
     <div style="width:48px;height:2px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;margin:0 auto">
-      <div style="width:45%;height:100%;background:#d4a843;border-radius:2px;animation:ld 1.4s ease-in-out infinite"></div>
+      <div style="width:45%;height:100%;background:#d97706;border-radius:2px;animation:ld 1.4s ease-in-out infinite"></div>
     </div>
   </div>
 </div>
@@ -920,9 +930,9 @@ const fmt=n=>typeof n==='number'?n.toLocaleString(undefined,{maximumFractionDigi
 const rb=r=>r<=3?`<div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0" class="${r===1?'r1':r===2?'r2':'r3'}">${r}</div>`:`<span style="color:rgba(0,0,0,.35);font-size:12px;font-variant-numeric:tabular-nums;font-weight:700">${r}</span>`;
 const pkD=(n,a)=>Array(n).fill(0).map(()=>`<span class="${a?'pk':'pk pk-dead'}"></span>`).join('');
 const tb=t=>`<span style="font-size:10px;font-weight:700;letter-spacing:.04em;color:${TM[t]||'#8896a9'}">${t}</span>`;
-const ac=(a,t)=>a>t*.66?'#22c55e':a>t*.33?'#f59e0b':'#ef4444';
-const pc=(v,mx)=>v>mx*.5?'#22c55e':v>mx*.2?'#f59e0b':'#ef4444';
-const CL=['#3b82f6','#d4a843','#22c55e','#f59e0b','#ef4444','#a78bfa','#f97316','#06b6d4','#ec4899','#84cc16'];
+const ac=(a,t)=>a>t*.66?'#059669':a>t*.33?'#f59e0b':'#dc2626';
+const pc=(v,mx)=>v>mx*.5?'#059669':v>mx*.2?'#f59e0b':'#dc2626';
+const CL=['#0891b2','#d97706','#059669','#7c3aed','#db2777','#ea580c','#0284c7','#65a30d','#eab308','#6366f1'];
 
 // ============================================================
 // RENDER — #app has NO inline styles now
@@ -951,11 +961,18 @@ function render(){
 <header style="background:linear-gradient(180deg,#02060f 0%,#070c18 100%);border-bottom:1px solid rgba(255,255,255,.06);overflow-x:hidden">
   <div class="max-w-5xl mx-auto px-3 sm:px-4" style="padding:12px 0;display:flex;align-items:center;justify-content:space-between">
     <div style="display:flex;align-items:center;gap:12px">
-      <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#f0bc3d,#c49020);display:flex;align-items:center;justify-content:center;color:#070c18;font-weight:900;font-size:16px;flex-shrink:0;box-shadow:0 4px 16px rgba(212,168,67,.4)">50</div>
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;filter:drop-shadow(0 4px 12px rgba(8,145,178,.35))">
+        <rect width="40" height="40" rx="10" fill="#0d1b2e"/>
+        <line x1="4" y1="14" x2="9" y2="14" stroke="#0891b2" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+        <line x1="3" y1="20" x2="9" y2="20" stroke="#0891b2" stroke-width="2" stroke-linecap="round"/>
+        <line x1="4" y1="26" x2="9" y2="26" stroke="#0891b2" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+        <ellipse cx="24" cy="20" rx="12" ry="8" fill="rgba(8,145,178,0.15)" stroke="#0891b2" stroke-width="1.5"/>
+        <text x="24" y="25" text-anchor="middle" fill="#d97706" font-weight="900" font-size="13" font-family="Inter,system-ui,sans-serif" letter-spacing="-0.5">50</text>
+      </svg>
       <div>
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-.02em;line-height:1">${CFG.title}</span>
-          <span style="font-size:9px;font-weight:700;background:rgba(212,168,67,.18);color:#d4a843;border:1px solid rgba(212,168,67,.35);border-radius:4px;padding:2px 5px;letter-spacing:.06em">PLAYOFFS</span>
+          <span style="font-size:9px;font-weight:700;background:rgba(8,145,178,.18);color:#38bdf8;border:1px solid rgba(8,145,178,.35);border-radius:4px;padding:2px 5px;letter-spacing:.06em">PLAYOFFS</span>
         </div>
         <div style="font-size:10px;color:rgba(255,255,255,.32);letter-spacing:.04em;margin-top:2px">${S.entries.length} ENTRIES · ${S.yr}${_lastUpdated?` · <span style="color:rgba(255,255,255,.22)">updated ${timeSince(_lastUpdated)}</span>`:''}</div>
       </div>
@@ -963,11 +980,11 @@ function render(){
     <div style="display:flex;align-items:center;gap:8px">
       <select onchange="switchYear(this.value)" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:7px;color:rgba(255,255,255,.8);padding:6px 24px 6px 9px;font-size:11px;cursor:pointer;font-family:inherit;outline:none">${yrs}</select>
       <button onclick="let btn=this;btn.style.opacity='.35';btn.style.transform='rotate(180deg)';silentRefresh().then(()=>{btn.style.opacity='1';btn.style.transform='';}).catch(()=>{btn.style.opacity='1';btn.style.transform='';})" title="Refresh data" style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .4s">↻</button>
-      ${!S.adminAuth?`<button onclick="adminPrompt()" title="Admin" style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">⚙</button>`:`<button onclick="S.adminAuth=false;render()" title="Logout" style="width:32px;height:32px;border-radius:8px;background:rgba(212,168,67,.15);border:1px solid rgba(212,168,67,.3);color:#d4a843;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0">🔒</button>`}
+      ${!S.adminAuth?`<button onclick="adminPrompt()" title="Admin" style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">⚙</button>`:`<button onclick="S.adminAuth=false;render()" title="Logout" style="width:32px;height:32px;border-radius:8px;background:rgba(217,119,6,.15);border:1px solid rgba(217,119,6,.3);color:#d97706;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0">🔒</button>`}
     </div>
   </div>
 </header>
-<nav style="background:#fff;border-bottom:1px solid rgba(0,0,0,.08);position:sticky;top:0;z-index:40;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+<nav style="background:rgba(255,255,255,.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(0,0,0,.08);position:sticky;top:0;z-index:40;box-shadow:0 1px 4px rgba(0,0,0,.06)">
   <div class="max-w-5xl mx-auto px-2 sm:px-4" style="display:flex;gap:2px;overflow-x:auto;padding:6px 0;-ms-overflow-style:none;scrollbar-width:none;-webkit-overflow-scrolling:touch">
     ${tabs.map(([id,l])=>`<button onclick="set({tab:'${id}'})" style="padding:6px 11px;font-size:11px;white-space:nowrap;cursor:pointer;font-family:inherit;transition:all .12s;letter-spacing:.01em" class="${S.tab===id?'tab-on':'tab-off'}">${l}</button>`).join('')}
   </div>
@@ -976,6 +993,43 @@ function render(){
 <footer style="border-top:1px solid rgba(0,0,0,.07);padding:14px 0;margin-top:20px"><p style="text-align:center;font-size:10px;color:#94a3b8;letter-spacing:.04em">${CFG.title} · ${S.yr}${_src?' · '+_src:''}</p></footer>`;
   Object.values(_charts).forEach(c=>{try{c.destroy();}catch{}});_charts={};
   setTimeout(drawDashboard,20);
+  setTimeout(runEntranceAnimations,40);
+}
+
+function runEntranceAnimations(){
+  // Scroll-triggered entrance for cards
+  if(typeof IntersectionObserver!=='undefined'){
+    const obs=new IntersectionObserver(entries=>{
+      let delay=0;
+      entries.forEach(e=>{
+        if(e.isIntersecting){
+          setTimeout(()=>{e.target.classList.add('visible');},delay);
+          delay=Math.min(delay+55,250);
+          obs.unobserve(e.target);
+        }
+      });
+    },{threshold:.06,rootMargin:'0px 0px -20px 0px'});
+    document.querySelectorAll('.card,.stat-card').forEach(el=>{
+      if(!el.classList.contains('visible')){el.classList.add('reveal');obs.observe(el);}
+    });
+  }
+  // Score counter animation on stat card big numbers
+  document.querySelectorAll('.cn').forEach(el=>{
+    const target=parseFloat(el.dataset.val)||0;
+    if(target===0)return;
+    const pre=el.dataset.pre||'';
+    const suf=el.dataset.suf||'';
+    const dur=900;const start=performance.now();
+    const isInt=Number.isInteger(target);
+    function tick(now){
+      const p=Math.min((now-start)/dur,1);
+      const ease=1-Math.pow(1-p,3);
+      const v=target*ease;
+      el.textContent=pre+(isInt?Math.round(v):v.toFixed(1))+suf;
+      if(p<1)requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
 }
 
 function tabC(){switch(S.tab){case'leaderboard':return LB();case'team':return TD();case'chart':return CH();case'players':return PL();case'simulation':return SM();case'stats':return ST();case'info':return NF();case'entry':return EN();case'admin':return AD();default:return'';}}
@@ -1002,29 +1056,29 @@ function LB(){
   const cards=`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px">
     <div class="stat-card">
       <div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Prize Pool</div>
-      <div style="font-size:26px;font-weight:800;color:#0f1e35;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1">$${pool}</div>
+      <div class="cn" data-val="${pool}" data-pre="$" style="font-size:26px;font-weight:800;color:#0f1e35;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1">$${pool}</div>
       <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${pay.map(p=>`<span style="font-size:10px;color:#94a3b8"><span style="font-weight:700;color:#475569">$${p.a}</span> ${p.l}</span>`).join(' · ')}</div>
     </div>
-    <div class="stat-card" style="border-color:rgba(212,168,67,.25)">
-      <div style="font-size:9px;font-weight:700;color:#b8922a;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Current Leader</div>
+    <div class="stat-card" style="border-color:rgba(217,119,6,.25)">
+      <div style="font-size:9px;font-weight:700;color:#b45309;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Current Leader</div>
       <div style="font-size:18px;font-weight:800;color:#0f1e35;letter-spacing:-.01em;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(leader?.teamName||'—')}</div>
-      <div style="font-size:10px;color:#94a3b8;margin-top:7px">${esc(leader?.owner||'')} · <span style="font-weight:700;color:#d4a843">${fmt(leader?.total||0)} pts</span></div>
+      <div style="font-size:10px;color:#94a3b8;margin-top:7px">${esc(leader?.owner||'')} · <span style="font-weight:700;color:#d97706">${fmt(leader?.total||0)} pts</span></div>
     </div>
-    <div class="stat-card" style="border-color:rgba(59,130,246,.18)">
-      <div style="font-size:9px;font-weight:700;color:#3b82f6;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Pool Average</div>
-      <div style="font-size:26px;font-weight:800;color:#0f1e35;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1">${fmt(avgScore)}</div>
+    <div class="stat-card" style="border-color:rgba(8,145,178,.18)">
+      <div style="font-size:9px;font-weight:700;color:#0891b2;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Pool Average</div>
+      <div class="cn" data-val="${avgScore}" style="font-size:26px;font-weight:800;color:#0f1e35;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1">${fmt(avgScore)}</div>
       <div style="font-size:10px;color:#94a3b8;margin-top:8px">${e.length} entries · ${s?.concentration||0}% concentrated</div>
     </div>
     <div class="stat-card" style="border-color:rgba(239,68,68,.18)">
-      <div style="font-size:9px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Dead Pucks</div>
-      <div style="font-size:26px;font-weight:800;color:#0f1e35;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1">${s?.deadRate||0}%</div>
+      <div style="font-size:9px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Dead Pucks</div>
+      <div class="cn" data-val="${s?.deadRate||0}" data-suf="%" style="font-size:26px;font-weight:800;color:#0f1e35;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1">${s?.deadRate||0}%</div>
       <div style="font-size:10px;color:#94a3b8;margin-top:8px">${s?.deadPucks||0} of ${s?.totalPucks||0} pucks eliminated</div>
     </div>
   </div>`;
 
   const mobileRows=e.map(en=>{
     const pct=maxScore>0?Math.round(en.total/maxScore*100):0;
-    const accentL=en.rank===1?'#d4a843':en.rank===2?'#94a3b8':en.rank===3?'#c49b6e':'transparent';
+    const accentL=en.rank===1?'#d97706':en.rank===2?'#94a3b8':en.rank===3?'#c49b6e':'transparent';
     const gap=leaderScore-en.total;
     const gapStr=en.rank===1?'—':`-${fmt(gap)}`;
     return`<div onclick="set({sel:'${esc(en.teamName)}',tab:'team'})" class="trow cursor-pointer" style="border-bottom:1px solid rgba(0,0,0,.06);border-left:3px solid ${accentL}">
@@ -1035,10 +1089,10 @@ function LB(){
             <div style="font-weight:700;color:#0f1e35;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(en.teamName)}</div>
             <div style="font-weight:800;color:#0f1e35;font-size:15px;font-variant-numeric:tabular-nums;flex-shrink:0">${fmt(en.total)}</div>
           </div>
-          <div class="score-bar-track"><div class="score-bar-fill" style="width:${pct}%;background:${en.rank===1?'#d4a843':'#3b82f6'}"></div></div>
+          <div class="score-bar-track"><div class="score-bar-fill" style="width:${pct}%;background:${en.rank===1?'#d97706':'#0891b2'}"></div></div>
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div style="font-size:10px;color:#94a3b8">${esc(en.owner)} · ${en.alive}/${en.cnt} alive · ${en.pkR} pucks left</div>
-            ${en.rank>1?`<div style="font-size:10px;color:#ef4444;font-weight:600;font-variant-numeric:tabular-nums;flex-shrink:0">${gapStr}</div>`:'<div style="font-size:10px;color:#d4a843;font-weight:600;flex-shrink:0">Leader</div>'}
+            ${en.rank>1?`<div style="font-size:10px;color:#dc2626;font-weight:600;font-variant-numeric:tabular-nums;flex-shrink:0">${gapStr}</div>`:'<div style="font-size:10px;color:#d97706;font-weight:600;flex-shrink:0">Leader</div>'}
           </div>
         </div>
         <div style="color:rgba(0,0,0,.2);font-size:14px;flex-shrink:0">›</div>
@@ -1048,9 +1102,9 @@ function LB(){
 
   const desktopRows=e.map(en=>{
     const pct=maxScore>0?Math.round(en.total/maxScore*100):0;
-    const accentL=en.rank===1?'#d4a843':en.rank===2?'#94a3b8':en.rank===3?'#c49b6e':'transparent';
+    const accentL=en.rank===1?'#d97706':en.rank===2?'#94a3b8':en.rank===3?'#c49b6e':'transparent';
     const aliveRatio=en.cnt>0?en.alive/en.cnt:0;
-    const aliveColor=aliveRatio>.66?'#22c55e':aliveRatio>.33?'#f59e0b':'#ef4444';
+    const aliveColor=aliveRatio>.66?'#059669':aliveRatio>.33?'#f59e0b':'#dc2626';
     const gap=leaderScore-en.total;
     return`<tr onclick="set({sel:'${esc(en.teamName)}',tab:'team'})" class="trow cursor-pointer" style="border-bottom:1px solid rgba(0,0,0,.05);border-left:3px solid ${accentL}">
       <td style="padding:12px 10px">${rb(en.rank)}</td>
@@ -1061,18 +1115,18 @@ function LB(){
       <td style="padding:12px 14px">
         <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end">
           <div style="width:72px;height:3px;background:rgba(0,0,0,.08);border-radius:2px;overflow:hidden;flex-shrink:0">
-            <div style="height:100%;width:${pct}%;background:${en.rank===1?'#d4a843':'#3b82f6'};border-radius:2px"></div>
+            <div style="height:100%;width:${pct}%;background:${en.rank===1?'#d97706':'#0891b2'};border-radius:2px"></div>
           </div>
           <div style="font-weight:800;color:#0f1e35;font-size:15px;font-variant-numeric:tabular-nums;min-width:46px;text-align:right">${fmt(en.total)}</div>
         </div>
       </td>
-      <td style="padding:12px 8px;text-align:center;font-variant-numeric:tabular-nums;font-size:12px;font-weight:600;color:${en.rank===1?'#94a3b8':'#ef4444'}">${en.rank===1?'—':'-'+fmt(gap)}</td>
+      <td style="padding:12px 8px;text-align:center;font-variant-numeric:tabular-nums;font-size:12px;font-weight:600;color:${en.rank===1?'#94a3b8':'#dc2626'}">${en.rank===1?'—':'-'+fmt(gap)}</td>
       <td style="padding:12px 14px;text-align:center">
         <span style="font-size:11px;font-weight:700;color:#fff;background:${aliveColor};padding:2px 8px;border-radius:20px;white-space:nowrap">${en.alive}/${en.cnt}</span>
       </td>
       <td style="padding:12px 14px;text-align:center;font-weight:700;font-size:13px;font-variant-numeric:tabular-nums;color:${pc(en.pkR,50)}">${en.pkR}<span style="color:#cbd5e1">/${en.pkU}</span></td>
       <td style="padding:12px 14px;text-align:right">
-        <div style="font-size:11px;font-weight:600;color:#d4a843;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px">${esc(en.bp)}</div>
+        <div style="font-size:11px;font-weight:600;color:#d97706;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px">${esc(en.bp)}</div>
         <div style="font-size:10px;color:#94a3b8;font-variant-numeric:tabular-nums">${fmt(en.bs)}</div>
       </td>
       <td style="padding:12px 8px;color:rgba(0,0,0,.2);font-size:14px">›</td>
@@ -1086,9 +1140,9 @@ function LB(){
     <span style="font-size:9px;color:#cbd5e1">·</span>
     <span style="font-size:10px;color:#475569">Top seeds = <span style="color:#94a3b8;font-weight:700">1.0×</span></span>
     <span style="font-size:9px;color:#cbd5e1">·</span>
-    <span style="font-size:10px;color:#475569">2–3 seeds = <span style="color:#3b82f6;font-weight:700">1.5×</span></span>
+    <span style="font-size:10px;color:#475569">2–3 seeds = <span style="color:#0891b2;font-weight:700">1.5×</span></span>
     <span style="font-size:9px;color:#cbd5e1">·</span>
-    <span style="font-size:10px;color:#475569">Wildcards = <span style="color:#d4a843;font-weight:700">2.0×</span></span>
+    <span style="font-size:10px;color:#475569">Wildcards = <span style="color:#d97706;font-weight:700">2.0×</span></span>
   </div>`;
   return`${cards}
   <div class="card sm:hidden">${mobileRows}${formulaLegend}</div>
@@ -1116,8 +1170,8 @@ function TD(){
   const next=idx<S.entries.length-1?S.entries[idx+1]:null;
   const navBtn=(en,dir)=>en?`<button onclick="set({sel:'${esc(en.teamName)}'})" title="${dir}: ${esc(en.teamName)}" style="height:36px;padding:0 12px;border-radius:8px;background:#f1f5f9;border:1px solid rgba(0,0,0,.1);color:#475569;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;display:flex;align-items:center;gap:5px">${dir==='Prev'?'‹':''}<span style="font-size:10px;max-width:80px;overflow:hidden;text-overflow:ellipsis">${esc(en.teamName)}</span>${dir==='Next'?'›':''}</button>`:`<span style="width:36px"></span>`;
   const opts=S.entries.map(x=>`<option value="${esc(x.teamName)}" ${x.teamName===e.teamName?'selected':''}>#${x.rank} ${esc(x.teamName)}</option>`).join('');
-  const bar=e.players.map(p=>{const w=(p.pucks/50)*100;return`<div style="width:${w}%;background:${p.alive?(TM[p.team]||'#3b82f6'):'rgba(0,0,0,.12)'};opacity:${p.alive?1:.7};transition:width .3s" title="${esc(p.name)}: ${p.pucks}pk"></div>`;}).join('');
-  const multCl=m=>m===2?'color:#f59e0b;font-weight:700':m===1.5?'color:#60a5fa;font-weight:700':'color:rgba(0,0,0,.22)';
+  const bar=e.players.map(p=>{const w=(p.pucks/50)*100;return`<div style="width:${w}%;background:${p.alive?(TM[p.team]||'#0891b2'):'rgba(0,0,0,.12)'};opacity:${p.alive?1:.7};transition:width .3s" title="${esc(p.name)}: ${p.pucks}pk"></div>`;}).join('');
+  const multCl=m=>m===2?'color:#f59e0b;font-weight:700':m===1.5?'color:#38bdf8;font-weight:700':'color:rgba(0,0,0,.22)';
   const sec=(t,pl)=>{
     const tot=pl.reduce((s,p)=>s+p.score,0);
     const thS='font-size:9px;font-weight:700;color:rgba(0,0,0,.42);text-transform:uppercase;letter-spacing:.08em;padding:8px 8px';
@@ -1137,7 +1191,7 @@ function TD(){
         </tr></thead><tbody>${pl.map(p=>`<tr style="border-bottom:1px solid rgba(0,0,0,.04)" class="trow">
           <td style="padding:9px 8px 9px 12px">
             <div style="display:flex;align-items:center;gap:7px">
-              <span class="dot" style="background:${p.alive?'#22c55e':'rgba(0,0,0,.18)'}"></span>
+              <span class="dot" style="background:${p.alive?'#059669':'rgba(0,0,0,.18)'}"></span>
               <span style="font-weight:${p.alive?600:400};color:${p.alive?'#0f1e35':'rgba(0,0,0,.42)'};font-size:12px">${esc(p.name)}</span>
             </div>
           </td>
@@ -1209,7 +1263,7 @@ function CH(){
     if(best&&bestGain>=0){
       moverHtml=`<button onclick="set({sel:'${esc(best)}',tab:'team'})" style="background:none;border:none;cursor:pointer;text-align:left;padding:0;font-family:inherit;width:100%">
         <div style="font-size:12px;font-weight:700;color:#0f1e35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(best)}</div>
-        <div style="font-size:26px;font-weight:900;color:#22c55e;font-variant-numeric:tabular-nums;line-height:1.1;margin:4px 0">+${fmt(bestGain)}</div>
+        <div style="font-size:26px;font-weight:900;color:#059669;font-variant-numeric:tabular-nums;line-height:1.1;margin:4px 0">+${fmt(bestGain)}</div>
         <div style="font-size:10px;color:#94a3b8">pts since ${_history[days-2].l} → ${_history[days-1].l}</div>
       </button>`;
     }
@@ -1221,8 +1275,8 @@ function CH(){
   const deadPks=s?.deadPucks||0,totalPks=s?.totalPucks||0;
 
   // Podium (top 3)
-  const medalBg=['linear-gradient(135deg,rgba(212,168,67,.14),rgba(212,168,67,.04))','linear-gradient(135deg,rgba(148,163,184,.1),rgba(148,163,184,.03))','linear-gradient(135deg,rgba(196,155,110,.1),rgba(196,155,110,.03))'];
-  const medalBd=['rgba(212,168,67,.28)','rgba(148,163,184,.22)','rgba(196,155,110,.22)'];
+  const medalBg=['linear-gradient(135deg,rgba(217,119,6,.14),rgba(217,119,6,.04))','linear-gradient(135deg,rgba(148,163,184,.1),rgba(148,163,184,.03))','linear-gradient(135deg,rgba(196,155,110,.1),rgba(196,155,110,.03))'];
+  const medalBd=['rgba(217,119,6,.28)','rgba(148,163,184,.22)','rgba(196,155,110,.22)'];
   const medals=['🥇','🥈','🥉'];
   const podium=e.slice(0,Math.min(3,e.length)).map((en,i)=>`<button onclick="set({sel:'${esc(en.teamName)}',tab:'team'})" style="flex:1;min-width:0;padding:12px 10px;background:${medalBg[i]};border:1px solid ${medalBd[i]};border-radius:10px;cursor:pointer;text-align:left;font-family:inherit">
     <div style="font-size:18px;margin-bottom:5px">${medals[i]}</div>
@@ -1236,7 +1290,7 @@ function CH(){
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span style="font-size:18px;font-weight:800;color:#0f1e35;letter-spacing:-.02em">Analytics</span>
       <span style="font-size:11px;color:#94a3b8">${e.length} entries · ${days} day${days!==1?'s':''} tracked</span>
-      <span style="margin-left:auto;font-size:9px;font-weight:700;background:rgba(212,168,67,.12);color:#b8922a;border:1px solid rgba(212,168,67,.25);border-radius:5px;padding:3px 7px;letter-spacing:.06em">LIVE</span>
+      <span class="pulse-live" style="margin-left:auto;font-size:9px;font-weight:700;background:rgba(217,119,6,.12);color:#d97706;border:1px solid rgba(217,119,6,.3);border-radius:5px;padding:3px 7px;letter-spacing:.06em">● LIVE</span>
     </div>
 
     <!-- ① Points evolution — main chart -->
@@ -1257,24 +1311,24 @@ function CH(){
     <!-- ③ Metric cards -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div class="stat-card">
-        <div style="font-size:9px;font-weight:700;color:#22c55e;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Biggest Mover</div>
+        <div style="font-size:9px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Biggest Mover</div>
         ${moverHtml}
       </div>
       <div class="stat-card">
-        <div style="font-size:9px;font-weight:700;color:#3b82f6;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Pool Health</div>
+        <div style="font-size:9px;font-weight:700;color:#0891b2;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Pool Health</div>
         <div style="font-size:24px;font-weight:800;color:#0f1e35;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1">${alivePct}<span style="font-size:13px;font-weight:400;color:#94a3b8">%</span></div>
-        <div style="height:4px;background:rgba(0,0,0,.08);border-radius:2px;overflow:hidden;margin:7px 0"><div style="height:100%;width:${alivePct}%;background:${alivePct>50?'#22c55e':'#f59e0b'};border-radius:2px;transition:width .4s"></div></div>
+        <div style="height:4px;background:rgba(0,0,0,.08);border-radius:2px;overflow:hidden;margin:7px 0"><div style="height:100%;width:${alivePct}%;background:${alivePct>50?'#059669':'#f59e0b'};border-radius:2px;transition:width .4s"></div></div>
         <div style="font-size:10px;color:#94a3b8">${aliveP}/${totalP} players alive · ${deadPks}/${totalPks} pucks dead</div>
       </div>
       ${s?.pl?.[0]?`<div class="stat-card" style="grid-column:span 2">
-        <div style="font-size:9px;font-weight:700;color:#d4a843;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Best Pick in the Pool</div>
+        <div style="font-size:9px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Best Pick in the Pool</div>
         <button onclick="set({tab:'players'})" style="background:none;border:none;cursor:pointer;text-align:left;padding:0;font-family:inherit;width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px">
           <div style="min-width:0">
             <div style="font-size:15px;font-weight:800;color:#0f1e35">${esc(s.pl[0].name)}</div>
             <div style="display:flex;gap:8px;margin-top:4px;align-items:center;flex-wrap:wrap">${tb(s.pl[0].team)}<span style="font-size:10px;color:#94a3b8">${s.pl[0].pts} playoff pts · ${s.pl[0].own}% owned</span></div>
           </div>
           <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:22px;font-weight:900;color:#d4a843;font-variant-numeric:tabular-nums;line-height:1">${fmt(s.pl[0].ms)}</div>
+            <div style="font-size:22px;font-weight:900;color:#d97706;font-variant-numeric:tabular-nums;line-height:1">${fmt(s.pl[0].ms)}</div>
             <div style="font-size:9px;color:#94a3b8">best pool score</div>
           </div>
         </button>
@@ -1292,7 +1346,7 @@ function CH(){
     <div class="card">
       <div style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(0,0,0,.06)">
         <span style="font-size:13px;font-weight:700;color:#0f1e35">Current Standings</span>
-        <button onclick="set({tab:'leaderboard'})" style="font-size:11px;color:#3b82f6;font-weight:600;background:none;border:none;cursor:pointer;font-family:inherit">View full →</button>
+        <button onclick="set({tab:'leaderboard'})" style="font-size:11px;color:#0891b2;font-weight:600;background:none;border:none;cursor:pointer;font-family:inherit">View full →</button>
       </div>
       ${e.slice(0,5).map(en=>{
         const pct=e[0].total>0?Math.round(en.total/e[0].total*100):0;
@@ -1304,10 +1358,10 @@ function CH(){
               <span style="font-size:12px;font-weight:700;color:#0f1e35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(en.teamName)}</span>
               <div style="display:flex;align-items:baseline;gap:5px;flex-shrink:0">
                 <span style="font-size:13px;font-weight:800;color:#0f1e35;font-variant-numeric:tabular-nums">${fmt(en.total)}</span>
-                ${en.rank>1?`<span style="font-size:10px;color:#ef4444;font-weight:600;font-variant-numeric:tabular-nums">-${fmt(gap)}</span>`:''}
+                ${en.rank>1?`<span style="font-size:10px;color:#dc2626;font-weight:600;font-variant-numeric:tabular-nums">-${fmt(gap)}</span>`:''}
               </div>
             </div>
-            <div style="height:3px;background:rgba(0,0,0,.07);border-radius:2px;overflow:hidden;margin-top:4px"><div style="height:100%;width:${pct}%;background:${en.rank===1?'#d4a843':'#3b82f6'};border-radius:2px"></div></div>
+            <div style="height:3px;background:rgba(0,0,0,.07);border-radius:2px;overflow:hidden;margin-top:4px"><div style="height:100%;width:${pct}%;background:${en.rank===1?'#d97706':'#0891b2'};border-radius:2px"></div></div>
           </div>
         </div>`;
       }).join('')}
@@ -1323,7 +1377,7 @@ function drawDashboard(){
   const tx={color:'rgba(0,0,0,.44)',font:{family:'Inter',size:10}};
   const gr={color:'rgba(0,0,0,.05)'};
   const anim={animation:{duration:600,easing:'easeInOutQuart'}};
-  const pal=['#3b82f6','#d4a843','#22c55e','#f59e0b','#a78bfa','#f97316','#06b6d4','#ec4899','#84cc16','#ef4444'];
+  const pal=['#0891b2','#d97706','#059669','#7c3aed','#db2777','#ea580c','#0284c7','#65a30d','#eab308','#6366f1'];
 
   // ── Evolution chart ──────────────────────────────────────────
   const evoEl=document.getElementById('evoChart');
@@ -1354,7 +1408,7 @@ function drawDashboard(){
   const effEl=document.getElementById('effChart');
   if(effEl){
     const eff=e.map(x=>({n:x.teamName.length>16?x.teamName.slice(0,16)+'…':x.teamName,v:x.pkU>0?+(x.total/x.pkU).toFixed(1):0,tn:x.teamName})).sort((a,b)=>b.v-a.v);
-    _charts.eff=new Chart(effEl,{type:'bar',data:{labels:eff.map(x=>x.n),datasets:[{data:eff.map(x=>x.v),backgroundColor:eff.map((_,i)=>i===0?'#d4a843':i<3?'#d4a84366':'#3b82f644'),borderColor:eff.map((_,i)=>i===0?'#d4a843':i<3?'#d4a843aa':'#3b82f6aa'),borderWidth:1.5,borderRadius:4}]},options:{...anim,indexAxis:'y',responsive:true,maintainAspectRatio:false,onClick:(evt,items)=>{if(!items.length)return;const t=e.find(x=>x.teamName===eff[items[0].index].tn);if(t)set({sel:t.teamName,tab:'team'});},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+' pts/puck',footer:()=>'Click to view team'}}},scales:{x:{ticks:{...tx,callback:v=>v+' p/pk'},grid:gr},y:{ticks:{...tx,font:{size:10}},grid:{display:false}}}}});
+    _charts.eff=new Chart(effEl,{type:'bar',data:{labels:eff.map(x=>x.n),datasets:[{data:eff.map(x=>x.v),backgroundColor:eff.map((_,i)=>i===0?'#d97706':i<3?'#d9770666':'#0891b244'),borderColor:eff.map((_,i)=>i===0?'#d97706':i<3?'#d97706aa':'#0891b2aa'),borderWidth:1.5,borderRadius:4}]},options:{...anim,indexAxis:'y',responsive:true,maintainAspectRatio:false,onClick:(evt,items)=>{if(!items.length)return;const t=e.find(x=>x.teamName===eff[items[0].index].tn);if(t)set({sel:t.teamName,tab:'team'});},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+' pts/puck',footer:()=>'Click to view team'}}},scales:{x:{ticks:{...tx,callback:v=>v+' p/pk'},grid:gr},y:{ticks:{...tx,font:{size:10}},grid:{display:false}}}}});
     effEl.style.cursor='pointer';
   }
 }
@@ -1366,7 +1420,7 @@ function PL(){
   if(!S.stats)return'';let pl=S.stats.pl.slice();
   if(S.pPos!=='all')pl=pl.filter(p=>p.pos===S.pPos);
   if(S.pSort==='avgScore')pl.sort((a,b)=>b.as-a.as);else if(S.pSort==='pts')pl.sort((a,b)=>b.pts-a.pts);
-  const btn=(v,k,l)=>`<button onclick="set({${k}:'${v}'})" style="padding:6px 12px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;border:none;transition:all .12s;${S[k]===v?'background:rgba(212,168,67,.15);color:#f0bc3d;border:1px solid rgba(212,168,67,.3)':'background:transparent;color:rgba(0,0,0,.44);border:1px solid transparent'}">${l}</button>`;
+  const btn=(v,k,l)=>`<button onclick="set({${k}:'${v}'})" style="padding:6px 12px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;border:none;transition:all .12s;${S[k]===v?'background:rgba(217,119,6,.15);color:#f0bc3d;border:1px solid rgba(217,119,6,.3)':'background:transparent;color:rgba(0,0,0,.44);border:1px solid transparent'}">${l}</button>`;
   const thS='font-size:9px;font-weight:700;color:rgba(0,0,0,.42);text-transform:uppercase;letter-spacing:.08em;padding:9px 6px';
   return`<div class="space-y-3">
     <div style="display:flex;flex-wrap:wrap;gap:8px">
@@ -1384,9 +1438,9 @@ function PL(){
     </tr></thead><tbody>${pl.map(p=>`<tr style="border-bottom:1px solid rgba(0,0,0,.04)" class="trow">
       <td style="padding:10px 8px 10px 12px">
         <div style="display:flex;align-items:center;gap:7px">
-          <span class="dot" style="background:${p.alive?'#22c55e':'rgba(0,0,0,.18)'}"></span>
+          <span class="dot" style="background:${p.alive?'#059669':'rgba(0,0,0,.18)'}"></span>
           <span style="font-weight:600;color:#0f1e35;font-size:12px">${esc(p.name)}</span>
-          <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;${p.pos==='D'?'background:rgba(245,158,11,.15);color:#f59e0b':'background:rgba(96,165,250,.15);color:#60a5fa'}">${p.pos}</span>
+          <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;${p.pos==='D'?'background:rgba(245,158,11,.15);color:#f59e0b':'background:rgba(96,165,250,.15);color:#38bdf8'}">${p.pos}</span>
         </div>
       </td>
       <td style="padding:10px 4px;text-align:center">${tb(p.team)}</td>
@@ -1394,12 +1448,12 @@ function PL(){
       <td style="padding:10px 6px;text-align:center">
         <div style="display:flex;align-items:center;gap:5px;justify-content:center">
           <div style="width:36px;height:3px;background:rgba(0,0,0,.09);border-radius:2px;overflow:hidden">
-            <div style="height:100%;width:${p.own}%;background:${p.own===100?'#d4a843':'rgba(0,0,0,.46)'};border-radius:2px"></div>
+            <div style="height:100%;width:${p.own}%;background:${p.own===100?'#d97706':'rgba(0,0,0,.46)'};border-radius:2px"></div>
           </div>
           <span style="font-size:10px;color:rgba(0,0,0,.46);font-variant-numeric:tabular-nums;font-weight:600">${p.own}%</span>
         </div>
       </td>
-      <td style="padding:10px 4px;text-align:center;color:#d4a843;font-weight:700;font-size:12px;font-variant-numeric:tabular-nums">${p.ap}</td>
+      <td style="padding:10px 4px;text-align:center;color:#d97706;font-weight:700;font-size:12px;font-variant-numeric:tabular-nums">${p.ap}</td>
       <td style="padding:10px 4px;text-align:right;color:rgba(0,0,0,.5);font-size:12px;font-variant-numeric:tabular-nums">${fmt(p.as)}</td>
       <td style="padding:10px 12px 10px 4px;text-align:right;font-weight:800;color:#0f1e35;font-size:13px;font-variant-numeric:tabular-nums">${fmt(p.ms)}</td>
     </tr>`).join('')}</tbody></table></div></div>
@@ -1461,7 +1515,7 @@ function SM(){
       ${pr.slice().sort((a,b)=>b.wp-a.wp).map((p,i)=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
         <div style="width:110px;font-size:11px;color:rgba(0,0,0,.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;flex-shrink:0">${esc(p.tn)}</div>
         <div style="flex:1;background:rgba(0,0,0,.08);border-radius:3px;overflow:hidden;height:18px">
-          <div style="height:100%;width:${Math.max(p.wp,1)}%;background:${i===0?'#d4a843':'rgba(0,0,0,.22)'};border-radius:3px;display:flex;align-items:center;padding:0 6px;transition:width .4s">
+          <div style="height:100%;width:${Math.max(p.wp,1)}%;background:${i===0?'#d97706':'rgba(0,0,0,.22)'};border-radius:3px;display:flex;align-items:center;padding:0 6px;transition:width .4s">
             ${p.wp>=12?`<span style="font-size:9px;font-weight:700;color:${i===0?'#0f1729':'rgba(0,0,0,.75)'}">${p.wp}%</span>`:''}
           </div>
         </div>
@@ -1487,14 +1541,14 @@ function SM(){
     <div style="display:flex;align-items:center;justify-content:space-between">
       <div>
         <div style="display:flex;align-items:center;gap:8px">
-          <div style="width:3px;height:16px;background:#d4a843;border-radius:2px;flex-shrink:0"></div>
+          <div style="width:3px;height:16px;background:#d97706;border-radius:2px;flex-shrink:0"></div>
           <span style="font-size:14px;font-weight:700;color:#0f1e35">Projections</span>
         </div>
         <div style="font-size:10px;color:rgba(0,0,0,.42);margin-top:2px;margin-left:11px">Monte Carlo simulation</div>
       </div>
       <div style="display:flex;gap:6px">
         <button onclick="set({showSim:!S.showSim})" style="padding:6px 10px;background:rgba(0,0,0,.08);border:1px solid rgba(0,0,0,.1);border-radius:8px;font-size:11px;font-weight:600;color:rgba(0,0,0,.55);cursor:pointer;font-family:inherit">⚙ Settings</button>
-        <button onclick="doSim()" ${S.simRun?'disabled':''} style="padding:6px 14px;background:${S.simRun?'rgba(0,0,0,.1)':'rgba(212,168,67,.15)'};border:1px solid ${S.simRun?'rgba(0,0,0,.1)':'rgba(212,168,67,.35)'};border-radius:8px;font-size:11px;font-weight:700;color:${S.simRun?'rgba(0,0,0,.42)':'#f0bc3d'};cursor:${S.simRun?'not-allowed':'pointer'};font-family:inherit">${S.simRun?'Running...':'▶ Run Simulation'}</button>
+        <button onclick="doSim()" ${S.simRun?'disabled':''} style="padding:6px 14px;background:${S.simRun?'rgba(0,0,0,.1)':'rgba(217,119,6,.15)'};border:1px solid ${S.simRun?'rgba(0,0,0,.1)':'rgba(217,119,6,.35)'};border-radius:8px;font-size:11px;font-weight:700;color:${S.simRun?'rgba(0,0,0,.42)':'#f0bc3d'};cursor:${S.simRun?'not-allowed':'pointer'};font-family:inherit">${S.simRun?'Running...':'▶ Run Simulation'}</button>
       </div>
     </div>
     ${stg}${res}
@@ -1507,8 +1561,8 @@ function SM(){
 function NF(){
   const pool=S.stats?.pool||0;const pay=CFG.pay.map(p=>({...p,a:Math.round(pool*p.r)}));
   const ms=sn().mult;const tByM={};Object.entries(ms).forEach(([t,m])=>{const k=m+'x';if(!tByM[k])tByM[k]=[];tByM[k].push(t);});
-  const mH=Object.keys(ms).length?['2x','1.5x','1x'].filter(k=>tByM[k]?.length).map(tier=>{const m=parseFloat(tier);const cl=m===2?'#d4a843':m===1?'rgba(0,0,0,.42)':'#60a5fa';const label=m===2?'Wild Card':m===1?'Division Winner':'Middle Seed';return`<div style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:13px;font-weight:800;color:${cl};font-variant-numeric:tabular-nums">${tier}</span><span style="font-size:10px;color:rgba(0,0,0,.44)">${label}</span></div><div style="display:flex;flex-wrap:wrap;gap:5px">${(tByM[tier]||[]).sort().map(t=>`<span style="padding:3px 8px;border-radius:5px;font-size:11px;font-weight:700;letter-spacing:.03em;${sn().alive.includes(t)?`background:rgba(0,0,0,.09);color:${TM[t]||'#0f1e35'}`:'background:rgba(0,0,0,.04);color:rgba(0,0,0,.2);text-decoration:line-through'}">${t}</span>`).join('')}</div></div>`;}).join(''):'';
-  const rl=(n,t)=>`<div style="display:flex;gap:10px;margin-bottom:10px"><span style="width:18px;height:18px;border-radius:50%;background:rgba(212,168,67,.15);color:#d4a843;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${n}</span><p style="font-size:12px;color:rgba(0,0,0,.58);line-height:1.5">${t}</p></div>`;
+  const mH=Object.keys(ms).length?['2x','1.5x','1x'].filter(k=>tByM[k]?.length).map(tier=>{const m=parseFloat(tier);const cl=m===2?'#d97706':m===1?'rgba(0,0,0,.42)':'#38bdf8';const label=m===2?'Wild Card':m===1?'Division Winner':'Middle Seed';return`<div style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:13px;font-weight:800;color:${cl};font-variant-numeric:tabular-nums">${tier}</span><span style="font-size:10px;color:rgba(0,0,0,.44)">${label}</span></div><div style="display:flex;flex-wrap:wrap;gap:5px">${(tByM[tier]||[]).sort().map(t=>`<span style="padding:3px 8px;border-radius:5px;font-size:11px;font-weight:700;letter-spacing:.03em;${sn().alive.includes(t)?`background:rgba(0,0,0,.09);color:${TM[t]||'#0f1e35'}`:'background:rgba(0,0,0,.04);color:rgba(0,0,0,.2);text-decoration:line-through'}">${t}</span>`).join('')}</div></div>`;}).join(''):'';
+  const rl=(n,t)=>`<div style="display:flex;gap:10px;margin-bottom:10px"><span style="width:18px;height:18px;border-radius:50%;background:rgba(217,119,6,.15);color:#d97706;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${n}</span><p style="font-size:12px;color:rgba(0,0,0,.58);line-height:1.5">${t}</p></div>`;
   return`<div class="space-y-3">
     <div class="card" style="padding:16px">${rl(1,`${CFG.fwd}F + ${CFG.def}D, ${CFG.pk} pucks total (min ${CFG.minPk}, max ${CFG.maxPk} per player)`)}${rl(2,'Wild Card = 2.0× · Middle seeds = 1.5× · Division winners = 1.0×')}${rl(3,'<strong style="color:#0f1e35">Score = Playoff Points × Pucks × Team Multiplier</strong>')}${rl(4,`$${sn().fee} ${CFG.cur} entry fee via e-transfer`)}</div>
     <div class="card" style="padding:14px 16px">
@@ -1535,7 +1589,7 @@ function AD(){
   if(!S.adminAuth)return`<div class="card" style="padding:32px;text-align:center;max-width:320px;margin:0 auto">
     <div style="font-size:14px;font-weight:700;color:#e8eef8;margin-bottom:16px">Admin Panel</div>
     <input type="password" placeholder="Enter password" onkeyup="if(event.key==='Enter')adminLogin(this.value)" style="${inpS}">
-    <button onclick="adminLogin(document.querySelector('input[type=password]').value)" style="width:100%;padding:10px 16px;border-radius:8px;background:rgba(212,168,67,.15);border:1px solid rgba(212,168,67,.35);color:#f0bc3d;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Unlock</button>
+    <button onclick="adminLogin(document.querySelector('input[type=password]').value)" style="width:100%;padding:10px 16px;border-radius:8px;background:rgba(217,119,6,.15);border:1px solid rgba(217,119,6,.35);color:#f0bc3d;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Unlock</button>
   </div>`;
 
   const rosterStatus=rostersData?`<div style="font-size:11px;color:#4ade80;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);padding:8px 10px;border-radius:7px;margin-bottom:8px">✓ Roster locked: ${rostersData.length} players</div>`:`<div style="font-size:11px;color:#f59e0b;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);padding:8px 10px;border-radius:7px;margin-bottom:8px">⚠ Roster not loaded</div>`;
@@ -1553,17 +1607,17 @@ function AD(){
     </div>
 
     <div style="${cardS}">
-      <div style="${labelS}"><span style="color:#3b82f6">📋</span> STEP 1: Upload Roster (One-Time)</div>
-      <div style="${descS}">Download CSV from <a href="https://www.hockey-reference.com/leagues/NHL_2026_skaters.html" target="_blank" style="color:#3b82f6;text-decoration:underline">Hockey-Reference</a> and paste below. Locks player rosters and regular season stats.</div>
+      <div style="${labelS}"><span style="color:#0891b2">📋</span> STEP 1: Upload Roster (One-Time)</div>
+      <div style="${descS}">Download CSV from <a href="https://www.hockey-reference.com/leagues/NHL_2026_skaters.html" target="_blank" style="color:#0891b2;text-decoration:underline">Hockey-Reference</a> and paste below. Locks player rosters and regular season stats.</div>
       <textarea placeholder="Paste Hockey-Reference CSV here..." id="rosterInput" style="${taS}"></textarea>
-      <button onclick="const csv=document.getElementById('rosterInput').value;const r=parseRosterCSV(csv);if(r&&r.length>100){rostersData=r;saveRoster();alert('✓ Roster locked: '+r.length+' players');S._nhlStats=null;loadData();document.getElementById('rosterInput').value='';}else{alert('❌ Need at least 100 players')}" style="${btnS('#3b82f6')}">Lock Roster</button>
+      <button onclick="const csv=document.getElementById('rosterInput').value;const r=parseRosterCSV(csv);if(r&&r.length>100){rostersData=r;saveRoster();alert('✓ Roster locked: '+r.length+' players');S._nhlStats=null;loadData();document.getElementById('rosterInput').value='';}else{alert('❌ Need at least 100 players')}" style="${btnS('#0891b2')}">Lock Roster</button>
       ${rosterStatus}
     </div>
 
     <div style="${cardS}">
-      <div style="${labelS}"><span style="color:#22c55e">⚡</span> STEP 2: Fetch Playoff Stats</div>
+      <div style="${labelS}"><span style="color:#059669">⚡</span> STEP 2: Fetch Playoff Stats</div>
       <div style="${descS}">Fetch live playoff scoring stats. Run whenever you want updated playoff performance data.</div>
-      <button onclick="if(!rostersData){alert('❌ Roster not loaded yet');return;}let btn=this;btn.disabled=true;btn.textContent='Fetching...';fetchPlayoffStats().then(ok=>{if(ok){S._nhlStats=null;loadData();alert('✓ Playoff stats updated');btn.textContent='Fetch Playoff Stats';}else{alert('❌ Failed to fetch (API may be down)');}btn.disabled=false;})" style="${btnS('#22c55e')}">Fetch Playoff Stats</button>
+      <button onclick="if(!rostersData){alert('❌ Roster not loaded yet');return;}let btn=this;btn.disabled=true;btn.textContent='Fetching...';fetchPlayoffStats().then(ok=>{if(ok){S._nhlStats=null;loadData();alert('✓ Playoff stats updated');btn.textContent='Fetch Playoff Stats';}else{alert('❌ Failed to fetch (API may be down)');}btn.disabled=false;})" style="${btnS('#059669')}">Fetch Playoff Stats</button>
       ${playoffStatus}
     </div>
 
@@ -1591,13 +1645,13 @@ function AD(){
 
     <div style="${cardS}">
       <div style="${labelS}">Visible Tabs</div>
-      <div style="display:flex;flex-direction:column;gap:6px">${(S.yr===2025?['leaderboard','team','chart','players','simulation','stats','info']:['stats']).map(id=>`<label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;color:rgba(255,255,255,.7)"><input type="checkbox" ${!S.hiddenTabs.has(id)?'checked':''} onchange="const h=new Set(S.hiddenTabs);${!S.hiddenTabs.has(id)?'h.add':'h.delete'}('${id}');S.hiddenTabs=h;render()" style="width:14px;height:14px;accent-color:#d4a843"><span style="text-transform:capitalize">${id}</span></label>`).join('')}</div>
+      <div style="display:flex;flex-direction:column;gap:6px">${(S.yr===2025?['leaderboard','team','chart','players','simulation','stats','info']:['stats']).map(id=>`<label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;color:rgba(255,255,255,.7)"><input type="checkbox" ${!S.hiddenTabs.has(id)?'checked':''} onchange="const h=new Set(S.hiddenTabs);${!S.hiddenTabs.has(id)?'h.add':'h.delete'}('${id}');S.hiddenTabs=h;render()" style="width:14px;height:14px;accent-color:#d97706"><span style="text-transform:capitalize">${id}</span></label>`).join('')}</div>
     </div>
 
     <div style="${cardS}">
-      <div style="${labelS}"><span style="color:#ef4444">⚙️</span> Data Management</div>
+      <div style="${labelS}"><span style="color:#dc2626">⚙️</span> Data Management</div>
       <div style="display:flex;flex-direction:column;gap:6px">
-        <button onclick="if(S.entries&&S.entries.length>0){if(confirm('Delete ALL teams? This cannot be undone.')){S.entries=[];S.stats=null;saveEntries();alert('✓ All teams deleted');render();}}else{alert('No teams to delete');}" style="${btnS('#ef4444')}">Clear All Teams</button>
+        <button onclick="if(S.entries&&S.entries.length>0){if(confirm('Delete ALL teams? This cannot be undone.')){S.entries=[];S.stats=null;saveEntries();alert('✓ All teams deleted');render();}}else{alert('No teams to delete');}" style="${btnS('#dc2626')}">Clear All Teams</button>
         <button onclick="if(confirm('Reset all stats to regular season (0 playoff pts)?')){const reset=S._nhlStats.map(p=>({...p,pts:0,g:0,a:0,_s:'Regular Season'}));S._nhlStats=reset;saveStats();if(S.entries&&S.entries.length>0){const lu=buildLU(reset);const sc=calcScores(S.entries,lu);const ps=poolStats(sc);S.entries=sc;S.stats=ps;}alert('✓ Stats reset');render();}" style="${btnS('#f59e0b')}">Reset Stats to Regular Season</button>
         <button onclick="if(confirm('Clear all data and reset app?')){rostersData=null;playoffStats=null;S.hiddenTabs=new Set();S.adminAuth=false;S._nhlStats=null;S.entries=[];localStorage.clear();location.reload()}" style="${btnS('rgba(255,255,255,.35)')}">Factory Reset</button>
       </div>
@@ -1815,18 +1869,18 @@ function EN(){
     <td style="padding:5px 12px 5px 4px;text-align:center"><select onchange="efUpdate('def',${i},'pk',parseInt(this.value))" style="${pkSelStyle}">${pOpts(x.pk)}</select></td>
   </tr>`).join('');
 
-  const puckColor=t===50?'#22c55e':t>50?'#ef4444':'#d4a843';
+  const puckColor=t===50?'#059669':t>50?'#dc2626':'#d97706';
   const puckPct=Math.min(t/50*100,100);
   const sectionHdr=(title,filled,total)=>`<div class="section-heading">
     <span style="font-size:11px;font-weight:700;color:rgba(0,0,0,.62);text-transform:uppercase;letter-spacing:.06em">${title}</span>
-    <span style="font-size:12px;font-weight:700;color:${filled===total?'#22c55e':'rgba(0,0,0,.42)'};font-variant-numeric:tabular-nums;margin-left:auto">${filled}/${total}</span>
+    <span style="font-size:12px;font-weight:700;color:${filled===total?'#059669':'rgba(0,0,0,.42)'};font-variant-numeric:tabular-nums;margin-left:auto">${filled}/${total}</span>
   </div>`;
   const thS='font-size:9px;font-weight:700;color:rgba(0,0,0,.42);text-transform:uppercase;letter-spacing:.08em;padding:7px 8px';
   return`<div class="space-y-3">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
       <div>
         <div style="display:flex;align-items:center;gap:8px">
-          <div style="width:3px;height:16px;background:#d4a843;border-radius:2px;flex-shrink:0"></div>
+          <div style="width:3px;height:16px;background:#d97706;border-radius:2px;flex-shrink:0"></div>
           <span style="font-size:15px;font-weight:800;color:#0f1e35;letter-spacing:-.01em">Enter Your Team</span>
         </div>
         <div style="font-size:11px;color:rgba(0,0,0,.42);margin-top:4px;margin-left:11px">Pick 10 forwards + 5 defense · Allocate 50 pucks · 1–6 per player</div>
@@ -1857,7 +1911,7 @@ function EN(){
           <div style="height:100%;width:${puckPct}%;background:${puckColor};border-radius:3px;transition:width .2s,background .2s"></div>
         </div>
       </div>
-      <div style="font-size:11px;font-weight:600;white-space:nowrap;color:${v.ok?'#22c55e':t>50?'#ef4444':'#f59e0b'}">${v.ok?'✓ Ready':'⚠ '+v.msg}</div>
+      <div style="font-size:11px;font-weight:600;white-space:nowrap;color:${v.ok?'#059669':t>50?'#dc2626':'#f59e0b'}">${v.ok?'✓ Ready':'⚠ '+v.msg}</div>
     </div>
 
     <div class="card">
@@ -1892,7 +1946,7 @@ function EN(){
       </button>
       <p style="font-size:10px;color:#f59e0b;text-align:center">Auto-submit failed. Click above to send via email instead.</p>
     `:`
-      <button onclick="efSubmit()" ${v.ok?'':'disabled'} style="width:100%;background:${v.ok?'rgba(212,168,67,.15)':'rgba(0,0,0,.05)'};border:1px solid ${v.ok?'rgba(212,168,67,.4)':'rgba(0,0,0,.09)'};border-radius:12px;padding:16px;text-align:center;color:${v.ok?'#f0bc3d':'rgba(0,0,0,.22)'};font-weight:800;font-size:14px;cursor:${v.ok?'pointer':'not-allowed'};font-family:inherit;transition:all .15s;letter-spacing:.01em">
+      <button onclick="efSubmit()" ${v.ok?'':'disabled'} style="width:100%;background:${v.ok?'rgba(217,119,6,.15)':'rgba(0,0,0,.05)'};border:1px solid ${v.ok?'rgba(217,119,6,.4)':'rgba(0,0,0,.09)'};border-radius:12px;padding:16px;text-align:center;color:${v.ok?'#f0bc3d':'rgba(0,0,0,.22)'};font-weight:800;font-size:14px;cursor:${v.ok?'pointer':'not-allowed'};font-family:inherit;transition:all .15s;letter-spacing:.01em">
         ${v.ok?'Submit Entry  →':'Complete Your Picks to Submit'}
       </button>
       ${v.ok?`<p style="font-size:10px;color:rgba(0,0,0,.42);text-align:center">Your entry will be sent directly to the pool host.</p>`:''}
@@ -1901,10 +1955,10 @@ function EN(){
     <div class="card" style="padding:16px">
       <div style="font-size:9px;font-weight:700;color:rgba(0,0,0,.42);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Pool Rules</div>
       <div style="display:flex;flex-direction:column;gap:6px">
-        <div style="font-size:12px;color:rgba(0,0,0,.55);display:flex;gap:8px"><span style="color:#d4a843;font-weight:700;flex-shrink:0">•</span>10 forwards + 5 defense from playoff teams only</div>
-        <div style="font-size:12px;color:rgba(0,0,0,.55);display:flex;gap:8px"><span style="color:#d4a843;font-weight:700;flex-shrink:0">•</span>Allocate exactly 50 pucks total (min 1, max 6 per player)</div>
-        <div style="font-size:12px;color:rgba(0,0,0,.55);display:flex;gap:8px"><span style="color:#d4a843;font-weight:700;flex-shrink:0">•</span>Score = Playoff Points × Pucks × Team Multiplier</div>
-        <div style="font-size:12px;color:rgba(0,0,0,.55);display:flex;gap:8px"><span style="color:#d4a843;font-weight:700;flex-shrink:0">•</span>$${sn().fee} ${CFG.cur} entry fee via e-transfer</div>
+        <div style="font-size:12px;color:rgba(0,0,0,.55);display:flex;gap:8px"><span style="color:#d97706;font-weight:700;flex-shrink:0">•</span>10 forwards + 5 defense from playoff teams only</div>
+        <div style="font-size:12px;color:rgba(0,0,0,.55);display:flex;gap:8px"><span style="color:#d97706;font-weight:700;flex-shrink:0">•</span>Allocate exactly 50 pucks total (min 1, max 6 per player)</div>
+        <div style="font-size:12px;color:rgba(0,0,0,.55);display:flex;gap:8px"><span style="color:#d97706;font-weight:700;flex-shrink:0">•</span>Score = Playoff Points × Pucks × Team Multiplier</div>
+        <div style="font-size:12px;color:rgba(0,0,0,.55);display:flex;gap:8px"><span style="color:#d97706;font-weight:700;flex-shrink:0">•</span>$${sn().fee} ${CFG.cur} entry fee via e-transfer</div>
       </div>
     </div>
   </div>`;
@@ -1934,6 +1988,16 @@ function initApp(){
     document.getElementById('app').style.display='block';
     render();
   }
+  // Header shrink on scroll (set up once)
+  let _hdrShrunk=false;
+  window.addEventListener('scroll',()=>{
+    const y=window.scrollY||document.documentElement.scrollTop;
+    const hdr=document.querySelector('header');
+    if(!hdr)return;
+    const inner=hdr.querySelector('.hdr-inner')||hdr.querySelector('.max-w-5xl');
+    if(y>55&&!_hdrShrunk){_hdrShrunk=true;if(inner)inner.style.padding='7px 0';hdr.style.transition='box-shadow .25s';}
+    else if(y<=55&&_hdrShrunk){_hdrShrunk=false;if(inner)inner.style.padding='12px 0';}
+  },{passive:true});
   // Auto-refresh every 15 minutes; also refresh on tab focus if stale (>5 min)
   if(_refreshTimer)clearInterval(_refreshTimer);
   _refreshTimer=setInterval(silentRefresh,15*60*1000);
