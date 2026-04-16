@@ -947,7 +947,7 @@ function render(){
     tabs.push(['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['simulation','Projections'],['stats','NHL Stats'],['info','Info']);
   }
   if(S.yr===2026){
-    tabs.push(['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['stats','NHL Stats']);
+    tabs.push(['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['stats','NHL Stats'],['info','Info']);
   }
   // Add admin tab if authenticated
   if(S.adminAuth){
@@ -1559,24 +1559,129 @@ function SM(){
 // INFO
 // ============================================================
 function NF(){
-  const pool=S.stats?.pool||0;const pay=CFG.pay.map(p=>({...p,a:Math.round(pool*p.r)}));
-  const ms=sn().mult;const tByM={};Object.entries(ms).forEach(([t,m])=>{const k=m+'x';if(!tByM[k])tByM[k]=[];tByM[k].push(t);});
-  const mH=Object.keys(ms).length?['2x','1.5x','1x'].filter(k=>tByM[k]?.length).map(tier=>{const m=parseFloat(tier);const cl=m===2?'#d97706':m===1?'rgba(0,0,0,.42)':'#38bdf8';const label=m===2?'Wild Card':m===1?'Division Winner':'Middle Seed';return`<div style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:13px;font-weight:800;color:${cl};font-variant-numeric:tabular-nums">${tier}</span><span style="font-size:10px;color:rgba(0,0,0,.44)">${label}</span></div><div style="display:flex;flex-wrap:wrap;gap:5px">${(tByM[tier]||[]).sort().map(t=>`<span style="padding:3px 8px;border-radius:5px;font-size:11px;font-weight:700;letter-spacing:.03em;${sn().alive.includes(t)?`background:rgba(0,0,0,.09);color:${TM[t]||'#0f1e35'}`:'background:rgba(0,0,0,.04);color:rgba(0,0,0,.2);text-decoration:line-through'}">${t}</span>`).join('')}</div></div>`;}).join(''):'';
-  const rl=(n,t)=>`<div style="display:flex;gap:10px;margin-bottom:10px"><span style="width:18px;height:18px;border-radius:50%;background:rgba(217,119,6,.15);color:#d97706;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${n}</span><p style="font-size:12px;color:rgba(0,0,0,.58);line-height:1.5">${t}</p></div>`;
+  const ms=sn().mult;
+  const tByM={};Object.entries(ms).forEach(([t,m])=>{const k=m+'x';if(!tByM[k])tByM[k]=[];tByM[k].push(t);});
+  const tierLabel={['2x']:'Wild Card · 2.0×',['1.5x']:'Middle Seeds · 1.5×',['1x']:'Division Winners · 1.0×'};
+  const tierColor={['2x']:'#d97706',['1.5x']:'#0891b2',['1x']:'rgba(0,0,0,.38)'};
+  const tierBg={['2x']:'rgba(217,119,6,.08)',['1.5x']:'rgba(8,145,178,.07)',['1x']:'rgba(0,0,0,.04)'};
+
+  const multBlock=['2x','1.5x','1x'].filter(k=>tByM[k]?.length).map(tier=>`
+    <div style="border:1px solid ${tierBg[tier]==='rgba(217,119,6,.08)'?'rgba(217,119,6,.2)':tier==='1.5x'?'rgba(8,145,178,.18)':'rgba(0,0,0,.07)'};border-radius:10px;padding:12px 14px;background:${tierBg[tier]}">
+      <div style="font-size:9px;font-weight:700;color:${tierColor[tier]};text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">${tierLabel[tier]}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">${(tByM[tier]||[]).sort().map(t=>`<span style="padding:4px 9px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:.04em;background:rgba(255,255,255,.7);border:1px solid rgba(0,0,0,.09);color:${TM[t]||'#0f1e35'}">${t}</span>`).join('')}</div>
+    </div>`).join('');
+
+  const step=(n,icon,title,body)=>`
+    <div style="display:flex;gap:12px;align-items:flex-start">
+      <div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(8,145,178,.3)">${icon}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700;color:#0d1b2e;margin-bottom:3px">${title}</div>
+        <div style="font-size:12px;color:#64748b;line-height:1.55">${body}</div>
+      </div>
+    </div>`;
+
+  const rule=(dot,text)=>`<div style="display:flex;gap:8px;align-items:flex-start"><span style="width:6px;height:6px;border-radius:50%;background:#d97706;margin-top:5px;flex-shrink:0"></span><span style="font-size:12px;color:#475569;line-height:1.55">${text}</span></div>`;
+
+  const entries=S.entries;
+  const entryList=entries.length?`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+      ${entries.map(e=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:#f8fafc;border:1px solid rgba(0,0,0,.06);border-radius:7px">
+        <div style="overflow:hidden"><div style="font-weight:600;color:#0d1b2e;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.teamName)}</div><div style="font-size:10px;color:#94a3b8">${esc(e.owner)}</div></div>
+        <div style="font-weight:800;color:#0d1b2e;font-size:12px;font-variant-numeric:tabular-nums;flex-shrink:0;margin-left:6px">#${e.rank}</div>
+      </div>`).join('')}
+    </div>`:`<div style="font-size:12px;color:#94a3b8;text-align:center;padding:16px 0">No entries yet</div>`;
+
   return`<div class="space-y-3">
-    <div class="card" style="padding:16px">${rl(1,`${CFG.fwd}F + ${CFG.def}D, ${CFG.pk} pucks total (min ${CFG.minPk}, max ${CFG.maxPk} per player)`)}${rl(2,'Wild Card = 2.0× · Middle seeds = 1.5× · Division winners = 1.0×')}${rl(3,'<strong style="color:#0f1e35">Score = Playoff Points × Pucks × Team Multiplier</strong>')}${rl(4,`$${sn().fee} ${CFG.cur} entry fee via e-transfer`)}</div>
-    <div class="card" style="padding:14px 16px">
-      <div style="background:rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;font-size:12px;color:rgba(0,0,0,.55)">McDavid · 6 pucks · EDM 1.5× · 10 pts → <span style="color:#f0bc3d;font-weight:800;font-size:13px">10 × 1.5 × 6 = 90 pts</span></div>
+
+    <!-- Hero banner -->
+    <div style="background:linear-gradient(135deg,#0d1b2e 0%,#0c2340 100%);border-radius:14px;padding:22px 20px;overflow:hidden;position:relative">
+      <div style="position:absolute;top:-20px;right:-20px;width:120px;height:120px;border-radius:50%;background:rgba(8,145,178,.1)"></div>
+      <div style="position:absolute;bottom:-30px;right:30px;width:80px;height:80px;border-radius:50%;background:rgba(217,119,6,.08)"></div>
+      <div style="position:relative">
+        <div style="font-size:11px;font-weight:700;color:#38bdf8;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">2025–26 NHL Playoffs</div>
+        <div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-.03em;line-height:1.1;margin-bottom:8px">50 Pucks<br>Playoff Pool</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.55;margin-bottom:16px">Pick your lineup, allocate your pucks, and score big. The higher the underdog multiplier, the bigger the potential payoff.</div>
+        <div style="display:inline-flex;align-items:center;gap:7px;background:rgba(217,119,6,.15);border:1px solid rgba(217,119,6,.35);border-radius:8px;padding:7px 12px">
+          <span style="width:6px;height:6px;border-radius:50%;background:#d97706;animation:pulse-glow 2s infinite"></span>
+          <span style="font-size:11px;font-weight:700;color:#fbbf24">Deadline: Saturday, April 19 @ 10:00 PM ET</span>
+        </div>
+      </div>
     </div>
-    <div class="card" style="padding:16px">${mH}</div>
-    <div class="card" style="padding:16px">
-      <div style="font-size:9px;font-weight:700;color:rgba(0,0,0,.42);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px">Payouts</div>
-      <div style="display:flex;gap:16px">${pay.map(p=>`<div style="text-align:center"><div style="width:30px;height:30px;margin:0 auto 6px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800" class="${p.p===1?'r1':p.p===2?'r2':'r3'}">${p.l}</div><div style="font-weight:800;color:#0f1e35;font-size:14px;font-variant-numeric:tabular-nums">$${p.a}</div></div>`).join('')}</div>
+
+    <!-- Entry details -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="section-heading"><span style="font-size:11px;font-weight:700;color:rgba(0,0,0,.62);text-transform:uppercase;letter-spacing:.06em">Entry Details</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+        <div style="padding:14px 16px;border-right:1px solid rgba(0,0,0,.06)">
+          <div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Entry Fee</div>
+          <div style="font-size:22px;font-weight:900;color:#d97706;letter-spacing:-.02em;line-height:1">$50 <span style="font-size:13px;font-weight:600;color:#94a3b8">CAD</span></div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px">via e-transfer</div>
+        </div>
+        <div style="padding:14px 16px">
+          <div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Send Payment To</div>
+          <div style="font-size:13px;font-weight:700;color:#0d1b2e;letter-spacing:-.01em">rkunka31@gmail.com</div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px">Use your team name as the memo</div>
+        </div>
+        <div style="padding:14px 16px;border-top:1px solid rgba(0,0,0,.06);border-right:1px solid rgba(0,0,0,.06)">
+          <div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Deadline</div>
+          <div style="font-size:13px;font-weight:700;color:#0d1b2e">Sat, April 19</div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px">10:00 PM ET · Before puck drop</div>
+        </div>
+        <div style="padding:14px 16px;border-top:1px solid rgba(0,0,0,.06)">
+          <div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Payouts</div>
+          <div style="font-size:13px;font-weight:700;color:#0d1b2e">TBD</div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px">60% · 30% · 10% split</div>
+        </div>
+      </div>
     </div>
-    <div class="card" style="padding:14px 16px">
-      <div style="font-size:9px;font-weight:700;color:rgba(0,0,0,.42);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">All Entries</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${S.entries.map(e=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:rgba(0,0,0,.04);border-radius:7px;border:1px solid rgba(0,0,0,.07)"><div><span style="font-weight:600;color:#0f1e35;font-size:11px">${esc(e.teamName)}</span> <span style="color:rgba(0,0,0,.42);font-size:10px">${esc(e.owner)}</span></div><div style="font-weight:800;color:#0f1e35;font-size:12px;font-variant-numeric:tabular-nums">${fmt(e.total)} <span style="color:rgba(0,0,0,.22);font-weight:400">#${e.rank}</span></div></div>`).join('')}</div>
+
+    <!-- How to submit -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="section-heading"><span style="font-size:11px;font-weight:700;color:rgba(0,0,0,.62);text-transform:uppercase;letter-spacing:.06em">How to Submit</span></div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+        ${step(1,'1','Go to "Enter Team" tab','Select your 10 forwards and 5 defensemen from the list of playoff teams.')}
+        ${step(2,'2','Allocate your 50 pucks','Assign 1–6 pucks per player. All 50 must be used — no more, no less.')}
+        ${step(3,'3','Hit Submit','Your entry is sent directly to the pool host. You\'ll appear on the Standings page.')}
+        ${step(4,'$','Send your $50','E-transfer $50 CAD to <strong style="color:#0d1b2e">rkunka31@gmail.com</strong> with your team name in the memo.')}
+      </div>
+      <div style="padding:10px 16px 14px">
+        <button onclick="set({tab:'entry'})" style="width:100%;background:linear-gradient(135deg,#d97706,#b45309);color:#fff;border:none;border-radius:10px;padding:13px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.01em;box-shadow:0 3px 10px rgba(217,119,6,.35)">Enter Your Team →</button>
+      </div>
     </div>
+
+    <!-- Scoring rules -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="section-heading"><span style="font-size:11px;font-weight:700;color:rgba(0,0,0,.62);text-transform:uppercase;letter-spacing:.06em">Scoring Rules</span></div>
+      <div style="padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+        ${rule('','Pick <strong style="color:#0d1b2e">10 forwards + 5 defensemen</strong> from active playoff teams only.')}
+        ${rule('','Allocate exactly <strong style="color:#0d1b2e">50 pucks</strong> total — minimum 1, maximum 6 per player.')}
+        ${rule('','Your score = <strong style="color:#0d1b2e">Playoff Points × Pucks × Team Multiplier</strong>.')}
+        ${rule('','Higher multipliers reward bold picks on underdog teams. Division winners score 1.0×; wild cards score 2.0×.')}
+        ${rule('','Once the playoffs start, <strong style="color:#0d1b2e">no changes</strong> are permitted.')}
+        ${rule('','Players on eliminated teams stop scoring. Pucks allocated to them are lost.')}
+      </div>
+      <div style="margin:0 16px 16px;background:rgba(8,145,178,.06);border:1px solid rgba(8,145,178,.15);border-radius:10px;padding:12px 14px">
+        <div style="font-size:9px;font-weight:700;color:#0891b2;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Scoring Example</div>
+        <div style="font-size:12px;color:#475569;line-height:1.6">McDavid scores <strong style="color:#0d1b2e">10 playoff points</strong> for EDM (1.5×), and you gave him <strong style="color:#0d1b2e">6 pucks</strong>:<br>
+        <span style="font-size:14px;font-weight:800;color:#d97706">10 × 1.5 × 6 = <span style="color:#059669">90 pts</span></span></div>
+      </div>
+    </div>
+
+    <!-- Multipliers -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="section-heading"><span style="font-size:11px;font-weight:700;color:rgba(0,0,0,.62);text-transform:uppercase;letter-spacing:.06em">Team Multipliers — ${S.yr} Playoffs</span></div>
+      <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">${multBlock}</div>
+    </div>
+
+    <!-- Current entries -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="section-heading">
+        <span style="font-size:11px;font-weight:700;color:rgba(0,0,0,.62);text-transform:uppercase;letter-spacing:.06em">Registered Entries</span>
+        <span style="margin-left:auto;font-size:11px;font-weight:700;color:#0891b2">${entries.length} team${entries.length!==1?'s':''}</span>
+      </div>
+      <div style="padding:10px 12px 12px">${entryList}</div>
+    </div>
+
   </div>`;
 }
 
