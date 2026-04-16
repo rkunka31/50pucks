@@ -862,7 +862,7 @@ function poi(l){if(l<=0)return 0;const L=Math.exp(-l);let k=0,p=1;do{k++;p*=Math
 // ============================================================
 // STATE
 // ============================================================
-let S={loading:true,entries:[],stats:null,yr:2026,tab:'entry',sel:null,simRes:null,simRun:false,simCfg:{n:1000,v:.5,adv:{1:.6,1.5:.5,2:.35}},showSim:false,pSort:'ownership',pPos:'all',chartView:'score',_chart:null,adminAuth:false,hiddenTabs:new Set(),_nhlStats:null};
+let S={loading:true,entries:[],stats:null,yr:2026,tab:'info',sel:null,simRes:null,simRun:false,simCfg:{n:1000,v:.5,adv:{1:.6,1.5:.5,2:.35}},showSim:false,pSort:'ownership',pPos:'all',chartView:'score',_chart:null,adminAuth:false,hiddenTabs:new Set(),_nhlStats:null};
 let _src='',_ld=false,_lastUpdated=0,_refreshTimer=null,_history=[],_charts={};
 function timeSince(ts){if(!ts)return'';const m=Math.round((Date.now()-ts)/60000);return m<1?'just now':m===1?'1m ago':m<60?m+'m ago':Math.round(m/60)+'h ago';}
 function set(u){Object.assign(S,u);render();}
@@ -914,8 +914,8 @@ async function loadData(){if(_ld)return;_ld=true;
     S._nhlStats=st;
     _lastUpdated=Date.now();
     snapshotScores();
-    // Smart default tab: if we have entries, show leaderboard
-    if(sc.length>0&&S.tab==='entry')S.tab='leaderboard';
+    // Smart default: once playoffs start and entries exist, switch from info to leaderboard
+    if(sc.length>0&&S.tab==='info')S.tab='leaderboard';
   }catch(e){console.error(e);S.loading=false;}
   document.getElementById('loader').style.display='none';document.getElementById('app').style.display='block';
   render();_ld=false;
@@ -942,12 +942,12 @@ function render(){
   const yrs=Object.keys(SEASONS).map(y=>`<option value="${y}" ${parseInt(y)===S.yr?'selected':''}>${y}</option>`).join('');
   
   // Dynamically build tabs based on year and admin settings
-  let tabs=[['entry','Enter Team']];
+  let tabs=[['info','Info']];
   if(S.yr===2025){
-    tabs.push(['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['simulation','Projections'],['stats','NHL Stats'],['info','Info']);
+    tabs.push(['entry','Enter Team'],['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['simulation','Projections'],['stats','NHL Stats']);
   }
   if(S.yr===2026){
-    tabs.push(['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['stats','NHL Stats'],['info','Info']);
+    tabs.push(['entry','Enter Team'],['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['stats','NHL Stats']);
   }
   // Add admin tab if authenticated
   if(S.adminAuth){
