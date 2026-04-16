@@ -470,17 +470,14 @@ function mergeRosterWithStats(){
 }
 
 async function fetchStats(sid){
-  // If custom CSV was imported, use it for 2026
-  if(rostersData&&sid==='20252026')return rostersData;
-  
-  const gameType = sid === '20252026' ? 2 : 3; // 2 = regular season, 3 = playoffs
-  
-  // Fallback to NHL APIs
+  const gameType=3; // playoffs
+  // Try primary NHL stats API
   try{const r=await fetch(`https://api.nhle.com/stats/rest/en/skater/summary?isAggregate=false&isGame=false&sort=[{"property":"points","direction":"DESC"},{"property":"goals","direction":"DESC"}]&start=0&limit=500&cayenneExp=gameTypeId=${gameType} and seasonId<=${sid} and seasonId>=${sid}`);if(r.ok){const d=await r.json();if(d.data?.length>0)return d.data.map(p=>({id:p.playerId,name:p.skaterFullName,team:nm(p.teamAbbrevs),pos:p.positionCode,gp:p.gamesPlayed||0,g:p.goals||0,a:p.assists||0,pts:p.points||0,_s:'NHL API'}));}}catch(e){console.warn('API1:',e);}
+  // Try secondary NHL stats API
   try{const r=await fetch(`https://api-web.nhle.com/v1/skater-stats-leaders/${sid}/${gameType}?categories=points,goals,assists&limit=-1`);if(r.ok){const d=await r.json();const m=new Map();const pr=(l,c)=>{if(!l)return;for(const p of l){const id=p.id;if(!m.has(id))m.set(id,{id,name:`${p.firstName?.default||''} ${p.lastName?.default||''}`.trim(),team:nm(p.teamAbbrev?.default||''),pos:p.positionCode||'',gp:0,g:0,a:0,pts:0,_s:'NHL API'});const o=m.get(id);if(c==='points')o.pts=p.value||0;if(c==='goals')o.g=p.value||0;if(c==='assists')o.a=p.value||0;}};pr(d.points,'points');pr(d.goals,'goals');pr(d.assists,'assists');const res=[...m.values()];if(res.length>0)return res;}}catch(e){console.warn('API2:',e);}
-  
-  // Final fallback
-  if(sid==='20242025')return fallback2025();if(sid==='20252026')return fallback2026();return [];
+  // Fallback: rostersData (with 0 playoff pts — correct before Round 1 games are played)
+  if(rostersData&&sid==='20252026')return rostersData.map(p=>({...p,pts:0,g:0,a:0,gp:0,_s:'Pre-playoffs'}));
+  if(sid==='20242025')return fallback2025();if(sid==='20252026')return fallback2026().map(p=>({...p,pts:0,g:0,a:0,gp:0,_s:'Pre-playoffs'}));return [];
 }
 
 function fallback2025(){return[
