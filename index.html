@@ -1184,10 +1184,11 @@ async function loadData(){if(_ld)return;_ld=true;
     const st=await fetchStats(sn().id).catch(()=>[]);
     let en=[];
     if(S.yr===2026){
-      // For 2026, check if entries already exist (persisted or from Sheet)
-      if(S.entries&&S.entries.length>0){
-        en=S.entries;
+      // Re-check localStorage in case entries were cleared by a year switch
+      if(!S.entries||!S.entries.length){
+        try{const sv=localStorage.getItem('50pucks_entries_2026');if(sv)S.entries=JSON.parse(sv)||[];}catch{}
       }
+      if(S.entries&&S.entries.length>0){en=S.entries;}
     }else{
       en=await fetchEntries().catch(()=>sample());
     }
@@ -1209,7 +1210,14 @@ async function loadData(){if(_ld)return;_ld=true;
   document.getElementById('loader').style.display='none';document.getElementById('app').style.display='block';
   render();_ld=false;
 }
-async function switchYear(y){S.yr=parseInt(y);await loadData();}
+async function switchYear(y){
+  S.yr=parseInt(y);
+  S.entries=[];  // clear stale data from previous year
+  // redirect away from tabs that don't exist in the new year
+  const yr2025tabs=['leaderboard','team','stats'];
+  if(S.yr===2025&&!['info','entry','leaderboard','team','stats','admin'].includes(S.tab)){S.tab='leaderboard';}
+  await loadData();
+}
 
 // ============================================================
 // HELPERS
@@ -1235,7 +1243,7 @@ function render(){
   let tabs=[['info','Info'],['entry','Enter Team']];
   if(live){
     if(S.yr===2025){
-      tabs.push(['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['simulation','Projections'],['stats','NHL Stats']);
+      tabs.push(['leaderboard','Standings'],['team','Teams'],['stats','NHL Stats']);
     }
     if(S.yr===2026){
       tabs.push(['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['stats','NHL Stats']);
