@@ -75,7 +75,7 @@ header,nav,main,footer{max-width:100vw;overflow-x:hidden}
 // ============================================================
 const SEASONS={
   2025:{id:'20242025',fee:50,sheetUrl:'',mult:{CAR:1.5,COL:1.5,DAL:1.5,EDM:1.5,FLA:1.5,LAK:1.5,NJD:1.5,TBL:1.5,TOR:1.0,WSH:1.0,WPG:1.0,VGK:1.0,MTL:2.0,OTT:2.0,MIN:2.0,STL:2.0,PHI:1.5,BOS:1.5,NYR:1.5,NYI:1.5},alive:['CAR','DAL','EDM','FLA','LAK','PHI','TBL','TOR','WSH','VGK','WPG']},
-  2026:{id:'20252026',fee:50,sheetUrl:'https://docs.google.com/spreadsheets/d/e/2PACX-1vRB40X80kl-o3umS5nTtxa0ln4mYxj8u4PXdXdBTIIQ0fSOL5EtIIMzxZkSp_VDYnADhyIoMPxgaloK/pub?output=csv',mult:{CAR:1.0,BUF:1.0,COL:1.0,VEG:1.0,TBL:1.5,MTL:1.5,PIT:1.5,PHI:1.5,DAL:1.5,MIN:1.5,EDM:1.5,ANA:1.5,BOS:2.0,OTT:2.0,UTA:2.0,LAK:2.0},alive:['CAR','BUF','COL','VEG','TBL','MTL','PIT','PHI','DAL','MIN','EDM','ANA','BOS','OTT','UTA','LAK']},
+  2026:{id:'20252026',fee:50,liveAt:'2026-04-19T22:00:00-04:00',sheetUrl:'https://docs.google.com/spreadsheets/d/e/2PACX-1vRB40X80kl-o3umS5nTtxa0ln4mYxj8u4PXdXdBTIIQ0fSOL5EtIIMzxZkSp_VDYnADhyIoMPxgaloK/pub?output=csv',mult:{CAR:1.0,BUF:1.0,COL:1.0,VEG:1.0,TBL:1.5,MTL:1.5,PIT:1.5,PHI:1.5,DAL:1.5,MIN:1.5,EDM:1.5,ANA:1.5,BOS:2.0,OTT:2.0,UTA:2.0,LAK:2.0},alive:['CAR','BUF','COL','VEG','TBL','MTL','PIT','PHI','DAL','MIN','EDM','ANA','BOS','OTT','UTA','LAK']},
 };
 const CFG={title:'50 Pucks',pk:50,minPk:1,maxPk:6,fwd:10,def:5,cur:'CAD',pay:[{p:1,l:'1st',r:.6},{p:2,l:'2nd',r:.3},{p:3,l:'3rd',r:.1}]};
 const TM={ANA:'#F47A38',BOS:'#FFB81C',BUF:'#003087',CGY:'#D2001C',CAR:'#CC0000',CHI:'#CF0A2C',COL:'#6F263D',CBJ:'#002654',DAL:'#006847',DET:'#CE1126',EDM:'#FF4C00',FLA:'#C8102E',LAK:'#A2AAAD',MIN:'#154734',MTL:'#AF1E2D',NSH:'#FFB81C',NJD:'#CE1126',NYI:'#00539B',NYR:'#0038A8',OTT:'#C52032',PHI:'#F74902',PIT:'#FCB514',SJS:'#006D75',SEA:'#001628',STL:'#002F87',TBL:'#002868',TOR:'#00205B',UTA:'#71AFE5',VAN:'#00205B',VGK:'#B4975A',WSH:'#041E42',WPG:'#041E42'};
@@ -86,6 +86,7 @@ const ALL_TEAMS=['ANA','BOS','BUF','CGY','CAR','CHI','COL','CBJ','DAL','DET','ED
 
 function nm(a){if(!a)return'';const u=a.toUpperCase().trim();return AM[u]||u;}
 function sn(){return SEASONS[S.yr]||SEASONS[2025];}
+function isLive(){const d=sn().liveAt;return!d||new Date()>=new Date(d);}
 function mt(t){return sn().mult[nm(t)]??1.0;}
 function al(t){return sn().alive.includes(nm(t));}
 
@@ -914,8 +915,8 @@ async function loadData(){if(_ld)return;_ld=true;
     S._nhlStats=st;
     _lastUpdated=Date.now();
     snapshotScores();
-    // Smart default: once playoffs start and entries exist, switch from info to leaderboard
-    if(sc.length>0&&S.tab==='info')S.tab='leaderboard';
+    // Smart default: once live and entries exist, switch from info to leaderboard
+    if(isLive()&&sc.length>0&&S.tab==='info')S.tab='leaderboard';
   }catch(e){console.error(e);S.loading=false;}
   document.getElementById('loader').style.display='none';document.getElementById('app').style.display='block';
   render();_ld=false;
@@ -942,12 +943,15 @@ function render(){
   const yrs=Object.keys(SEASONS).map(y=>`<option value="${y}" ${parseInt(y)===S.yr?'selected':''}>${y}</option>`).join('');
   
   // Dynamically build tabs based on year and admin settings
-  let tabs=[['info','Info']];
-  if(S.yr===2025){
-    tabs.push(['entry','Enter Team'],['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['simulation','Projections'],['stats','NHL Stats']);
-  }
-  if(S.yr===2026){
-    tabs.push(['entry','Enter Team'],['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['stats','NHL Stats']);
+  const live=isLive();
+  let tabs=[['info','Info'],['entry','Enter Team']];
+  if(live){
+    if(S.yr===2025){
+      tabs.push(['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['simulation','Projections'],['stats','NHL Stats']);
+    }
+    if(S.yr===2026){
+      tabs.push(['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['stats','NHL Stats']);
+    }
   }
   // Add admin tab if authenticated
   if(S.adminAuth){
@@ -1032,7 +1036,11 @@ function runEntranceAnimations(){
   });
 }
 
-function tabC(){switch(S.tab){case'leaderboard':return LB();case'team':return TD();case'chart':return CH();case'players':return PL();case'simulation':return SM();case'stats':return ST();case'info':return NF();case'entry':return EN();case'admin':return AD();default:return'';}}
+function tabC(){
+  const restricted=['leaderboard','team','chart','players','simulation','stats'];
+  if(!isLive()&&restricted.includes(S.tab)){S.tab='info';return NF();}
+  switch(S.tab){case'leaderboard':return LB();case'team':return TD();case'chart':return CH();case'players':return PL();case'simulation':return SM();case'stats':return ST();case'info':return NF();case'entry':return EN();case'admin':return AD();default:return'';}
+}
 
 // ============================================================
 // LEADERBOARD
@@ -1607,6 +1615,15 @@ function NF(){
         </div>
       </div>
     </div>
+
+    <!-- Pre-deadline lockout notice -->
+    ${!isLive()?`<div style="background:rgba(8,145,178,.07);border:1px solid rgba(8,145,178,.2);border-radius:12px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start">
+      <span style="font-size:18px;flex-shrink:0">🔒</span>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#0891b2;margin-bottom:3px">Standings locked until the deadline</div>
+        <div style="font-size:11px;color:#64748b;line-height:1.5">To keep picks private, Standings, Teams, and Analytics tabs will unlock automatically on <strong style="color:#0d1b2e">Saturday, April 19 at 10:00 PM ET</strong>. Submit your entry below — you won't be able to see anyone else's picks until then.</div>
+      </div>
+    </div>`:''}
 
     <!-- Entry details -->
     <div class="card" style="padding:0;overflow:hidden">
