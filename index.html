@@ -1967,7 +1967,7 @@ function EN(){
   
   const mkOpts=(pos,sel)=>{
     let opts=[];
-    for(const team of alive){
+    for(const team of [...alive].sort((a,b)=>nm(a).localeCompare(nm(b)))){
       const key=nm(team); // normalise VEG→VGK etc before lookup
       let players=[];
       if(playersByTeam[key]){
