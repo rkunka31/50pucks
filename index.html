@@ -1825,6 +1825,7 @@ const ROSTER_F=[
 ['Eric Lindros','PHI'],['Travis Konecny','PHI'],['Joel Farabee','PHI'],['Tyson Alatalo','PHI'],['Owen Tippett','PHI'],['Zack MacEwen','PHI'],['Sean Couturier','PHI'],['Nicolas Deslauriers','PHI'],['Ronnie Attard','PHI'],['Cam York','PHI'],
 ['Tom Wilson','WSH'],['Alexander Ovechkin','WSH'],['Dylan Strome','WSH'],['Anthony Beauvillier','WSH'],['Connor McMichael','WSH'],['Tom Wilson','WSH'],['Evegny Kuznetsov','WSH'],['John Carlson','WSH'],['Garrett Pierson','WSH'],['Ethan Bear','WSH'],
 ['Anze Kopitar','LAK'],['Adrian Kempe','LAK'],['Phillip Danault','LAK'],['Arthur Kaliyev','LAK'],['Blake Lizotte','LAK'],['Quinton Byfield','LAK'],['Kevin Fiala','LAK'],['Darcy Kuemper','LAK'],['Sean Durzi','LAK'],['Jacob Moverare','LAK'],
+['Tim Stutzle','OTT'],['Drake Batherson','OTT'],['Brady Tkachuk','OTT'],['Dylan Cozens','OTT'],['Claude Giroux','OTT'],['Shane Pinto','OTT'],['Ridly Greig','OTT'],['Mathieu Joseph','OTT'],['Josh Norris','OTT'],['Nick Paul','OTT'],
 ].sort((a,b)=>a[1].localeCompare(b[1])||a[0].localeCompare(b[0]));
 
 const ROSTER_D=[
@@ -1849,7 +1850,8 @@ const ROSTER_D=[
 ['Mario Ferraro','SJS'],['Jake Walman','SJS'],['Marc-Edouard Vlasic','SJS'],['Kurtis MacDermid','SJS'],['Jaroslaw Chychrun','SJS'],['Nick Merkley','SJS'],['Nicolas Meloche','SJS'],['Steven Lorentz','SJS'],['Alexander True','SJS'],['Matthew Jajic','SJS'],
 ['Ivan Provorov','PHI'],['Travis Sanheim','PHI'],['Nick Seeler','PHI'],['Rasmus Risbymm','PHI'],['Jamie Drysdale','PHI'],['Robert Hagg','PHI'],['Cam York','PHI'],['Louie Broissoit','PHI'],['John Tortorella','PHI'],['Kevin Hayes','PHI'],
 ['John Carlson','WSH'],['Tom Wilson','WSH'],['Ethan Bear','WSH'],['Trevor van Riemsdyk','WSH'],['Matt Irwin','WSH'],['Dmitry Orlov','WSH'],['Rasmus Sandin','WSH'],['Alexander Alexeyev','WSH'],['Nick Jensen','WSH'],['Linus Ullmark','WSH'],
-['Drew Doughty','LAK'],['Mattias Ekholm','LAK'],['Sean Durzi','LAK'],['Mikey Anderson','LAK'],['Jacob Moverare','LAK'],['Jacob Bernard-Docker','LAK'],['Austin Strand','LAK'],['Jani Hakanpaa','LAK'],['Dion Phaneuf','LAK'],['Omar Fakhreddine','LAK'],
+['Drew Doughty','LAK'],['Mattias Ekholm','LAK'],['Sean Durzi','LAK'],['Mikey Anderson','LAK'],['Jacob Moverare','LAK'],['Jacob Bernard-Docker','LAK'],['Austin Strand','LAK'],['Jani Hakanpaa','LAK'],['Brandt Clarke','LAK'],['Omar Fakhreddine','LAK'],
+['Jake Sanderson','OTT'],['Thomas Chabot','OTT'],['Nick Jensen','OTT'],['Jacob Bernard-Docker','OTT'],['Artem Zub','OTT'],['Erik Brannstrom','OTT'],['Travis Hamonic','OTT'],['Daniil Miromanov','OTT'],['Nikita Zaitsev','OTT'],['Christian Wolanin','OTT'],
 ].sort((a,b)=>a[1].localeCompare(b[1])||a[0].localeCompare(b[0]));
 
 // Entry form state (persists in localStorage per device)
@@ -1966,12 +1968,19 @@ function EN(){
   const mkOpts=(pos,sel)=>{
     let opts=[];
     for(const team of alive){
-      if(playersByTeam[team]){
-        const players=playersByTeam[team].filter(p=>pos==='F'?p.pos!=='D':p.pos==='D');
-        for(const p of players){
-          const val=`${p.name} – ${p.team}`;
-          opts.push(`<option value="${esc(val)}" ${val===sel?'selected':''}>${p.name} – ${p.team}</option>`);
-        }
+      const key=nm(team); // normalise VEG→VGK etc before lookup
+      let players=[];
+      if(playersByTeam[key]){
+        players=playersByTeam[key].filter(p=>pos==='F'?p.pos!=='D':p.pos==='D');
+      }
+      // Fallback to static roster when stats unavailable for this team
+      if(!players.length){
+        const src=pos==='F'?ROSTER_F:ROSTER_D;
+        players=src.filter(([,t])=>nm(t)===key).map(([n,t])=>({name:n,team:key}));
+      }
+      for(const p of players){
+        const val=`${p.name} – ${p.team}`;
+        opts.push(`<option value="${esc(val)}" ${val===sel?'selected':''}>${p.name} – ${p.team}</option>`);
       }
     }
     return opts.join('');
