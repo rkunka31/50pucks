@@ -75,7 +75,7 @@ header,nav,main,footer{max-width:100vw;overflow-x:hidden}
 // ============================================================
 const SEASONS={
   2025:{id:'20242025',fee:50,sheetUrl:'',mult:{CAR:1.5,COL:1.5,DAL:1.5,EDM:1.5,FLA:1.5,LAK:1.5,NJD:1.5,TBL:1.5,TOR:1.0,WSH:1.0,WPG:1.0,VGK:1.0,MTL:2.0,OTT:2.0,MIN:2.0,STL:2.0,PHI:1.5,BOS:1.5,NYR:1.5,NYI:1.5},alive:['CAR','DAL','EDM','FLA','LAK','PHI','TBL','TOR','WSH','VGK','WPG']},
-  2026:{id:'20252026',fee:50,liveAt:'2026-04-18T15:00:00-04:00',sheetUrl:'https://docs.google.com/spreadsheets/d/e/2PACX-1vRB40X80kl-o3umS5nTtxa0ln4mYxj8u4PXdXdBTIIQ0fSOL5EtIIMzxZkSp_VDYnADhyIoMPxgaloK/pub?output=csv',mult:{CAR:1.0,BUF:1.0,COL:1.0,VEG:1.0,TBL:1.5,MTL:1.5,PIT:1.5,PHI:1.5,DAL:1.5,MIN:1.5,EDM:1.5,ANA:1.5,BOS:2.0,OTT:2.0,UTA:2.0,LAK:2.0},alive:['CAR','BUF','COL','VEG','TBL','MTL','PIT','PHI','DAL','MIN','EDM','ANA','BOS','OTT','UTA','LAK']},
+  2026:{id:'20252026',fee:50,liveAt:'2026-04-18T22:00:00-04:00',sheetUrl:'https://docs.google.com/spreadsheets/d/e/2PACX-1vRB40X80kl-o3umS5nTtxa0ln4mYxj8u4PXdXdBTIIQ0fSOL5EtIIMzxZkSp_VDYnADhyIoMPxgaloK/pub?output=csv',mult:{CAR:1.0,BUF:1.0,COL:1.0,VEG:1.0,TBL:1.5,MTL:1.5,PIT:1.5,PHI:1.5,DAL:1.5,MIN:1.5,EDM:1.5,ANA:1.5,BOS:2.0,OTT:2.0,UTA:2.0,LAK:2.0},alive:['CAR','BUF','COL','VEG','TBL','MTL','PIT','PHI','DAL','MIN','EDM','ANA','BOS','OTT','UTA','LAK']},
 };
 const CFG={title:'50 Pucks',pk:50,minPk:1,maxPk:6,fwd:10,def:5,cur:'CAD',pay:[{p:1,l:'1st',r:.6},{p:2,l:'2nd',r:.3},{p:3,l:'3rd',r:.1}]};
 const TM={ANA:'#F47A38',BOS:'#FFB81C',BUF:'#003087',CGY:'#D2001C',CAR:'#CC0000',CHI:'#CF0A2C',COL:'#6F263D',CBJ:'#002654',DAL:'#006847',DET:'#CE1126',EDM:'#FF4C00',FLA:'#C8102E',LAK:'#A2AAAD',MIN:'#154734',MTL:'#AF1E2D',NSH:'#FFB81C',NJD:'#CE1126',NYI:'#00539B',NYR:'#0038A8',OTT:'#C52032',PHI:'#F74902',PIT:'#FCB514',SJS:'#006D75',SEA:'#001628',STL:'#002F87',TBL:'#002868',TOR:'#00205B',UTA:'#71AFE5',VAN:'#00205B',VGK:'#B4975A',WSH:'#041E42',WPG:'#041E42'};
@@ -1907,7 +1907,7 @@ function NF(){
         <div style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.55;margin-bottom:16px">Pick your lineup, allocate your pucks, and score big. The higher the underdog multiplier, the bigger the potential payoff.</div>
         <div style="display:inline-flex;align-items:center;gap:7px;background:rgba(217,119,6,.15);border:1px solid rgba(217,119,6,.35);border-radius:8px;padding:7px 12px">
           <span style="width:6px;height:6px;border-radius:50%;background:#d97706;animation:pulse-glow 2s infinite"></span>
-          <span style="font-size:11px;font-weight:700;color:#fbbf24">Deadline: Saturday, April 18 @ 3:00 PM ET</span>
+          <span style="font-size:11px;font-weight:700;color:#fbbf24">Deadline: Saturday, April 18 @ 10:00 PM ET</span>
         </div>
       </div>
     </div>
@@ -1917,7 +1917,7 @@ function NF(){
       <span style="font-size:18px;flex-shrink:0">🔒</span>
       <div>
         <div style="font-size:12px;font-weight:700;color:#0891b2;margin-bottom:3px">Standings locked until the deadline</div>
-        <div style="font-size:11px;color:#64748b;line-height:1.5">To keep picks private, Standings, Teams, and Analytics tabs will unlock automatically on <strong style="color:#0d1b2e">Saturday, April 18 at 3:00 PM ET</strong>. Submit your entry below — you won't be able to see anyone else's picks until then.</div>
+        <div style="font-size:11px;color:#64748b;line-height:1.5">To keep picks private, Standings, Teams, and Analytics tabs will unlock automatically on <strong style="color:#0d1b2e">Saturday, April 18 at 10:00 PM ET</strong>. Submit your entry below — you won't be able to see anyone else's picks until then.</div>
       </div>
     </div>`:''}
 
@@ -1938,7 +1938,7 @@ function NF(){
         <div style="padding:14px 16px;border-top:1px solid rgba(0,0,0,.06);border-right:1px solid rgba(0,0,0,.06)">
           <div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Deadline</div>
           <div style="font-size:13px;font-weight:700;color:#0d1b2e">Sat, April 18</div>
-          <div style="font-size:11px;color:#64748b;margin-top:4px">3:00 PM ET · Before puck drop</div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px">10:00 PM ET · Before puck drop</div>
         </div>
         <div style="padding:14px 16px;border-top:1px solid rgba(0,0,0,.06)">
           <div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Payouts</div>
