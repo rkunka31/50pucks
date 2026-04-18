@@ -832,21 +832,6 @@ function poi(l){if(l<=0)return 0;const L=Math.exp(-l);let k=0,p=1;do{k++;p*=Math
 // ============================================================
 // STATE
 // ============================================================
-const GO_LIVE_ET={year:2026,month:4,day:18,hour:22,minute:0};
-const PRELIVE_TABS_2026=new Set(['entry','info']);
-function getEasternParts(d=new Date()){
-  const fmt=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric',hour12:false});
-  const parts={};
-  for(const p of fmt.formatToParts(d)) if(p.type!=='literal') parts[p.type]=parseInt(p.value,10);
-  return parts;
-}
-function isPreLive(){
-  const p=getEasternParts();
-  const nowKey=(((((p.year*100)+p.month)*100)+p.day)*100+p.hour)*100+p.minute;
-  const liveKey=(((((GO_LIVE_ET.year*100)+GO_LIVE_ET.month)*100)+GO_LIVE_ET.day)*100+GO_LIVE_ET.hour)*100+GO_LIVE_ET.minute;
-  return S.yr===2026 && nowKey<liveKey;
-}
-function goLiveLabel(){return '10:00 PM ET';}
 let S={loading:true,entries:[],stats:null,yr:2026,tab:'entry',sel:null,simRes:null,simRun:false,simCfg:{n:1000,v:.5,adv:{1:.6,1.5:.5,2:.35}},showSim:false,pSort:'ownership',pPos:'all',chartView:'score',_chart:null,adminAuth:false,hiddenTabs:new Set(),_nhlStats:null};
 let _src='',_ld=false;
 function set(u){Object.assign(S,u);render();}
@@ -897,7 +882,6 @@ const CL=['#0f1729','#d4a843','#3b82f6','#64748b','#ef4444','#10b981','#8b5cf6',
 function render(){
   const a=document.getElementById('app');
   const yrs=Object.keys(SEASONS).map(y=>`<option value="${y}" ${parseInt(y)===S.yr?'selected':''}>${y}</option>`).join('');
-  const preLive=isPreLive();
   
   // Dynamically build tabs based on year and admin settings
   let tabs=[['entry','Enter Team']];
@@ -905,20 +889,15 @@ function render(){
     tabs.push(['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['simulation','Projections'],['stats','NHL Stats'],['info','Info']);
   }
   if(S.yr===2026){
-    tabs.push(['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['stats','NHL Stats'],['info','Info']);
+    tabs.push(['leaderboard','Standings'],['team','Teams'],['chart','Analytics'],['players','Players'],['stats','NHL Stats']);
   }
   // Add admin tab if authenticated
   if(S.adminAuth){
     tabs.push(['admin','Admin']);
   }
   
-  // Filter out hidden tabs and pre-live restrictions
+  // Filter out hidden tabs
   tabs=tabs.filter(([id])=>!S.hiddenTabs.has(id));
-  if(preLive){
-    tabs=tabs.filter(([id])=>PRELIVE_TABS_2026.has(id)||id==='admin');
-    if(!PRELIVE_TABS_2026.has(S.tab) && S.tab!=='admin') S.tab='entry';
-  }
-  const preLiveBanner=preLive?`<div class="bg-amber-50 border-b border-amber-200"><div class="max-w-5xl mx-auto px-3 sm:px-4 py-2 text-[11px] text-amber-800"><span class="font-semibold">Pool goes live at ${goLiveLabel()}.</span> Until then, only <span class="font-semibold">Info</span> and <span class="font-semibold">Enter Team</span> are open.</div></div>`:'';
   
   a.innerHTML=`
 <header class="hdr">
@@ -934,7 +913,6 @@ function render(){
     </div>
   </div>
 </header>
-${preLiveBanner}
 <nav class="bg-white border-b border-slate-200 sticky top-0 z-40">
   <div class="max-w-5xl mx-auto px-3 sm:px-4 flex gap-0 overflow-x-auto" style="-ms-overflow-style:none;scrollbar-width:none;-webkit-overflow-scrolling:touch">
     ${tabs.map(([id,l])=>`<button onclick="set({tab:'${id}'})" class="px-2.5 sm:px-3 py-2 text-[11px] sm:text-xs whitespace-nowrap ${S.tab===id?'tab-on':'tab-off'}">${l}</button>`).join('')}
