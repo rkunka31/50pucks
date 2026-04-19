@@ -940,8 +940,8 @@ function fallback2026(){return parseRosterCSV(EMBEDDED_ROSTER_CSV_2026).map(p=>(
 
 
 
-function buildLU(st){const m=new Map();for(const p of st){const k=p.name.toLowerCase().trim();m.set(k,p);const n=k.normalize('NFD').replace(/[\u0300-\u036f]/g,'');if(n!==k)m.set(n,p);}return m;}
-function mp(n,lu){if(!n)return null;const c=n.toLowerCase().trim();if(lu.has(c))return lu.get(c);const d=c.normalize('NFD').replace(/[\u0300-\u036f]/g,'');if(lu.has(d))return lu.get(d);for(const[k,v]of lu)if(k.includes(c)||c.includes(k))return v;return null;}
+function buildLU(st){const norm=s=>s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[-–]/g,' ').replace(/\s+/g,' ').trim();const m=new Map();for(const p of st){const k=norm(p.name);m.set(k,p);const orig=p.name.toLowerCase().trim();if(orig!==k)m.set(orig,p);}return m;}
+function mp(n,lu){if(!n)return null;const norm=s=>s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[-–]/g,' ').replace(/\s+/g,' ').trim();const c=norm(n);if(lu.has(c))return lu.get(c);const orig=n.toLowerCase().trim();if(lu.has(orig))return lu.get(orig);for(const[k,v]of lu)if(k.length>6&&(k.includes(c)||c.includes(k)))return v;return null;}
 
 // ============================================================
 // ENTRIES
