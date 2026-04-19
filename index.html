@@ -592,26 +592,31 @@ async function fetchStats(sid){
 
 async function fetchStatsFromBoxscores(){
   const statsMap=new Map();
+  const addPlayers=(players,abbrev)=>{for(const p of(players||[])){const pid=p.playerId;if(!pid)continue;const pname=p.name?.default||`${p.firstName?.default||''} ${p.lastName?.default||''}`.trim();if(!statsMap.has(pid))statsMap.set(pid,{id:pid,name:pname,team:nm(abbrev),pos:p.position||p.positionCode||'',gp:0,g:0,a:0,pts:0,_s:'NHL Boxscore'});const s=statsMap.get(pid);s.gp++;s.g+=p.goals||0;s.a+=p.assists||0;s.pts=s.g+s.a;}};
+  const processGame=async(gameId,homeAbbr,awayAbbr)=>{
+    try{const r=await fetch(`https://api-web.nhle.com/v1/gamecenter/${gameId}/boxscore`);if(!r.ok)return false;const data=await r.json();const pgs=data.playerByGameStats;addPlayers([...(pgs?.homeTeam?.forwards||[]),...(pgs?.homeTeam?.defense||[])],nm(data.homeTeam?.abbrev||homeAbbr||''));addPlayers([...(pgs?.awayTeam?.forwards||[]),...(pgs?.awayTeam?.defense||[])],nm(data.awayTeam?.abbrev||awayAbbr||''));return true;}catch(e){return false;}
+  };
+  // Method 1: score endpoint (discovers game IDs by date)
+  let foundViaScore=false;
   const today=new Date();
-  const start=new Date('2026-04-18');
-  const gameIds=[];
-  for(let d=new Date(start);d<=today;d.setDate(d.getDate()+1)){
-    try{
-      const ds=d.toISOString().split('T')[0];
-      const r=await fetch(`https://api-web.nhle.com/v1/score/${ds}`);
-      if(r.ok){const data=await r.json();for(const g of(data.games||[]))if(Number(g.gameType)===3||g.gameType==='P')gameIds.push({id:g.id,home:g.homeTeam?.abbrev||'',away:g.awayTeam?.abbrev||''});}
-    }catch(e){}
+  for(let d=new Date('2026-04-18');d<=today;d.setDate(d.getDate()+1)){
+    try{const ds=d.toISOString().split('T')[0];const r=await fetch(`https://api-web.nhle.com/v1/score/${ds}`);if(r.ok){const data=await r.json();for(const g of(data.games||[])){if(Number(g.gameType)===3||g.gameType==='P'){foundViaScore=true;await processGame(g.id,g.homeTeam?.abbrev||'',g.awayTeam?.abbrev||'');}}}}catch(e){}
   }
-  for(const{id,home,away}of gameIds){
-    try{
-      const r=await fetch(`https://api-web.nhle.com/v1/gamecenter/${id}/boxscore`);
-      if(!r.ok)continue;
-      const data=await r.json();
-      const pgs=data.playerByGameStats;
-      const addPlayers=(players,abbrev)=>{for(const p of(players||[])){const pid=p.playerId;if(!pid)continue;const pname=p.name?.default||`${p.firstName?.default||''} ${p.lastName?.default||''}`.trim();if(!statsMap.has(pid))statsMap.set(pid,{id:pid,name:pname,team:nm(abbrev),pos:p.position||p.positionCode||'',gp:0,g:0,a:0,pts:0,_s:'NHL Boxscore'});const s=statsMap.get(pid);s.gp++;s.g+=p.goals||0;s.a+=p.assists||0;s.pts=s.g+s.a;}};
-      addPlayers([...(pgs?.homeTeam?.forwards||[]),...(pgs?.homeTeam?.defense||[])],nm(home||data.homeTeam?.abbrev||''));
-      addPlayers([...(pgs?.awayTeam?.forwards||[]),...(pgs?.awayTeam?.defense||[])],nm(away||data.awayTeam?.abbrev||''));
-    }catch(e){}
+  // Method 2: direct game ID iteration using NHL playoff format 2025030{R}{S}{G}
+  if(!foundViaScore){
+    const daysSince=Math.max(1,Math.floor((today-new Date('2026-04-18'))/86400000)+1);
+    const maxGame=Math.min(daysSince,7);
+    for(let round=1;round<=4;round++){
+      const maxSeries=[0,8,4,2,1][round];
+      let roundHits=0;
+      for(let series=1;series<=maxSeries;series++){
+        for(let game=1;game<=maxGame;game++){
+          const ok=await processGame(`2025030${round}${series}${game}`,'','');
+          if(ok)roundHits++;
+        }
+      }
+      if(roundHits===0)break;
+    }
   }
   return[...statsMap.values()].filter(p=>p.gp>0);
 }
@@ -928,7 +933,7 @@ const EMBEDDED_ROSTER_CSV_2026 = `Rk,Player,Age,Team,Pos,GP,G,A,PTS,+/-,PIM,EVG,
 275,Emil Heineman,24,NYI,LW,81,22,9,31,-12,18,18,4,0,1,9,0,0,172,12.8,320,1346:44,16:38,7,13,35.0,54,247,9,50,,heineem01
 `;
 
-function fallback2026(){return parseRosterCSV(EMBEDDED_ROSTER_CSV_2026);}
+function fallback2026(){return parseRosterCSV(EMBEDDED_ROSTER_CSV_2026).map(p=>({...p,pts:0,g:0,a:0,gp:0,_s:'Pre-playoffs'}));}
 
 
 
