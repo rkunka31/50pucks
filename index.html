@@ -170,7 +170,7 @@ body.dark-theme canvas{filter:saturate(.95)}
 // ============================================================
 const SEASONS={
   2025:{id:'20242025',fee:50,sheetUrl:'',mult:{CAR:1.5,COL:1.5,DAL:1.5,EDM:1.5,FLA:1.5,LAK:1.5,NJD:1.5,TBL:1.5,TOR:1.0,WSH:1.0,WPG:1.0,VGK:1.0,MTL:2.0,OTT:2.0,MIN:2.0,STL:2.0,PHI:1.5,BOS:1.5,NYR:1.5,NYI:1.5},alive:['CAR','DAL','EDM','FLA','LAK','PHI','TBL','TOR','WSH','VGK','WPG']},
-  2026:{id:'20252026',fee:50,sheetUrl:'https://docs.google.com/spreadsheets/d/e/2PACX-1vRB40X80kl-o3umS5nTtxa0ln4mYxj8u4PXdXdBTIIQ0fSOL5EtIIMzxZkSp_VDYnADhyIoMPxgaloK/pub?output=csv',configUrl:'https://docs.google.com/spreadsheets/d/e/2PACX-1vRB40X80kl-o3umS5nTtxa0ln4mYxj8u4PXdXdBTIIQ0fSOL5EtIIMzxZkSp_VDYnADhyIoMPxgaloK/pub?output=csv&sheet=Config',mult:{CAR:1.0,BUF:1.0,COL:1.0,VEG:1.0,TBL:1.5,MTL:1.5,PIT:1.5,PHI:1.5,DAL:1.5,MIN:1.5,EDM:1.5,ANA:1.5,BOS:2.0,OTT:2.0,UTA:2.0,LAK:2.0},alive:['CAR','BUF','COL','VEG','TBL','MTL','PIT','PHI','DAL','MIN','EDM','ANA','BOS','OTT','UTA','LAK']},
+  2026:{id:'20252026',fee:50,liveAt:'2026-04-18T15:00:00-04:00',sheetUrl:'https://docs.google.com/spreadsheets/d/e/2PACX-1vRB40X80kl-o3umS5nTtxa0ln4mYxj8u4PXdXdBTIIQ0fSOL5EtIIMzxZkSp_VDYnADhyIoMPxgaloK/pub?output=csv',configUrl:'https://docs.google.com/spreadsheets/d/e/2PACX-1vRB40X80kl-o3umS5nTtxa0ln4mYxj8u4PXdXdBTIIQ0fSOL5EtIIMzxZkSp_VDYnADhyIoMPxgaloK/pub?output=csv&sheet=Config',mult:{CAR:1.0,BUF:1.0,COL:1.0,VGK:1.0,TBL:1.5,MTL:1.5,PIT:1.5,PHI:1.5,DAL:1.5,MIN:1.5,EDM:1.5,ANA:1.5,BOS:2.0,OTT:2.0,UTA:2.0,LAK:2.0},alive:['CAR','BUF','COL','VGK','TBL','MTL','PIT','PHI','DAL','MIN','EDM','ANA','BOS','OTT','UTA','LAK']},
 };
 const CFG={title:'50 Pucks',pk:50,minPk:1,maxPk:6,fwd:10,def:5,cur:'CAD',pay:[{p:1,l:'1st',r:.6},{p:2,l:'2nd',r:.3},{p:3,l:'3rd',r:.1}]};
 const SHOW_ENTRY_TAB=false; // change to true to show the Enter Team tab
@@ -570,13 +570,10 @@ function mergeRosterWithStats(){
 }
 
 async function fetchStats(sid){
-  // If custom CSV was imported, use it for 2026
-  if(rostersData&&sid==='20252026')return rostersData;
-  
-  const gameType = sid === '20252026' ? 2 : 3; // 2 = regular season, 3 = playoffs
-  
-  // Fallback to NHL APIs
-  try{const r=await fetch(`https://api.nhle.com/stats/rest/en/skater/summary?isAggregate=false&isGame=false&sort=[{"property":"points","direction":"DESC"},{"property":"goals","direction":"DESC"}]&start=0&limit=500&cayenneExp=gameTypeId=${gameType} and seasonId<=${sid} and seasonId>=${sid}`);if(r.ok){const d=await r.json();if(d.data?.length>0)return d.data.map(p=>({id:p.playerId,name:p.skaterFullName,team:nm(p.teamAbbrevs),pos:p.positionCode,gp:p.gamesPlayed||0,g:p.goals||0,a:p.assists||0,pts:p.points||0,_s:'NHL API'}));}}catch(e){console.warn('API1:',e);}
+  const gameType=3; // playoffs
+  // Try primary NHL stats API
+  try{const p1=new URLSearchParams({isAggregate:'false',isGame:'false',sort:'[{"property":"points","direction":"DESC"},{"property":"goals","direction":"DESC"}]',start:'0',limit:'500',cayenneExp:`gameTypeId=${gameType} and seasonId<=${sid} and seasonId>=${sid}`});const r=await fetch(`https://api.nhle.com/stats/rest/en/skater/summary?${p1}`);if(r.ok){const d=await r.json();if(d.data?.length>0)return d.data.map(p=>({id:p.playerId,name:p.skaterFullName,team:nm(p.teamAbbrevs||p.teamAbbrev||''),pos:p.positionCode,gp:p.gamesPlayed||0,g:p.goals||0,a:p.assists||0,pts:p.points||0,_s:'NHL API'}));}}catch(e){console.warn('API1:',e);}
+  // Try secondary NHL stats API
   try{const r=await fetch(`https://api-web.nhle.com/v1/skater-stats-leaders/${sid}/${gameType}?categories=points,goals,assists&limit=-1`);if(r.ok){const d=await r.json();const m=new Map();const pr=(l,c)=>{if(!l)return;for(const p of l){const id=p.id;if(!m.has(id))m.set(id,{id,name:`${p.firstName?.default||''} ${p.lastName?.default||''}`.trim(),team:nm(p.teamAbbrev?.default||''),pos:p.positionCode||'',gp:0,g:0,a:0,pts:0,_s:'NHL API'});const o=m.get(id);if(c==='points')o.pts=p.value||0;if(c==='goals')o.g=p.value||0;if(c==='assists')o.a=p.value||0;}};pr(d.points,'points');pr(d.goals,'goals');pr(d.assists,'assists');const res=[...m.values()];if(res.length>0)return res;}}catch(e){console.warn('API2:',e);}
   
   // Final fallback
