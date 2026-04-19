@@ -55,7 +55,47 @@ jobs:
                   print(f'Roster {team}: {e}')
           print(f'Roster seed: {len(player_map)} players across {len(PLAYOFF_TEAMS)} teams')
 
-          # ── Step 2: Overlay stats from NHL aggregate REST API ─────────────────
+          # ── Step 2: Overlay stats from per-team club stats (most complete) ────
+          club_hits = 0
+          for team in PLAYOFF_TEAMS:
+              for url in [
+                  f'https://api-web.nhle.com/v1/club-stats/{team}/20252026/3',
+                  f'https://api-web.nhle.com/v1/club-stats-season/{team}',
+              ]:
+                  try:
+                      d = fetch_json(url)
+                      skaters = d.get('skaters', d.get('playerStats', []))
+                      updated = 0
+                      for p in skaters:
+                          pid = p.get('playerId') or p.get('id')
+                          gp  = p.get('gamesPlayed', 0)
+                          if not pid or gp == 0:
+                              continue
+                          entry = {
+                              'gp':  gp,
+                              'g':   p.get('goals', 0),
+                              'a':   p.get('assists', 0),
+                              'pts': p.get('points', p.get('goals', 0) + p.get('assists', 0))
+                          }
+                          if pid in player_map:
+                              player_map[pid].update(entry)
+                          else:
+                              name = p.get('skaterFullName') or \
+                                     f"{(p.get('firstName') or {}).get('default','')} " \
+                                     f"{(p.get('lastName') or {}).get('default','')}".strip()
+                              player_map[pid] = {'id': pid, 'name': name, 'team': team,
+                                                 'pos': p.get('positionCode', ''), **entry}
+                          updated += 1
+                      if updated:
+                          print(f'Club stats {team} ({url.split("/")[-1]}): {updated} players')
+                          club_hits += 1
+                          break  # don't try second URL if first worked
+                  except Exception as e:
+                      pass
+          if club_hits:
+              print(f'Club stats overlay: {club_hits} teams')
+
+          # ── Step 3: Overlay stats from NHL aggregate REST API ─────────────────
           agg_success = False
           try:
               d = fetch_json(
