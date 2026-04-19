@@ -28,6 +28,9 @@ jobs:
               with urllib.request.urlopen(req, timeout=15) as r:
                   return json.loads(r.read())
 
+          PLAYOFF_TEAMS = ['CAR','BUF','COL','VGK','TBL','MTL','PIT','PHI',
+                           'DAL','MIN','EDM','ANA','BOS','OTT','UTA','LAK']
+
           stats = []
 
           # ── Source 1: NHL aggregate stats REST API ──────────────────────────
@@ -48,17 +51,42 @@ jobs:
           except Exception as e:
               print(f'Source 1 failed: {e}')
 
-          # ── Source 2: boxscore aggregation ──────────────────────────────────
+          # ── Source 2: Roster seed + boxscore overlay ─────────────────────────
           if not stats:
               player_map = {}
 
-              def add_players(players_list, abbrev):
+              # Step 2a: seed every playoff roster so no player is ever missing
+              for team in PLAYOFF_TEAMS:
+                  try:
+                      d = fetch_json(f'https://api-web.nhle.com/v1/roster/{team}/20252026')
+                      for pos_key in ('forwards', 'defensemen'):
+                          pos_code = 'D' if pos_key == 'defensemen' else 'F'
+                          for p in d.get(pos_key, []):
+                              pid = p.get('id')
+                              if not pid:
+                                  continue
+                              first = (p.get('firstName') or {}).get('default', '')
+                              last  = (p.get('lastName')  or {}).get('default', '')
+                              player_map[pid] = {
+                                  'id': pid,
+                                  'name': f'{first} {last}'.strip(),
+                                  'team': team,
+                                  'pos': pos_code,
+                                  'gp': 0, 'g': 0, 'a': 0, 'pts': 0
+                              }
+                  except Exception as e:
+                      print(f'Roster {team}: {e}')
+              print(f'Roster seed: {len(player_map)} players')
+
+              # Step 2b: overlay per-game stats from boxscores
+              def add_from_boxscore(players_list, abbrev):
                   for p in players_list:
-                      pid = p.get('playerId')
+                      pid = p.get('playerId') or p.get('id')
                       if not pid:
                           continue
                       name = (p.get('name') or {}).get('default') or \
-                             f"{(p.get('firstName') or {}).get('default', '')} {(p.get('lastName') or {}).get('default', '')}".strip()
+                             f"{(p.get('firstName') or {}).get('default', '')} " \
+                             f"{(p.get('lastName') or {}).get('default', '')}".strip()
                       if pid not in player_map:
                           player_map[pid] = {'id': pid, 'name': name, 'team': abbrev,
                                              'pos': p.get('position', p.get('positionCode', '')),
@@ -69,20 +97,21 @@ jobs:
                       s['a'] += p.get('assists', 0)
                       s['pts'] = s['g'] + s['a']
 
-              # Collect game IDs from score endpoint
+              # Collect game IDs from score endpoint (fix: handle gameType as int or string)
               game_ids = set()
               cur = date(2026, 4, 18)
               while cur <= date.today():
                   try:
                       d = fetch_json(f'https://api-web.nhle.com/v1/score/{cur}')
                       for g in d.get('games', []):
-                          if g.get('gameType') == 3:
+                          gt = g.get('gameType')
+                          if gt in (3, '3', 'P'):
                               game_ids.add(str(g['id']))
                   except Exception as e:
                       print(f'Score {cur}: {e}')
                   cur += timedelta(days=1)
 
-              # Also try direct game IDs: format 2025030{round}{series}{game}
+              # Also try direct game IDs: 2025030{round}{series}{game}
               days_in = (date.today() - date(2026, 4, 18)).days + 1
               for rnd in range(1, 5):
                   max_series = [0, 8, 4, 2, 1][rnd]
@@ -92,21 +121,30 @@ jobs:
 
               print(f'Trying {len(game_ids)} game IDs')
 
+              hit_games = 0
               for gid in sorted(game_ids):
                   try:
                       d = fetch_json(f'https://api-web.nhle.com/v1/gamecenter/{gid}/boxscore')
                       pgs = d.get('playerByGameStats', {})
                       ha = d.get('homeTeam', {}).get('abbrev', '')
                       aa = d.get('awayTeam', {}).get('abbrev', '')
-                      add_players(pgs.get('homeTeam', {}).get('forwards', []) +
-                                  pgs.get('homeTeam', {}).get('defense', []), ha)
-                      add_players(pgs.get('awayTeam', {}).get('forwards', []) +
-                                  pgs.get('awayTeam', {}).get('defense', []), aa)
+                      for side, abbrev in [('homeTeam', ha), ('awayTeam', aa)]:
+                          team_pgs = pgs.get(side, {})
+                          # try both old (forwards/defense) and new (skaters) API shapes
+                          skaters = (team_pgs.get('forwards') or []) + \
+                                    (team_pgs.get('defense') or []) + \
+                                    (team_pgs.get('skaters') or [])
+                          add_from_boxscore(skaters, abbrev)
+                      if ha or aa:
+                          hit_games += 1
+                          print(f'  Game {gid}: {ha} vs {aa}')
                   except Exception:
                       pass
 
-              stats = [s for s in player_map.values() if s['gp'] > 0]
-              print(f'Source 2 (boxscores): {len(stats)} players')
+              print(f'Boxscore games found: {hit_games}')
+              stats = list(player_map.values())
+              print(f'Source 2 (roster+boxscores): {len(stats)} players '
+                    f'({sum(1 for s in stats if s["gp"]>0)} played)')
 
           output = {
               'updated': datetime.utcnow().isoformat() + 'Z',
