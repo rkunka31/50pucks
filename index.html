@@ -584,9 +584,36 @@ async function fetchStats(sid){
   try{const sortJson='[{"property":"points","direction":"DESC"},{"property":"goals","direction":"DESC"}]';const cayExp=`gameTypeId=${gameType} and seasonId<=${sid} and seasonId>=${sid}`;const r=await fetch(`https://api.nhle.com/stats/rest/en/skater/summary?isAggregate=false&isGame=false&sort=${encodeURIComponent(sortJson)}&start=0&limit=500&cayenneExp=${encodeURIComponent(cayExp)}`);if(r.ok){const d=await r.json();if(d.data?.length>0)return d.data.map(p=>({id:p.playerId,name:p.skaterFullName,team:nm(p.teamAbbrevs||p.teamAbbrev||''),pos:p.positionCode,gp:p.gamesPlayed||0,g:p.goals||0,a:p.assists||0,pts:p.points||0,_s:'NHL API'}));}}catch(e){console.warn('API1:',e);}
   // Try secondary NHL stats API
   try{const r=await fetch(`https://api-web.nhle.com/v1/skater-stats-leaders/${sid}/${gameType}?categories=points,goals,assists&limit=-1`);if(r.ok){const d=await r.json();const m=new Map();const pr=(l,c)=>{if(!l)return;for(const p of l){const id=p.id;if(!m.has(id))m.set(id,{id,name:`${p.firstName?.default||''} ${p.lastName?.default||''}`.trim(),team:nm(p.teamAbbrev?.default||''),pos:p.positionCode||'',gp:0,g:0,a:0,pts:0,_s:'NHL API'});const o=m.get(id);if(c==='points')o.pts=p.value||0;if(c==='goals')o.g=p.value||0;if(c==='assists')o.a=p.value||0;}};pr(d.points,'points');pr(d.goals,'goals');pr(d.assists,'assists');const res=[...m.values()];if(res.length>0)return res;}}catch(e){console.warn('API2:',e);}
-  
+  // Try tertiary: aggregate from game boxscores (CORS-safe, always works from browser)
+  if(sid==='20252026'){try{const bs=await fetchStatsFromBoxscores();if(bs.length>0)return bs;}catch(e){console.warn('API3:',e);}}
   // Final fallback
   if(sid==='20242025')return fallback2025();if(sid==='20252026')return fallback2026();return [];
+}
+
+async function fetchStatsFromBoxscores(){
+  const statsMap=new Map();
+  const today=new Date();
+  const start=new Date('2026-04-18');
+  const gameIds=[];
+  for(let d=new Date(start);d<=today;d.setDate(d.getDate()+1)){
+    try{
+      const ds=d.toISOString().split('T')[0];
+      const r=await fetch(`https://api-web.nhle.com/v1/score/${ds}`);
+      if(r.ok){const data=await r.json();for(const g of(data.games||[]))if(g.gameType===3)gameIds.push({id:g.id,home:g.homeTeam?.abbrev||'',away:g.awayTeam?.abbrev||''});}
+    }catch(e){}
+  }
+  for(const{id,home,away}of gameIds){
+    try{
+      const r=await fetch(`https://api-web.nhle.com/v1/gamecenter/${id}/boxscore`);
+      if(!r.ok)continue;
+      const data=await r.json();
+      const pgs=data.playerByGameStats;
+      const addPlayers=(players,abbrev)=>{for(const p of(players||[])){const pid=p.playerId;if(!pid)continue;const pname=p.name?.default||`${p.firstName?.default||''} ${p.lastName?.default||''}`.trim();if(!statsMap.has(pid))statsMap.set(pid,{id:pid,name:pname,team:nm(abbrev),pos:p.position||p.positionCode||'',gp:0,g:0,a:0,pts:0,_s:'NHL Boxscore'});const s=statsMap.get(pid);s.gp++;s.g+=p.goals||0;s.a+=p.assists||0;s.pts=s.g+s.a;}};
+      addPlayers([...(pgs?.homeTeam?.forwards||[]),...(pgs?.homeTeam?.defense||[])],nm(home||data.homeTeam?.abbrev||''));
+      addPlayers([...(pgs?.awayTeam?.forwards||[]),...(pgs?.awayTeam?.defense||[])],nm(away||data.awayTeam?.abbrev||''));
+    }catch(e){}
+  }
+  return[...statsMap.values()].filter(p=>p.gp>0);
 }
 
 function fallback2025(){return[
