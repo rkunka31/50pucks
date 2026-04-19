@@ -31,54 +31,67 @@ jobs:
           PLAYOFF_TEAMS = ['CAR','BUF','COL','VGK','TBL','MTL','PIT','PHI',
                            'DAL','MIN','EDM','ANA','BOS','OTT','UTA','LAK']
 
-          stats = []
+          # ── Step 1: Seed all playoff roster players at 0 pts ─────────────────
+          player_map = {}
+          for team in PLAYOFF_TEAMS:
+              try:
+                  d = fetch_json(f'https://api-web.nhle.com/v1/roster/{team}/20252026')
+                  for pos_key in ('forwards', 'defensemen'):
+                      pos_code = 'D' if pos_key == 'defensemen' else 'F'
+                      for p in d.get(pos_key, []):
+                          pid = p.get('id')
+                          if not pid:
+                              continue
+                          first = (p.get('firstName') or {}).get('default', '')
+                          last  = (p.get('lastName')  or {}).get('default', '')
+                          player_map[pid] = {
+                              'id': pid,
+                              'name': f'{first} {last}'.strip(),
+                              'team': team,
+                              'pos': pos_code,
+                              'gp': 0, 'g': 0, 'a': 0, 'pts': 0
+                          }
+              except Exception as e:
+                  print(f'Roster {team}: {e}')
+          print(f'Roster seed: {len(player_map)} players across {len(PLAYOFF_TEAMS)} teams')
 
-          # ── Source 1: NHL aggregate stats REST API ──────────────────────────
+          # ── Step 2: Overlay stats from NHL aggregate REST API ─────────────────
+          agg_success = False
           try:
               d = fetch_json(
                   'https://api.nhle.com/stats/rest/en/skater/summary'
                   '?isAggregate=false&isGame=false&start=0&limit=500'
                   '&cayenneExp=gameTypeId%3D3%20and%20seasonId%3C%3D20252026%20and%20seasonId%3E%3D20252026'
               )
-              players = [p for p in d.get('data', []) if p.get('gamesPlayed', 0) > 0]
-              if players:
-                  stats = [{'id': p['playerId'], 'name': p['skaterFullName'],
-                            'team': p.get('teamAbbrevs', p.get('teamAbbrev', '')),
-                            'pos': p.get('positionCode', ''),
-                            'gp': p.get('gamesPlayed', 0), 'g': p.get('goals', 0),
-                            'a': p.get('assists', 0), 'pts': p.get('points', 0)} for p in players]
-                  print(f'Source 1 (NHL aggregate): {len(stats)} players')
+              api_players = [p for p in d.get('data', []) if p.get('gamesPlayed', 0) > 0]
+              if api_players:
+                  for p in api_players:
+                      pid = p.get('playerId')
+                      if pid and pid in player_map:
+                          player_map[pid].update({
+                              'gp': p.get('gamesPlayed', 0),
+                              'g':  p.get('goals', 0),
+                              'a':  p.get('assists', 0),
+                              'pts': p.get('points', 0)
+                          })
+                      elif pid:
+                          player_map[pid] = {
+                              'id': pid,
+                              'name': p.get('skaterFullName', ''),
+                              'team': p.get('teamAbbrevs', p.get('teamAbbrev', '')),
+                              'pos': p.get('positionCode', ''),
+                              'gp': p.get('gamesPlayed', 0),
+                              'g':  p.get('goals', 0),
+                              'a':  p.get('assists', 0),
+                              'pts': p.get('points', 0)
+                          }
+                  agg_success = True
+                  print(f'Aggregate API: updated {len(api_players)} players with live stats')
           except Exception as e:
-              print(f'Source 1 failed: {e}')
+              print(f'Aggregate API failed: {e}')
 
-          # ── Source 2: Roster seed + boxscore overlay ─────────────────────────
-          if not stats:
-              player_map = {}
-
-              # Step 2a: seed every playoff roster so no player is ever missing
-              for team in PLAYOFF_TEAMS:
-                  try:
-                      d = fetch_json(f'https://api-web.nhle.com/v1/roster/{team}/20252026')
-                      for pos_key in ('forwards', 'defensemen'):
-                          pos_code = 'D' if pos_key == 'defensemen' else 'F'
-                          for p in d.get(pos_key, []):
-                              pid = p.get('id')
-                              if not pid:
-                                  continue
-                              first = (p.get('firstName') or {}).get('default', '')
-                              last  = (p.get('lastName')  or {}).get('default', '')
-                              player_map[pid] = {
-                                  'id': pid,
-                                  'name': f'{first} {last}'.strip(),
-                                  'team': team,
-                                  'pos': pos_code,
-                                  'gp': 0, 'g': 0, 'a': 0, 'pts': 0
-                              }
-                  except Exception as e:
-                      print(f'Roster {team}: {e}')
-              print(f'Roster seed: {len(player_map)} players')
-
-              # Step 2b: overlay per-game stats from boxscores
+          # ── Step 3: If aggregate API failed, overlay from boxscores ──────────
+          if not agg_success:
               def add_from_boxscore(players_list, abbrev):
                   for p in players_list:
                       pid = p.get('playerId') or p.get('id')
@@ -97,7 +110,6 @@ jobs:
                       s['a'] += p.get('assists', 0)
                       s['pts'] = s['g'] + s['a']
 
-              # Collect game IDs from score endpoint (fix: handle gameType as int or string)
               game_ids = set()
               cur = date(2026, 4, 18)
               while cur <= date.today():
@@ -111,7 +123,6 @@ jobs:
                       print(f'Score {cur}: {e}')
                   cur += timedelta(days=1)
 
-              # Also try direct game IDs: 2025030{round}{series}{game}
               days_in = (date.today() - date(2026, 4, 18)).days + 1
               for rnd in range(1, 5):
                   max_series = [0, 8, 4, 2, 1][rnd]
@@ -120,7 +131,6 @@ jobs:
                           game_ids.add(f'2025030{rnd}{series}{game}')
 
               print(f'Trying {len(game_ids)} game IDs')
-
               hit_games = 0
               for gid in sorted(game_ids):
                   try:
@@ -130,7 +140,6 @@ jobs:
                       aa = d.get('awayTeam', {}).get('abbrev', '')
                       for side, abbrev in [('homeTeam', ha), ('awayTeam', aa)]:
                           team_pgs = pgs.get(side, {})
-                          # try both old (forwards/defense) and new (skaters) API shapes
                           skaters = (team_pgs.get('forwards') or []) + \
                                     (team_pgs.get('defense') or []) + \
                                     (team_pgs.get('skaters') or [])
@@ -140,11 +149,11 @@ jobs:
                           print(f'  Game {gid}: {ha} vs {aa}')
                   except Exception:
                       pass
-
               print(f'Boxscore games found: {hit_games}')
-              stats = list(player_map.values())
-              print(f'Source 2 (roster+boxscores): {len(stats)} players '
-                    f'({sum(1 for s in stats if s["gp"]>0)} played)')
+
+          stats = list(player_map.values())
+          played = sum(1 for s in stats if s['gp'] > 0)
+          print(f'Final: {len(stats)} players total, {played} have played')
 
           output = {
               'updated': datetime.utcnow().isoformat() + 'Z',
