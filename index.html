@@ -494,6 +494,15 @@ async function fetchEntriesFromSheet(){
   return false;
 }
 
+async function silentRefresh(){
+  try{const st=await fetchStats(sn().id);if(st&&st.length>0){S._nhlStats=st;saveStats();}}catch(e){console.warn('Stats refresh:',e);}
+  try{
+    const sheetUrl=sn().sheetUrl;
+    if(sheetUrl){const r=await fetch(sheetUrl);if(r.ok){const csv=await r.text();const entries=parseEntriesCSV(csv);if(entries.length>0){localStorage.removeItem('50pucks_entries_2026');S.entries=entries;saveEntries();if(S._nhlStats&&S._nhlStats.length>0){const lu=buildLU(S._nhlStats);const sc=calcScores(entries,lu);S.entries=sc;S.stats=poolStats(sc);S.sel=sc[0]?.teamName||null;}}}}
+  }catch(e){console.warn('Entries refresh:',e);}
+  S.lastRefresh=Date.now();render();
+}
+
 function parseEntriesCSV(csv){
   // Parse Google Sheet CSV: team_name,owner_name,player_name,player_team,position,pucks[,timestamp]
   const lines=csv.trim().split('\n').filter(l=>l.trim());
@@ -572,7 +581,7 @@ function mergeRosterWithStats(){
 async function fetchStats(sid){
   const gameType=3; // playoffs
   // Try primary NHL stats API
-  try{const p1=new URLSearchParams({isAggregate:'false',isGame:'false',sort:'[{"property":"points","direction":"DESC"},{"property":"goals","direction":"DESC"}]',start:'0',limit:'500',cayenneExp:`gameTypeId=${gameType} and seasonId<=${sid} and seasonId>=${sid}`});const r=await fetch(`https://api.nhle.com/stats/rest/en/skater/summary?${p1}`);if(r.ok){const d=await r.json();if(d.data?.length>0)return d.data.map(p=>({id:p.playerId,name:p.skaterFullName,team:nm(p.teamAbbrevs||p.teamAbbrev||''),pos:p.positionCode,gp:p.gamesPlayed||0,g:p.goals||0,a:p.assists||0,pts:p.points||0,_s:'NHL API'}));}}catch(e){console.warn('API1:',e);}
+  try{const sortJson='[{"property":"points","direction":"DESC"},{"property":"goals","direction":"DESC"}]';const cayExp=`gameTypeId=${gameType} and seasonId<=${sid} and seasonId>=${sid}`;const r=await fetch(`https://api.nhle.com/stats/rest/en/skater/summary?isAggregate=false&isGame=false&sort=${encodeURIComponent(sortJson)}&start=0&limit=500&cayenneExp=${encodeURIComponent(cayExp)}`);if(r.ok){const d=await r.json();if(d.data?.length>0)return d.data.map(p=>({id:p.playerId,name:p.skaterFullName,team:nm(p.teamAbbrevs||p.teamAbbrev||''),pos:p.positionCode,gp:p.gamesPlayed||0,g:p.goals||0,a:p.assists||0,pts:p.points||0,_s:'NHL API'}));}}catch(e){console.warn('API1:',e);}
   // Try secondary NHL stats API
   try{const r=await fetch(`https://api-web.nhle.com/v1/skater-stats-leaders/${sid}/${gameType}?categories=points,goals,assists&limit=-1`);if(r.ok){const d=await r.json();const m=new Map();const pr=(l,c)=>{if(!l)return;for(const p of l){const id=p.id;if(!m.has(id))m.set(id,{id,name:`${p.firstName?.default||''} ${p.lastName?.default||''}`.trim(),team:nm(p.teamAbbrev?.default||''),pos:p.positionCode||'',gp:0,g:0,a:0,pts:0,_s:'NHL API'});const o=m.get(id);if(c==='points')o.pts=p.value||0;if(c==='goals')o.g=p.value||0;if(c==='assists')o.a=p.value||0;}};pr(d.points,'points');pr(d.goals,'goals');pr(d.assists,'assists');const res=[...m.values()];if(res.length>0)return res;}}catch(e){console.warn('API2:',e);}
   
@@ -981,7 +990,7 @@ function poi(l){if(l<=0)return 0;const L=Math.exp(-l);let k=0,p=1;do{k++;p*=Math
 // STATE
 // ============================================================
 const savedPrefs=(()=>{try{return JSON.parse(localStorage.getItem('50pucks_prefs')||'{}')}catch(e){return {}}})();
-let S={loading:true,entries:[],stats:null,yr:2026,tab:'entry',sel:null,simRes:null,simRun:false,simCfg:{n:1000,v:.5,adv:{1:.6,1.5:.5,2:.35}},showSim:false,pSort:'ownership',pPos:'all',chartView:'score',_chart:null,_charts:[],adminAuth:false,hiddenTabs:new Set(),_nhlStats:null,expandedTeam:null,cmpA:null,cmpB:null,showSettings:false,theme:savedPrefs.theme||'light',tickerOn:savedPrefs.tickerOn!==false,tickerSpeed:savedPrefs.tickerSpeed||'normal',config:null};
+let S={loading:true,entries:[],stats:null,yr:2026,tab:'entry',sel:null,simRes:null,simRun:false,simCfg:{n:1000,v:.5,adv:{1:.6,1.5:.5,2:.35}},showSim:false,pSort:'ownership',pPos:'all',chartView:'score',_chart:null,_charts:[],adminAuth:false,hiddenTabs:new Set(),_nhlStats:null,expandedTeam:null,cmpA:null,cmpB:null,showSettings:false,theme:savedPrefs.theme||'light',tickerOn:savedPrefs.tickerOn!==false,tickerSpeed:savedPrefs.tickerSpeed||'normal',config:null,lastRefresh:null};
 let _src='',_ld=false;
 function set(u){Object.assign(S,u);render();}
 function savePrefs(){try{localStorage.setItem('50pucks_prefs',JSON.stringify({theme:S.theme,tickerOn:S.tickerOn,tickerSpeed:S.tickerSpeed}))}catch(e){}}
@@ -1100,10 +1109,10 @@ function render(){
       <div><div class="uppercase tracking-[0.2em] text-slate-500 text-[10px] mb-1">Round</div><div class="font-semibold text-slate-900">${getRoundDisplay()}</div></div>
       <div><div class="uppercase tracking-[0.2em] text-slate-500 text-[10px] mb-1">Teams Alive</div><div class="font-semibold text-slate-900 num">${getAliveTeams().length}/${Object.keys(sn().mult).length}</div></div>
       <div><div class="uppercase tracking-[0.2em] text-slate-500 text-[10px] mb-1">Entries</div><div class="font-semibold text-slate-900 num">${S.entries.length}</div></div>
-      <div><div class="uppercase tracking-[0.2em] text-slate-500 text-[10px] mb-1">Updated</div><div class="font-semibold text-slate-900">APR 17, 2026</div></div>
+      <div><div class="uppercase tracking-[0.2em] text-slate-500 text-[10px] mb-1">Updated</div><div class="font-semibold text-slate-900">${S.lastRefresh?new Date(S.lastRefresh).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'—'}</div></div>
       <div class="col-span-2 sm:col-span-4 flex justify-end gap-2 mt-1">
         <select onchange="switchYear(this.value)" class="ghost-select !w-auto !py-2 !text-xs">${yrs}</select>
-        <button onclick="let btn=this;btn.style.opacity='0.5';fetchEntriesFromSheet().then(()=>{btn.style.opacity='1';})" title="Refresh pool data from Google Sheet" class="w-9 h-9 flex items-center justify-center rounded-md border border-[#58c89a] text-slate-700 hover:bg-[#58c89a]/10 text-sm">↻</button>
+        <button onclick="let btn=this;btn.style.opacity='0.5';btn.style.transform='rotate(180deg)';silentRefresh().then(()=>{btn.style.opacity='1';btn.style.transform='';}).catch(()=>{btn.style.opacity='1';btn.style.transform='';})" title="Refresh stats &amp; entries" style="transition:transform .4s" class="w-9 h-9 flex items-center justify-center rounded-md border border-[#58c89a] text-slate-700 hover:bg-[#58c89a]/10 text-sm">↻</button>
         ${!S.adminAuth?`<button onclick="adminPrompt()" class="w-9 h-9 flex items-center justify-center rounded-md border border-[#d9d1bf] text-slate-700 hover:bg-white text-sm" title="Admin">⚙</button>`:`<button onclick="S.adminAuth=false;render()" class="w-9 h-9 flex items-center justify-center rounded-md border border-[#d9d1bf] text-slate-700 hover:bg-white text-sm" title="Logout">🔒</button>`}
       </div>
     </div>
