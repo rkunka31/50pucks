@@ -1400,6 +1400,8 @@ function ST(){
   // Filter by alive teams only
   const alive=getAliveTeams();
   stats=stats.filter(p=>alive.includes(p.team));
+  // Sort by points desc, then goals desc
+  stats.sort((a,b)=>b.pts-a.pts||b.g-a.g);
   // Show top 100
   stats=stats.slice(0,100);
   const seasonNote='';
