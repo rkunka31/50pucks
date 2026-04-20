@@ -1025,7 +1025,7 @@ function poi(l){if(l<=0)return 0;const L=Math.exp(-l);let k=0,p=1;do{k++;p*=Math
 // STATE
 // ============================================================
 const savedPrefs=(()=>{try{return JSON.parse(localStorage.getItem('50pucks_prefs')||'{}')}catch(e){return {}}})();
-let S={loading:true,entries:[],stats:null,yr:2026,tab:'entry',sel:null,simRes:null,simRun:false,simCfg:{n:1000,v:.5,adv:{1:.6,1.5:.5,2:.35}},showSim:false,pSort:'ownership',pPos:'all',chartView:'score',_chart:null,_charts:[],adminAuth:false,hiddenTabs:new Set(),_nhlStats:null,expandedTeam:null,cmpA:null,cmpB:null,showSettings:false,theme:savedPrefs.theme||'light',tickerOn:savedPrefs.tickerOn!==false,tickerSpeed:savedPrefs.tickerSpeed||'normal',config:null,lastRefresh:null};
+let S={loading:true,entries:[],stats:null,yr:2026,tab:'entry',sel:null,simRes:null,simRun:false,simCfg:{n:1000,v:.5,adv:{1:.6,1.5:.5,2:.35}},showSim:false,pSort:'pts',pPos:'all',chartView:'score',_chart:null,_charts:[],adminAuth:false,hiddenTabs:new Set(),_nhlStats:null,expandedTeam:null,cmpA:null,cmpB:null,showSettings:false,theme:savedPrefs.theme||'light',tickerOn:savedPrefs.tickerOn!==false,tickerSpeed:savedPrefs.tickerSpeed||'normal',config:null,lastRefresh:null};
 let _src='',_ld=false;
 function set(u){Object.assign(S,u);render();}
 function savePrefs(){try{localStorage.setItem('50pucks_prefs',JSON.stringify({theme:S.theme,tickerOn:S.tickerOn,tickerSpeed:S.tickerSpeed}))}catch(e){}}
@@ -1037,12 +1037,30 @@ function setTicker(on){S.tickerOn=on;savePrefs();render();}
 function setTickerSpeed(speed){S.tickerSpeed=speed;savePrefs();render();}
 function destroyCharts(){(S._charts||[]).forEach(c=>{try{c.destroy()}catch(e){}});S._charts=[];if(S._chart){try{S._chart.destroy()}catch(e){}S._chart=null;}}
 function hashCode(str){let h=0;for(let i=0;i<str.length;i++)h=((h<<5)-h)+str.charCodeAt(i),h|=0;return Math.abs(h);}
-function makeScoreHistory(entries){const days=10;const labels=Array.from({length:days},(_,i)=>`D-${days-1-i}`);const series={};entries.forEach(e=>{const seed=hashCode(e.teamName||'');const vals=[];for(let i=0;i<days-1;i++){const base=(i+1)/(days-1);const wobble=((seed>>(i%8))%11-5)/100;vals.push(Math.max(0,Math.round((e.total*(base*0.88+wobble))*10)/10));}vals.push(Math.round(e.total*10)/10);for(let i=1;i<vals.length;i++)vals[i]=Math.max(vals[i],vals[i-1]);series[e.teamName]=vals;});return {labels,series};}
+function makeScoreHistory(entries){
+  // Use real daily snapshots when available (2026+)
+  const hist=S._history;
+  if(hist&&hist.length>0&&S.yr===2026){
+    const labels=hist.map(h=>{const[,m,d]=h.date.split('-');return`Apr ${parseInt(d)}`;});
+    const series={};
+    entries.forEach(e=>{series[e.teamName]=[];});
+    for(const snap of hist){
+      const lu=buildLU(snap.players);
+      const scored=calcScores(entries,lu);
+      const totals={};scored.forEach(s=>{totals[s.teamName]=s.total||0;});
+      entries.forEach(e=>{series[e.teamName].push(Math.round((totals[e.teamName]||0)*10)/10);});
+    }
+    return{labels,series};
+  }
+  // Fallback: simulated interpolation
+  const days=10;const labels=Array.from({length:days},(_,i)=>`D-${days-1-i}`);const series={};entries.forEach(e=>{const seed=hashCode(e.teamName||'');const vals=[];for(let i=0;i<days-1;i++){const base=(i+1)/(days-1);const wobble=((seed>>(i%8))%11-5)/100;vals.push(Math.max(0,Math.round((e.total*(base*0.88+wobble))*10)/10));}vals.push(Math.round(e.total*10)/10);for(let i=1;i<vals.length;i++)vals[i]=Math.max(vals[i],vals[i-1]);series[e.teamName]=vals;});return{labels,series};
+}
 function todayDelta(entry,hist){const arr=(hist.series||{})[entry.teamName]||[];if(arr.length<2)return 0;return Math.round((arr[arr.length-1]-arr[arr.length-2])*10)/10;}
 async function loadData(){if(_ld)return;_ld=true;
   document.getElementById('loader').style.display='flex';document.getElementById('app').style.display='none';
   try{
     const st=await fetchStats(sn().id).catch(()=>[]);
+    if(S.yr===2026){try{const r=await fetch('./playoff_history.json',{cache:'no-store'});if(r.ok)S._history=await r.json();}catch(e){console.warn('History:',e);}}
     S.config=await fetchConfigFromSheet();
     let en=[];
     if(S.yr===2026){
@@ -1384,7 +1402,7 @@ function ST(){
   stats=stats.filter(p=>alive.includes(p.team));
   // Show top 100
   stats=stats.slice(0,100);
-  const seasonNote=S.yr===2026?'<div class="text-xs text-amber-600 mb-3">📊 Regular season stats (will update to playoff stats once playoffs begin)</div>':'';
+  const seasonNote='';
   return`<div class="space-y-3">
     ${seasonNote}
     <div class="text-xs text-slate-600"><span class="font-semibold">${stats.length}</span> skaters from playoff teams (top 100 shown)</div>

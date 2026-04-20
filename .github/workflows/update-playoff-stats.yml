@@ -205,12 +205,49 @@ jobs:
           print(f'Wrote {len(stats)} players to playoff_stats.json')
           if not stats:
               raise SystemExit(1)
+
+          # ── Daily history snapshot ──────────────────────────────────────────
+          import os
+          history_file = 'playoff_history.json'
+          today_str = date.today().isoformat()
+          history = []
+          if os.path.exists(history_file):
+              try:
+                  with open(history_file) as f:
+                      history = json.load(f)
+              except Exception:
+                  history = []
+
+          # Bootstrap: seed April 18 as day-0 (all zeros) if starting fresh
+          if not history:
+              history.append({
+                  'date': '2026-04-18',
+                  'players': [{'id': p['id'], 'name': p['name'], 'pts': 0, 'gp': 0}
+                               for p in stats]
+              })
+
+          # Upsert today's snapshot (compact: id, name, pts, gp only)
+          today_snap = {
+              'date': today_str,
+              'players': [{'id': p['id'], 'name': p['name'],
+                           'pts': p.get('pts', 0), 'gp': p.get('gp', 0)}
+                          for p in stats]
+          }
+          idx = next((i for i, h in enumerate(history) if h['date'] == today_str), -1)
+          if idx >= 0:
+              history[idx] = today_snap
+          else:
+              history.append(today_snap)
+          history.sort(key=lambda h: h['date'])
+          with open(history_file, 'w') as f:
+              json.dump(history, f)
+          print(f'History: {len(history)} days → {history_file}')
           PYEOF
 
       - name: Commit and push
         run: |
           git config user.name  'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add playoff_stats.json
+          git add playoff_stats.json playoff_history.json
           git diff --staged --quiet || git commit -m 'chore: update playoff stats [skip ci]'
           git push
