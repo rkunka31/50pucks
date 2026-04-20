@@ -1037,12 +1037,30 @@ function setTicker(on){S.tickerOn=on;savePrefs();render();}
 function setTickerSpeed(speed){S.tickerSpeed=speed;savePrefs();render();}
 function destroyCharts(){(S._charts||[]).forEach(c=>{try{c.destroy()}catch(e){}});S._charts=[];if(S._chart){try{S._chart.destroy()}catch(e){}S._chart=null;}}
 function hashCode(str){let h=0;for(let i=0;i<str.length;i++)h=((h<<5)-h)+str.charCodeAt(i),h|=0;return Math.abs(h);}
-function makeScoreHistory(entries){const days=10;const labels=Array.from({length:days},(_,i)=>`D-${days-1-i}`);const series={};entries.forEach(e=>{const seed=hashCode(e.teamName||'');const vals=[];for(let i=0;i<days-1;i++){const base=(i+1)/(days-1);const wobble=((seed>>(i%8))%11-5)/100;vals.push(Math.max(0,Math.round((e.total*(base*0.88+wobble))*10)/10));}vals.push(Math.round(e.total*10)/10);for(let i=1;i<vals.length;i++)vals[i]=Math.max(vals[i],vals[i-1]);series[e.teamName]=vals;});return {labels,series};}
+function makeScoreHistory(entries){
+  // Use real daily snapshots when available (2026+)
+  const hist=S._history;
+  if(hist&&hist.length>0&&S.yr===2026){
+    const labels=hist.map(h=>{const[,m,d]=h.date.split('-');return`Apr ${parseInt(d)}`;});
+    const series={};
+    entries.forEach(e=>{series[e.teamName]=[];});
+    for(const snap of hist){
+      const lu=buildLU(snap.players);
+      const scored=calcScores(entries,lu);
+      const totals={};scored.forEach(s=>{totals[s.teamName]=s.total||0;});
+      entries.forEach(e=>{series[e.teamName].push(Math.round((totals[e.teamName]||0)*10)/10);});
+    }
+    return{labels,series};
+  }
+  // Fallback: simulated interpolation
+  const days=10;const labels=Array.from({length:days},(_,i)=>`D-${days-1-i}`);const series={};entries.forEach(e=>{const seed=hashCode(e.teamName||'');const vals=[];for(let i=0;i<days-1;i++){const base=(i+1)/(days-1);const wobble=((seed>>(i%8))%11-5)/100;vals.push(Math.max(0,Math.round((e.total*(base*0.88+wobble))*10)/10));}vals.push(Math.round(e.total*10)/10);for(let i=1;i<vals.length;i++)vals[i]=Math.max(vals[i],vals[i-1]);series[e.teamName]=vals;});return{labels,series};
+}
 function todayDelta(entry,hist){const arr=(hist.series||{})[entry.teamName]||[];if(arr.length<2)return 0;return Math.round((arr[arr.length-1]-arr[arr.length-2])*10)/10;}
 async function loadData(){if(_ld)return;_ld=true;
   document.getElementById('loader').style.display='flex';document.getElementById('app').style.display='none';
   try{
     const st=await fetchStats(sn().id).catch(()=>[]);
+    if(S.yr===2026){try{const r=await fetch('./playoff_history.json',{cache:'no-store'});if(r.ok)S._history=await r.json();}catch(e){console.warn('History:',e);}}
     S.config=await fetchConfigFromSheet();
     let en=[];
     if(S.yr===2026){
