@@ -185,9 +185,9 @@ function nm(a){if(!a)return'';const u=a.toUpperCase().trim();return AM[u]||u;}
 function sn(){return SEASONS[S.yr]||SEASONS[2025];}
 function mt(t){return sn().mult[nm(t)]??1.0;}
 function getAliveTeams(){
-  if(Array.isArray(S._aliveTeams)&&S._aliveTeams.length) return S._aliveTeams.map(nm);
   const cfg=S?.config?.aliveTeams;
   if(Array.isArray(cfg) && cfg.length) return cfg.map(nm);
+  if(Array.isArray(S._aliveTeams)&&S._aliveTeams.length) return S._aliveTeams.map(nm);
   const season=sn();
   return Array.isArray(season.alive) && season.alive.length?season.alive.map(nm):ALL_TEAMS;
 }
