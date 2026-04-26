@@ -195,9 +195,32 @@ jobs:
           played = sum(1 for s in stats if s['gp'] > 0)
           print(f'Final: {len(stats)} players total, {played} have played')
 
+          # ── Detect eliminated teams from playoff bracket ──────────────────────
+          alive_teams = list(PLAYOFF_TEAMS)
+          try:
+              bracket = fetch_json('https://api-web.nhle.com/v1/playoff-bracket/20252026')
+              for rnd in bracket.get('rounds', []):
+                  for series in rnd.get('series', []):
+                      top = series.get('topSeedTeam', {})
+                      bot = series.get('bottomSeedTeam', {})
+                      top_abbrev = top.get('abbrev', '')
+                      bot_abbrev = bot.get('abbrev', '')
+                      top_wins = top.get('wins', 0)
+                      bot_wins = bot.get('wins', 0)
+                      if top_wins == 4 and bot_abbrev in alive_teams:
+                          alive_teams.remove(bot_abbrev)
+                          print(f'Eliminated: {bot_abbrev} (lost to {top_abbrev} 4-{bot_wins})')
+                      elif bot_wins == 4 and top_abbrev in alive_teams:
+                          alive_teams.remove(top_abbrev)
+                          print(f'Eliminated: {top_abbrev} (lost to {bot_abbrev} 4-{top_wins})')
+              print(f'Alive ({len(alive_teams)}): {alive_teams}')
+          except Exception as e:
+              print(f'Bracket API failed: {e} — keeping all teams alive')
+
           output = {
               'updated': datetime.utcnow().isoformat() + 'Z',
               'season': '20252026',
+              'aliveTeams': alive_teams,
               'players': stats
           }
           with open('playoff_stats.json', 'w') as f:
