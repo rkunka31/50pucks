@@ -185,6 +185,7 @@ function nm(a){if(!a)return'';const u=a.toUpperCase().trim();return AM[u]||u;}
 function sn(){return SEASONS[S.yr]||SEASONS[2025];}
 function mt(t){return sn().mult[nm(t)]??1.0;}
 function getAliveTeams(){
+  if(Array.isArray(S._aliveTeams)&&S._aliveTeams.length) return S._aliveTeams.map(nm);
   const cfg=S?.config?.aliveTeams;
   if(Array.isArray(cfg) && cfg.length) return cfg.map(nm);
   const season=sn();
@@ -497,6 +498,10 @@ async function fetchEntriesFromSheet(){
 
 async function silentRefresh(){
   try{const st=await fetchStats(sn().id);if(st&&st.length>0){S._nhlStats=st;saveStats();}}catch(e){console.warn('Stats refresh:',e);}
+  if(S.yr===2026){
+    try{const r=await fetch('./playoff_stats.json',{cache:'no-store'});if(r.ok){const d=await r.json();if(Array.isArray(d.aliveTeams)&&d.aliveTeams.length)S._aliveTeams=d.aliveTeams;}}catch(e){}
+    try{const r=await fetch('./playoff_history.json',{cache:'no-store'});if(r.ok)S._history=await r.json();}catch(e){}
+  }
   try{
     const sheetUrl=sn().sheetUrl;
     if(sheetUrl){const r=await fetch(sheetUrl);if(r.ok){const csv=await r.text();const entries=parseEntriesCSV(csv);if(entries.length>0){localStorage.removeItem('50pucks_entries_2026');S.entries=entries;saveEntries();if(S._nhlStats&&S._nhlStats.length>0){const lu=buildLU(S._nhlStats);const sc=calcScores(entries,lu);S.entries=sc;S.stats=poolStats(sc);S.sel=sc[0]?.teamName||null;}}}}
@@ -1060,7 +1065,10 @@ async function loadData(){if(_ld)return;_ld=true;
   document.getElementById('loader').style.display='flex';document.getElementById('app').style.display='none';
   try{
     const st=await fetchStats(sn().id).catch(()=>[]);
-    if(S.yr===2026){try{const r=await fetch('./playoff_history.json',{cache:'no-store'});if(r.ok)S._history=await r.json();}catch(e){console.warn('History:',e);}}
+    if(S.yr===2026){
+      try{const r=await fetch('./playoff_stats.json',{cache:'no-store'});if(r.ok){const d=await r.json();if(Array.isArray(d.aliveTeams)&&d.aliveTeams.length)S._aliveTeams=d.aliveTeams;}}catch(e){}
+      try{const r=await fetch('./playoff_history.json',{cache:'no-store'});if(r.ok)S._history=await r.json();}catch(e){console.warn('History:',e);}
+    }
     S.config=await fetchConfigFromSheet();
     let en=[];
     if(S.yr===2026){
@@ -1400,6 +1408,8 @@ function ST(){
   // Filter by alive teams only
   const alive=getAliveTeams();
   stats=stats.filter(p=>alive.includes(p.team));
+  // Sort by points desc, then goals desc
+  stats.sort((a,b)=>b.pts-a.pts||b.g-a.g);
   // Show top 100
   stats=stats.slice(0,100);
   const seasonNote='';
