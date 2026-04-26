@@ -195,8 +195,13 @@ jobs:
           played = sum(1 for s in stats if s['gp'] > 0)
           print(f'Final: {len(stats)} players total, {played} have played')
 
-          # ── Detect eliminated teams from playoff bracket ──────────────────────
-          alive_teams = list(PLAYOFF_TEAMS)
+          # ── Detect eliminated teams ───────────────────────────────────────────
+          # MANUAL_ELIMINATED: update this list as teams are eliminated each round
+          MANUAL_ELIMINATED = ['OTT']
+          alive_teams = [t for t in PLAYOFF_TEAMS if t not in MANUAL_ELIMINATED]
+          print(f'Manual eliminations: {MANUAL_ELIMINATED}')
+
+          # Also try bracket API to catch any additional eliminations automatically
           try:
               bracket = fetch_json('https://api-web.nhle.com/v1/playoff-bracket/20252026')
               for rnd in bracket.get('rounds', []):
@@ -209,13 +214,13 @@ jobs:
                       bot_wins = bot.get('wins', 0)
                       if top_wins == 4 and bot_abbrev in alive_teams:
                           alive_teams.remove(bot_abbrev)
-                          print(f'Eliminated: {bot_abbrev} (lost to {top_abbrev} 4-{bot_wins})')
+                          print(f'Bracket: eliminated {bot_abbrev} (lost to {top_abbrev} 4-{bot_wins})')
                       elif bot_wins == 4 and top_abbrev in alive_teams:
                           alive_teams.remove(top_abbrev)
-                          print(f'Eliminated: {top_abbrev} (lost to {bot_abbrev} 4-{top_wins})')
+                          print(f'Bracket: eliminated {top_abbrev} (lost to {bot_abbrev} 4-{top_wins})')
               print(f'Alive ({len(alive_teams)}): {alive_teams}')
           except Exception as e:
-              print(f'Bracket API failed: {e} — keeping all teams alive')
+              print(f'Bracket API failed: {e}')
 
           output = {
               'updated': datetime.utcnow().isoformat() + 'Z',
