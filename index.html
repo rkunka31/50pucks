@@ -550,7 +550,7 @@ async function fetchEntriesFromSheet(){
 async function silentRefresh(){
   try{const st=await fetchStats(sn().id);if(st&&st.length>0){S._nhlStats=st;saveStats();}}catch(e){console.warn('Stats refresh:',e);}
   if(S.yr===2026){
-    try{const r=await fetch('./playoff_stats.json',{cache:'no-store'});if(r.ok){const d=await r.json();if(Array.isArray(d.aliveTeams)&&d.aliveTeams.length)S._aliveTeams=d.aliveTeams;}}catch(e){}
+    try{const r=await fetch('./playoff_stats.json',{cache:'no-store'});if(r.ok){const d=await r.json();if(Array.isArray(d.aliveTeams)&&d.aliveTeams.length)S._aliveTeams=d.aliveTeams;if(d.seriesScores&&typeof d.seriesScores==='object')S._seriesScores=d.seriesScores;}}catch(e){}
     try{const r=await fetch('./playoff_history.json',{cache:'no-store'});if(r.ok)S._history=await r.json();}catch(e){}
   }
   try{
@@ -1118,7 +1118,7 @@ async function loadData(){if(_ld)return;_ld=true;
   try{
     const st=await fetchStats(sn().id).catch(()=>[]);
     if(S.yr===2026){
-      try{const r=await fetch('./playoff_stats.json',{cache:'no-store'});if(r.ok){const d=await r.json();if(Array.isArray(d.aliveTeams)&&d.aliveTeams.length)S._aliveTeams=d.aliveTeams;}}catch(e){}
+      try{const r=await fetch('./playoff_stats.json',{cache:'no-store'});if(r.ok){const d=await r.json();if(Array.isArray(d.aliveTeams)&&d.aliveTeams.length)S._aliveTeams=d.aliveTeams;if(d.seriesScores&&typeof d.seriesScores==='object')S._seriesScores=d.seriesScores;}}catch(e){}
       try{const r=await fetch('./playoff_history.json',{cache:'no-store'});if(r.ok)S._history=await r.json();}catch(e){console.warn('History:',e);}
     }
     S.config=await fetchConfigFromSheet();
@@ -1195,10 +1195,34 @@ function compareMetricRow(label,aVal,bVal,{fmtFn=(v)=>fmt(v),higherBetter=true}=
 // ============================================================
 function simTeams(id){
   const r1=SIM_R1.find(s=>s.id===id);
-  if(r1)return{t:r1.teams,seeds:r1.seeds,score:r1.score,locked:r1.locked};
+  if(r1){
+    let score=r1.score,locked=r1.locked;
+    if(S._seriesScores){
+      const [t1,t2]=r1.teams;
+      const live=S._seriesScores[`${t1}:${t2}`];
+      if(live){score=live;locked=locked||(live[0]===4||live[1]===4);}
+    }
+    // Auto-advance winner for locked series
+    if(locked&&score&&!S.simPicks[id]){
+      const winner=score[0]===4?r1.teams[0]:score[1]===4?r1.teams[1]:null;
+      if(winner)S.simPicks[id]=winner;
+    }
+    return{t:r1.teams,seeds:r1.seeds,score,locked};
+  }
   const from=SIM_FROM[id];
   if(!from)return{t:[null,null],seeds:[],score:null,locked:false};
-  return{t:[S.simPicks[from[0]]||null,S.simPicks[from[1]]||null],seeds:[],score:null,locked:false};
+  const t1=S.simPicks[from[0]]||null,t2=S.simPicks[from[1]]||null;
+  let score=null,locked=false;
+  if(t1&&t2&&S._seriesScores){
+    const key1=`${t1}:${t2}`,key2=`${t2}:${t1}`;
+    const live=S._seriesScores[key1]||S._seriesScores[key2];
+    if(live){
+      score=S._seriesScores[key1]?live:[live[1],live[0]];
+      locked=score[0]===4||score[1]===4;
+      if(locked&&!S.simPicks[id]){const winner=score[0]===4?t1:t2;S.simPicks[id]=winner;}
+    }
+  }
+  return{t:[t1,t2],seeds:[],score,locked};
 }
 function simClearDown(id){(SIM_DEPS[id]||[]).forEach(d=>{S.simPicks[d]=null;simClearDown(d);});}
 function simPick(id,team){
