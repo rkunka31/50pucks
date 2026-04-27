@@ -197,7 +197,7 @@ jobs:
 
           # ── Detect eliminated teams ───────────────────────────────────────────
           # MANUAL_ELIMINATED: update this list as teams are eliminated each round
-          MANUAL_ELIMINATED = ['OTT','LAK']
+          MANUAL_ELIMINATED = ['OTT', 'LAK']
           alive_teams = [t for t in PLAYOFF_TEAMS if t not in MANUAL_ELIMINATED]
           print(f'Manual eliminations: {MANUAL_ELIMINATED}')
 
