@@ -156,6 +156,42 @@ body.dark-theme canvas{filter:saturate(.95)}
 .ppp-list{display:grid;gap:12px}.ppp-row{display:grid;grid-template-columns:minmax(0,1fr) 1fr 52px;gap:12px;align-items:center}.ppp-name{font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ppp-val{text-align:right;font-size:13px;font-weight:700;color:var(--text)}
 @media (max-width: 980px){.analytics-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.analytics-kpi{border-bottom:1px solid var(--line)}.analytics-kpi:nth-child(2n){border-right:0}.dashboard-grid,.dashboard-grid-2{grid-template-columns:1fr}}
 
+/* ── Bracket Simulator ── */
+.sim-bracket-outer{display:flex;flex-direction:row;gap:8px;align-items:stretch;overflow-x:auto;padding-bottom:4px}
+.sim-conf-block{display:flex;flex-direction:row;gap:6px;align-items:stretch;flex:1}
+.sim-conf-block.east{flex-direction:row-reverse}
+.sim-rnd-col{display:flex;flex-direction:column;min-width:90px;gap:6px}
+.sim-rnd-label{font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-align:center;padding:2px 0 4px}
+.sim-grp{display:flex;flex-direction:column;gap:6px;flex:1}
+.sim-grp-gap{flex:1;min-height:12px}
+.sim-card{background:#fff;border:1px solid #d9d1bf;border-radius:8px;overflow:hidden}
+body.dark-theme .sim-card{background:var(--surface);border-color:var(--line)}
+.sim-team-row{display:flex;align-items:center;gap:4px;padding:5px 7px;transition:background .12s;min-height:28px}
+.sim-win{background:#f0faf5}
+body.dark-theme .sim-win{background:rgba(88,200,154,.12)}
+.sim-lose{opacity:.5}
+.sim-pickable{cursor:pointer}
+.sim-pickable:hover{background:#f1f5f9}
+body.dark-theme .sim-pickable:hover{background:rgba(88,200,154,.07)}
+.sim-seed{font-size:9px;color:var(--muted);width:22px;flex-shrink:0}
+.sim-abbr{font-weight:700;font-size:12px}
+.sim-sc{font-weight:700;font-size:12px;margin-left:auto;color:var(--muted)}
+.sim-tick{margin-left:2px;color:#58c89a;font-size:11px;flex-shrink:0}
+.sim-div{height:1px;background:#e3dccd}
+body.dark-theme .sim-div{background:var(--line-soft)}
+.sim-tbd{color:var(--muted);font-style:italic;font-size:11px;padding:6px 7px}
+.sim-scf-block{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:8px;min-width:100px}
+.sim-tank-row{display:grid;grid-template-columns:minmax(120px,1fr) 3fr auto;gap:10px;align-items:center;padding:6px 0;border-bottom:1px dotted #e3dccd}
+body.dark-theme .sim-tank-row{border-color:var(--line-soft)}
+.sim-tank-row:last-child{border-bottom:0}
+.sim-tank-bar{display:flex;height:14px;border-radius:6px;overflow:hidden;background:#e2e8f0}
+body.dark-theme .sim-tank-bar{background:#11203d}
+.sim-tank-seg{transition:width .3s}
+.sim-tank-legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.sim-tank-legend-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)}
+.sim-tank-legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+@media(max-width:700px){.sim-rnd-col{min-width:72px}.sim-seed{display:none}.sim-abbr{font-size:11px}.sim-sc{font-size:11px}.sim-scf-block{min-width:72px;padding:4px}}
+
 </style>
 </head>
 <body>
@@ -177,6 +213,21 @@ const CFG={title:'50 Pucks',pk:50,minPk:1,maxPk:6,fwd:10,def:5,cur:'CAD',pay:[{p
 const SHOW_ENTRY_TAB=false; // change to true to show the Enter Team tab
 const TM={ANA:'#F47A38',BOS:'#FFB81C',BUF:'#003087',CGY:'#D2001C',CAR:'#CC0000',CHI:'#CF0A2C',COL:'#6F263D',CBJ:'#002654',DAL:'#006847',DET:'#CE1126',EDM:'#FF4C00',FLA:'#C8102E',LAK:'#A2AAAD',MIN:'#154734',MTL:'#AF1E2D',NSH:'#FFB81C',NJD:'#CE1126',NYI:'#00539B',NYR:'#0038A8',OTT:'#C52032',PHI:'#F74902',PIT:'#FCB514',SJS:'#006D75',SEA:'#001628',STL:'#002F87',TBL:'#002868',TOR:'#00205B',UTA:'#71AFE5',VAN:'#00205B',VGK:'#B4975A',WSH:'#041E42',WPG:'#041E42'};
 const AM={VEG:'VGK',WAS:'WSH',TB:'TBL',NJ:'NJD',SJ:'SJS',LA:'LAK',CLB:'CBJ'};
+
+// ── Bracket Simulator constants ──
+const SIM_R1=[
+  {id:'W1a',teams:['COL','LAK'],seeds:['D1','WC2'],score:[4,0],locked:true},
+  {id:'W1b',teams:['DAL','MIN'],seeds:['D2','D3'],score:[2,2],locked:false},
+  {id:'W2a',teams:['VGK','UTA'],seeds:['D1','WC1'],score:[1,2],locked:false},
+  {id:'W2b',teams:['EDM','ANA'],seeds:['D2','D3'],score:[1,3],locked:false},
+  {id:'E1a',teams:['BUF','BOS'],seeds:['D1','WC1'],score:[3,1],locked:false},
+  {id:'E1b',teams:['TBL','MTL'],seeds:['D2','D3'],score:[2,2],locked:false},
+  {id:'E2a',teams:['CAR','OTT'],seeds:['D1','WC2'],score:[4,0],locked:true},
+  {id:'E2b',teams:['PIT','PHI'],seeds:['D2','D3'],score:[1,3],locked:false},
+];
+const SIM_INIT={'W1a':'COL','E2a':'CAR'};
+const SIM_DEPS={'W1a':['WR2a'],'W1b':['WR2a'],'W2a':['WR2b'],'W2b':['WR2b'],'E1a':['ER2a'],'E1b':['ER2a'],'E2a':['ER2b'],'E2b':['ER2b'],'WR2a':['WCF'],'WR2b':['WCF'],'ER2a':['ECF'],'ER2b':['ECF'],'WCF':['SCF'],'ECF':['SCF']};
+const SIM_FROM={'WR2a':['W1a','W1b'],'WR2b':['W2a','W2b'],'ER2a':['E1a','E1b'],'ER2b':['E2a','E2b'],'WCF':['WR2a','WR2b'],'ECF':['ER2a','ER2b'],'SCF':['WCF','ECF']};
 
 // All NHL teams (full roster for stats display)
 const ALL_TEAMS=['ANA','BOS','BUF','CGY','CAR','CHI','COL','CBJ','DAL','DET','EDM','FLA','LAK','MIN','MTL','NSH','NJD','NYI','NYR','OTT','PHI','PIT','SJS','SEA','STL','TBL','TOR','UTA','VAN','VGK','WSH','WPG'];
@@ -1031,6 +1082,7 @@ function poi(l){if(l<=0)return 0;const L=Math.exp(-l);let k=0,p=1;do{k++;p*=Math
 // ============================================================
 const savedPrefs=(()=>{try{return JSON.parse(localStorage.getItem('50pucks_prefs')||'{}')}catch(e){return {}}})();
 let S={loading:true,entries:[],stats:null,yr:2026,tab:'entry',sel:null,simRes:null,simRun:false,simCfg:{n:1000,v:.5,adv:{1:.6,1.5:.5,2:.35}},showSim:false,pSort:'pts',pPos:'all',chartView:'score',_chart:null,_charts:[],adminAuth:false,hiddenTabs:new Set(),_nhlStats:null,expandedTeam:null,cmpA:null,cmpB:null,showSettings:false,theme:savedPrefs.theme||'light',tickerOn:savedPrefs.tickerOn!==false,tickerSpeed:savedPrefs.tickerSpeed||'normal',config:null,lastRefresh:null};
+S.simPicks={...SIM_INIT};
 let _src='',_ld=false;
 function set(u){Object.assign(S,u);render();}
 function savePrefs(){try{localStorage.setItem('50pucks_prefs',JSON.stringify({theme:S.theme,tickerOn:S.tickerOn,tickerSpeed:S.tickerSpeed}))}catch(e){}}
@@ -1139,6 +1191,147 @@ function toggleExpand(team){S.expandedTeam=S.expandedTeam===team?null:team;rende
 function compareMetricRow(label,aVal,bVal,{fmtFn=(v)=>fmt(v),higherBetter=true}={}){const a=Number(aVal)||0,b=Number(bVal)||0;const max=Math.max(Math.abs(a),Math.abs(b),1);const aWin=higherBetter?a>b:a<b;const bWin=higherBetter?b>a:b<a;return `<div class="compare-row"><div class="num ${aWin?'text-emerald-500 font-bold':'text-slate-900'}">${fmtFn(aVal)}</div><div class="bar-rail"><div class="bar-fill-left" style="width:${Math.max(8,Math.abs(a)/max*100)}%"></div></div><div class="compare-label">${label}</div><div class="bar-rail"><div class="bar-fill-right" style="width:${Math.max(8,Math.abs(b)/max*100)}%"></div></div><div class="num text-right ${bWin?'text-violet-500 font-bold':'text-slate-900'}">${fmtFn(bVal)}</div></div>`;}
 
 // ============================================================
+// BRACKET SIMULATOR
+// ============================================================
+function simTeams(id){
+  const r1=SIM_R1.find(s=>s.id===id);
+  if(r1)return{t:r1.teams,seeds:r1.seeds,score:r1.score,locked:r1.locked};
+  const from=SIM_FROM[id];
+  if(!from)return{t:[null,null],seeds:[],score:null,locked:false};
+  return{t:[S.simPicks[from[0]]||null,S.simPicks[from[1]]||null],seeds:[],score:null,locked:false};
+}
+function simClearDown(id){(SIM_DEPS[id]||[]).forEach(d=>{S.simPicks[d]=null;simClearDown(d);});}
+function simPick(id,team){
+  const r1=SIM_R1.find(s=>s.id===id);if(r1&&r1.locked)return;
+  if(S.simPicks[id]===team){S.simPicks[id]=null;simClearDown(id);}
+  else{if(S.simPicks[id])simClearDown(id);S.simPicks[id]=team;}
+  render();
+}
+function resetSim(){S.simPicks={...SIM_INIT};render();}
+function getSimElim(){
+  const elim=new Set();
+  const ids=['W1a','W1b','W2a','W2b','E1a','E1b','E2a','E2b','WR2a','WR2b','ER2a','ER2b','WCF','ECF','SCF'];
+  for(const id of ids){const w=S.simPicks[id];if(!w)continue;const{t}=simTeams(id);const loser=t.find(x=>x&&x!==w);if(loser)elim.add(loser);}
+  return elim;
+}
+function simCard(id){
+  const{t,seeds,score,locked}=simTeams(id);
+  const w=S.simPicks[id];
+  const mkRow=(tm,seed,sc)=>{
+    if(!tm)return`<div class="sim-tbd">TBD</div>`;
+    const isW=w===tm,isL=!!(w&&w!==tm);
+    const can=!locked&&t[0]&&t[1];
+    const onclick=can?`onclick="simPick('${id}','${tm}')"`:''    ;
+    return`<div class="sim-team-row${can?' sim-pickable':''} ${isW?'sim-win':isL?'sim-lose':''}" ${onclick}>`
+      +(seed?`<span class="sim-seed">${seed}</span>`:'')
+      +`<span class="sim-abbr" style="color:${isW?(TM[tm]||'#15803d'):isL?'#94a3b8':(TM[tm]||'#1e293b')}">${tm}</span>`
+      +(score!==null&&score!==undefined?`<span class="sim-sc">${sc}</span>`:'')
+      +(isW?`<span class="sim-tick">✓</span>`:'')
+      +`</div>`;
+  };
+  return`<div class="sim-card${locked?' sim-locked':''}">`
+    +mkRow(t[0],seeds[0]??'',score?.[0])
+    +`<div class="sim-div"></div>`
+    +mkRow(t[1],seeds[1]??'',score?.[1])
+    +`</div>`;
+}
+function simTankRow(entry,realElim,simElim){
+  const pl=entry.players;
+  const totPk=pl.reduce((s,p)=>s+p.pucks,0);
+  const totPl=pl.length;
+  const rPl=pl.filter(p=>realElim.has(p.team));
+  const rPk=rPl.reduce((s,p)=>s+p.pucks,0);
+  const sPl=pl.filter(p=>simElim.has(p.team)&&!realElim.has(p.team));
+  const sPk=sPl.reduce((s,p)=>s+p.pucks,0);
+  const alivePl=totPl-rPl.length-sPl.length;
+  const alivePk=totPk-rPk-sPk;
+  const pA=totPk?Math.round(alivePk/totPk*100):0;
+  const pS=totPk?Math.round(sPk/totPk*100):0;
+  const pR=totPk?Math.round(rPk/totPk*100):0;
+  return`<div class="sim-tank-row">
+    <div class="text-[12px] font-semibold truncate" style="color:var(--text)">${esc(entry.teamName)}</div>
+    <div class="sim-tank-bar">
+      <div class="sim-tank-seg" style="width:${pA}%;background:#58c89a"></div>
+      <div class="sim-tank-seg" style="width:${pS}%;background:#f59e0b"></div>
+      <div class="sim-tank-seg" style="width:${pR}%;background:#e2e8f0"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;font-size:11px;min-width:70px;text-align:right">
+      <span class="num" style="color:var(--text)">${alivePk}/${totPk} <span style="color:var(--muted)">pk</span></span>
+      ${sPk>0?`<span class="num" style="color:#f59e0b;font-weight:700">−${sPk} pk</span>`:'<span style="color:var(--muted);font-size:10px">no impact</span>'}
+      <span class="num" style="color:var(--muted);font-size:10px">${alivePl}/${totPl} pl</span>
+    </div>
+  </div>`;
+}
+function BR(){
+  if(!S.entries||!S.entries.length)return`<div class="p-6 text-center" style="color:var(--muted)">No entries loaded</div>`;
+  const realElim=new Set(ALL_TEAMS.filter(t=>!getAliveTeams().includes(t)));
+  const simElim=getSimElim();
+  const rndLbl=(t)=>`<div class="sim-rnd-label">${t}</div>`;
+  const westBracket=`<div class="sim-conf-block">
+    <div class="sim-rnd-col">
+      ${rndLbl('R1 · West')}
+      <div class="sim-grp">${simCard('W1a')}${simCard('W1b')}</div>
+      <div class="sim-grp-gap"></div>
+      <div class="sim-grp">${simCard('W2a')}${simCard('W2b')}</div>
+    </div>
+    <div class="sim-rnd-col" style="justify-content:space-around;padding-top:20px">
+      ${rndLbl('R2')}
+      <div>${simCard('WR2a')}</div>
+      <div>${simCard('WR2b')}</div>
+    </div>
+    <div class="sim-rnd-col" style="justify-content:center;padding-top:20px">
+      ${rndLbl('CF')}
+      ${simCard('WCF')}
+    </div>
+  </div>`;
+  const eastBracket=`<div class="sim-conf-block east">
+    <div class="sim-rnd-col">
+      ${rndLbl('R1 · East')}
+      <div class="sim-grp">${simCard('E1a')}${simCard('E1b')}</div>
+      <div class="sim-grp-gap"></div>
+      <div class="sim-grp">${simCard('E2a')}${simCard('E2b')}</div>
+    </div>
+    <div class="sim-rnd-col" style="justify-content:space-around;padding-top:20px">
+      ${rndLbl('R2')}
+      <div>${simCard('ER2a')}</div>
+      <div>${simCard('ER2b')}</div>
+    </div>
+    <div class="sim-rnd-col" style="justify-content:center;padding-top:20px">
+      ${rndLbl('CF')}
+      ${simCard('ECF')}
+    </div>
+  </div>`;
+  const scfBlock=`<div class="sim-scf-block">
+    ${rndLbl('Final')}
+    ${simCard('SCF')}
+    <div style="font-size:24px;margin-top:4px">🏆</div>
+  </div>`;
+  const sorted=[...S.entries].sort((a,b)=>{
+    const imp=e=>e.players.filter(p=>simElim.has(p.team)&&!realElim.has(p.team)).reduce((s,p)=>s+p.pucks,0);
+    return imp(b)-imp(a)||(a.rank||0)-(b.rank||0);
+  });
+  return`<div style="max-width:960px;margin:0 auto;padding:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text)">Bracket Simulator</div>
+        <div style="font-size:11px;color:var(--muted)">Click a team to advance them · see pool impact below</div>
+      </div>
+      <button onclick="resetSim()" style="font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:5px 12px;background:transparent;cursor:pointer">↺ Reset</button>
+    </div>
+    <div class="sim-bracket-outer">${westBracket}${scfBlock}${eastBracket}</div>
+    <div style="margin-top:20px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Pool Impact</div>
+      <div class="sim-tank-legend" style="margin-bottom:10px">
+        <div class="sim-tank-legend-item"><div class="sim-tank-legend-dot" style="background:#58c89a"></div>Alive</div>
+        <div class="sim-tank-legend-item"><div class="sim-tank-legend-dot" style="background:#f59e0b"></div>Sim eliminated</div>
+        <div class="sim-tank-legend-item"><div class="sim-tank-legend-dot" style="background:#e2e8f0"></div>Already eliminated</div>
+      </div>
+      <div>${sorted.map(e=>simTankRow(e,realElim,simElim)).join('')}</div>
+    </div>
+  </div>`;
+}
+
+// ============================================================
 // RENDER — #app has NO inline styles now
 // ============================================================
 function render(){
@@ -1149,7 +1342,7 @@ function render(){
     tabs.push(['leaderboard','Standings'],['team','Teams'],['compare','Compare'],['chart','Analytics'],['players','Players'],['simulation','Projections'],['stats','NHL Stats'],['info','Info']);
   }
   if(S.yr===2026){
-    tabs.push(['leaderboard','Standings'],['team','Team Detail'],['compare','Compare'],['chart','Analytics'],['players','Players'],['stats','NHL Stats']);
+    tabs.push(['leaderboard','Standings'],['team','Team Detail'],['compare','Compare'],['chart','Analytics'],['players','Players'],['stats','NHL Stats'],['bracket','Bracket']);
   }
   if(S.adminAuth){tabs.push(['admin','Admin']);}
   tabs=tabs.filter(([id])=>!S.hiddenTabs.has(id));
@@ -1193,7 +1386,7 @@ ${S.showSettings?settingsModal():''}
   setTimeout(drawChart,20);
 }
 
-function tabC(){switch(S.tab){case'leaderboard':return LB();case'team':return TD();case'compare':return CP();case'chart':return CH();case'players':return PL();case'simulation':return SM();case'stats':return ST();case'info':return NF();case'entry':return EN();case'admin':return AD();default:return'';}}
+function tabC(){switch(S.tab){case'leaderboard':return LB();case'team':return TD();case'compare':return CP();case'chart':return CH();case'players':return PL();case'simulation':return SM();case'stats':return ST();case'info':return NF();case'entry':return EN();case'admin':return AD();case'bracket':return BR();default:return'';}}
 
 function settingsModal(){
   const chip=(on,label,fn)=>`<button class="settings-chip ${on?'on':''}" onclick="${fn}">${label}</button>`;
